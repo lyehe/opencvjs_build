@@ -1,0 +1,131 @@
+name: Build and Publish OpenCV.js
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      opencv_version:
+        description: 'OpenCV version to build'
+        required: false
+        default: '4.13.0'
+
+env:
+  OPENCV_VERSION: ${{ github.event.inputs.opencv_version || '4.13.0' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download OpenCV sources
+        run: |
+          git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv.git
+          git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv_contrib.git
+
+      - name: Build OpenCV.js with Docker
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -u $(id -u):$(id -g) \
+            emscripten/emsdk:latest \
+            bash -c "
+              mkdir -p /src/dist && \
+              python3 /src/opencv/platforms/js/build_js.py /src/build \
+                --build_wasm \
+                --disable_single_file \
+                --simd \
+                --threads \
+                --cmake_option='-DOPENCV_EXTRA_MODULES_PATH=/src/opencv_contrib/modules' \
+                --cmake_option='-DCMAKE_CXX_STANDARD=17' \
+                --cmake_option='-DBUILD_DOCS=OFF' \
+                --cmake_option='-DBUILD_EXAMPLES=OFF' \
+                --cmake_option='-DBUILD_TESTS=OFF' \
+                --cmake_option='-DBUILD_PERF_TESTS=OFF' && \
+              cp /src/build/bin/opencv.js /src/dist/ && \
+              cp /src/build/bin/opencv_js.wasm /src/dist/ && \
+              if [ -f /src/build/bin/opencv_js.worker.js ]; then cp /src/build/bin/opencv_js.worker.js /src/dist/; fi && \
+              if [ -f /src/build/bin/loader.js ]; then cp /src/build/bin/loader.js /src/dist/; fi
+            "
+
+      - name: List build artifacts
+        run: ls -la dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-wasm-build
+          path: |
+            dist/opencv.js
+            dist/opencv_js.wasm
+            dist/opencv_js.worker.js
+            dist/loader.js
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/opencv.js
+            dist/opencv_js.wasm
+            dist/opencv_js.worker.js
+            dist/loader.js
+          body: |
+            ## OpenCV.js ${{ env.OPENCV_VERSION }} with Contrib Modules
+
+            ### Features
+            - All OpenCV contrib modules included
+            - SIMD optimization enabled
+            - Threading support enabled
+
+            ### Files
+            - `opencv.js` - Main JavaScript file (~145KB)
+            - `opencv_js.wasm` - WebAssembly binary (~9.7MB)
+            - `opencv_js.worker.js` - Web Worker for threading (if applicable)
+            - `loader.js` - Optional loader utility
+
+            ### Browser Requirements for Threading
+            Threading requires these HTTP headers:
+            ```
+            Cross-Origin-Opener-Policy: same-origin
+            Cross-Origin-Embedder-Policy: require-corp
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencv-wasm-build
+          path: dist/
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

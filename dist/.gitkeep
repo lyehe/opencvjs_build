@@ -1,0 +1,2 @@
+# This file keeps the dist directory in git
+# Built files (opencv.js, opencv.wasm) will be generated here

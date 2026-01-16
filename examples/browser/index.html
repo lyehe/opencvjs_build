@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCV.js Image Processing Demo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #1976d2;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .controls h3 {
+            margin-top: 0;
+        }
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+        select, input[type="range"], button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 120px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        #status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        #status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .canvas-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .canvas-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        canvas {
+            max-width: 100%;
+            border: 1px solid #eee;
+            display: block;
+        }
+        .hidden {
+            display: none;
+        }
+        #fileInput {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>OpenCV.js Image Processing Demo</h1>
+
+    <div id="status">Loading OpenCV.js... This may take a moment.</div>
+
+    <div class="controls">
+        <h3>Image Controls</h3>
+        <div class="control-row">
+            <input type="file" id="fileInput" accept="image/*" disabled>
+            <button id="processBtn" disabled>Process Image</button>
+            <button id="resetBtn" disabled>Reset</button>
+        </div>
+
+        <h3>Filters</h3>
+        <div class="control-row">
+            <div class="control-group">
+                <label>Filter Type</label>
+                <select id="filterSelect">
+                    <option value="none">None</option>
+                    <option value="grayscale">Grayscale</option>
+                    <option value="blur">Gaussian Blur</option>
+                    <option value="canny">Canny Edges</option>
+                    <option value="threshold">Threshold</option>
+                    <option value="invert">Invert</option>
+                    <option value="sepia">Sepia</option>
+                    <option value="sharpen">Sharpen</option>
+                    <option value="emboss">Emboss</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Blur Kernel Size: <span id="blurValue">5</span></label>
+                <input type="range" id="blurSlider" min="1" max="21" step="2" value="5">
+            </div>
+
+            <div class="control-group">
+                <label>Canny Low: <span id="cannyLowValue">50</span></label>
+                <input type="range" id="cannyLowSlider" min="0" max="255" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>Canny High: <span id="cannyHighValue">150</span></label>
+                <input type="range" id="cannyHighSlider" min="0" max="255" value="150">
+            </div>
+
+            <div class="control-group">
+                <label>Threshold: <span id="threshValue">127</span></label>
+                <input type="range" id="threshSlider" min="0" max="255" value="127">
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-grid">
+        <div class="canvas-box">
+            <h3>Original Image</h3>
+            <canvas id="canvasInput"></canvas>
+        </div>
+        <div class="canvas-box">
+            <h3>Processed Image</h3>
+            <canvas id="canvasOutput"></canvas>
+        </div>
+    </div>
+
+    <!-- Load OpenCV.js -->
+    <script src="../../dist/opencv.js"></script>
+
+    <script>
+        // DOM Elements
+        const statusEl = document.getElementById('status');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const filterSelect = document.getElementById('filterSelect');
+        const blurSlider = document.getElementById('blurSlider');
+        const cannyLowSlider = document.getElementById('cannyLowSlider');
+        const cannyHighSlider = document.getElementById('cannyHighSlider');
+        const threshSlider = document.getElementById('threshSlider');
+        const canvasInput = document.getElementById('canvasInput');
+        const canvasOutput = document.getElementById('canvasOutput');
+
+        let originalMat = null;
+
+        // Update slider value displays
+        blurSlider.oninput = () => document.getElementById('blurValue').textContent = blurSlider.value;
+        cannyLowSlider.oninput = () => document.getElementById('cannyLowValue').textContent = cannyLowSlider.value;
+        cannyHighSlider.oninput = () => document.getElementById('cannyHighValue').textContent = cannyHighSlider.value;
+        threshSlider.oninput = () => document.getElementById('threshValue').textContent = threshSlider.value;
+
+        // Wait for OpenCV to load
+        cv.onRuntimeInitialized = () => {
+            statusEl.textContent = 'OpenCV.js is ready! Select an image to begin.';
+            statusEl.className = 'success';
+            fileInput.disabled = false;
+            processBtn.disabled = false;
+            resetBtn.disabled = false;
+            console.log('OpenCV.js loaded');
+            console.log('Build info:', cv.getBuildInformation().substring(0, 500));
+        };
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Draw original image
+                    canvasInput.width = img.width;
+                    canvasInput.height = img.height;
+                    canvasInput.getContext('2d').drawImage(img, 0, 0);
+
+                    // Store original as Mat
+                    if (originalMat) originalMat.delete();
+                    originalMat = cv.imread(canvasInput);
+
+                    // Set output canvas size
+                    canvasOutput.width = img.width;
+                    canvasOutput.height = img.height;
+
+                    statusEl.textContent = `Image loaded: ${img.width}x${img.height}. Click "Process Image" to apply filter.`;
+                    statusEl.className = 'success';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Process image
+        processBtn.addEventListener('click', processImage);
+        filterSelect.addEventListener('change', processImage);
+
+        function processImage() {
+            if (!originalMat) {
+                statusEl.textContent = 'Please select an image first.';
+                statusEl.className = 'error';
+                return;
+            }
+
+            try {
+                const filter = filterSelect.value;
+                let result = originalMat.clone();
+
+                switch (filter) {
+                    case 'grayscale':
+                        cv.cvtColor(result, result, cv.COLOR_RGBA2GRAY);
+                        break;
+
+                    case 'blur':
+                        const ksize = parseInt(blurSlider.value);
+                        cv.GaussianBlur(result, result, new cv.Size(ksize, ksize), 0);
+                        break;
+
+                    case 'canny':
+                        const gray = new cv.Mat();
+                        cv.cvtColor(result, gray, cv.COLOR_RGBA2GRAY);
+                        cv.Canny(gray, result, parseInt(cannyLowSlider.value), parseInt(cannyHighSlider.value));
+                        gray.delete();
+                        break;
+
+                    case 'threshold':
+                        const grayThresh = new cv.Mat();
+                        cv.cvtColor(result, grayThresh, cv.COLOR_RGBA2GRAY);
+                        cv.threshold(grayThresh, result, parseInt(threshSlider.value), 255, cv.THRESH_BINARY);
+                        grayThresh.delete();
+                        break;
+
+                    case 'invert':
+                        cv.bitwise_not(result, result);
+                        break;
+
+                    case 'sepia':
+                        // Convert to float for precise calculation
+                        const rgb = new cv.Mat();
+                        cv.cvtColor(result, rgb, cv.COLOR_RGBA2RGB);
+                        const sepia = new cv.Mat(3, 3, cv.CV_32FC1);
+                        sepia.data32F.set([
+                            0.272, 0.534, 0.131,
+                            0.349, 0.686, 0.168,
+                            0.393, 0.769, 0.189
+                        ]);
+                        cv.transform(rgb, result, sepia);
+                        cv.cvtColor(result, result, cv.COLOR_RGB2RGBA);
+                        rgb.delete();
+                        sepia.delete();
+                        break;
+
+                    case 'sharpen':
+                        const kernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
+                            0, -1, 0,
+                            -1, 5, -1,
+                            0, -1, 0
+                        ]);
+                        cv.filter2D(result, result, -1, kernel);
+                        kernel.delete();
+                        break;
+
+                    case 'emboss':
+                        const embossKernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
+                            -2, -1, 0,
+                            -1, 1, 1,
+                            0, 1, 2
+                        ]);
+                        cv.filter2D(result, result, -1, embossKernel);
+                        embossKernel.delete();
+                        break;
+                }
+
+                cv.imshow(canvasOutput, result);
+                result.delete();
+
+                statusEl.textContent = `Applied filter: ${filter}`;
+                statusEl.className = 'success';
+
+            } catch (err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.className = 'error';
+                console.error(err);
+            }
+        }
+
+        // Reset to original
+        resetBtn.addEventListener('click', () => {
+            if (originalMat) {
+                cv.imshow(canvasOutput, originalMat);
+                filterSelect.value = 'none';
+                statusEl.textContent = 'Image reset to original.';
+                statusEl.className = 'success';
+            }
+        });
+    </script>
+</body>
+</html>

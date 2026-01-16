@@ -1,0 +1,53 @@
+{
+  "name": "opencv-contrib-wasm",
+  "version": "4.13.0",
+  "description": "Precompiled OpenCV 4.13.0 with all Contrib modules to JavaScript + WebAssembly for Node.js, Deno, and browsers",
+  "main": "src/index.js",
+  "module": "src/index.mjs",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.mjs",
+      "require": "./src/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "src/",
+    "dist/",
+    "types/"
+  ],
+  "scripts": {
+    "download": "bash scripts/download-opencv.sh",
+    "build": "bash scripts/build.sh",
+    "build:docker": "docker build -t opencv-wasm-builder . && docker run --rm -v \"$(pwd)\":/src opencv-wasm-builder",
+    "clean": "rm -rf opencv opencv_contrib build dist/*.js dist/*.wasm",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "opencv",
+    "wasm",
+    "webassembly",
+    "computer-vision",
+    "image-processing",
+    "contrib",
+    "emscripten",
+    "simd",
+    "threading"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/user/build_openCVjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/user/build_openCVjs/issues"
+  },
+  "homepage": "https://github.com/user/build_openCVjs#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {}
+}
