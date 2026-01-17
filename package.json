@@ -1,7 +1,7 @@
 {
   "name": "opencv-contrib-wasm",
   "version": "4.13.0",
-  "description": "Precompiled OpenCV 4.13.0 with all Contrib modules to JavaScript + WebAssembly for Node.js, Deno, and browsers",
+  "description": "Precompiled OpenCV 4.13.0 with all Contrib modules to JavaScript + WebAssembly for Node.js, Deno, and browsers. Includes SIMD optimization and multi-threading support.",
   "main": "src/index.js",
   "module": "src/index.mjs",
   "types": "types/index.d.ts",
@@ -16,25 +16,40 @@
   "files": [
     "src/",
     "dist/",
-    "types/"
+    "types/",
+    "examples/"
   ],
   "scripts": {
     "download": "bash scripts/download-opencv.sh",
     "build": "bash scripts/build.sh",
     "build:docker": "docker build -t opencv-wasm-builder . && docker run --rm -v \"$(pwd)\":/src opencv-wasm-builder",
     "clean": "rm -rf opencv opencv_contrib build dist/*.js dist/*.wasm",
-    "prepublishOnly": "npm run build"
+    "test": "node examples/node/basic.js && node examples/node/image-processing.js && node examples/node/feature-detection.js && node examples/node/aruco-detection.js && node examples/node/contours.js",
+    "prepublishOnly": "echo 'Ready to publish'"
   },
   "keywords": [
     "opencv",
+    "opencv.js",
+    "opencvjs",
     "wasm",
     "webassembly",
     "computer-vision",
     "image-processing",
+    "machine-learning",
+    "deep-learning",
     "contrib",
+    "aruco",
+    "face-recognition",
+    "feature-detection",
+    "orb",
+    "sift",
+    "surf",
     "emscripten",
     "simd",
-    "threading"
+    "threading",
+    "browser",
+    "nodejs",
+    "deno"
   ],
   "author": "",
   "license": "Apache-2.0",
@@ -46,8 +61,23 @@
     "url": "https://github.com/user/build_openCVjs/issues"
   },
   "homepage": "https://github.com/user/build_openCVjs#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/user"
+  },
   "engines": {
     "node": ">=16.0.0"
   },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "ia32"
+  ],
+  "sideEffects": false,
   "devDependencies": {}
 }

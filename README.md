@@ -1,43 +1,52 @@
 # opencv-contrib-wasm
 
-Precompiled **OpenCV 4.13.0** with **all Contrib modules** to JavaScript + WebAssembly for Node.js, Deno, and browsers.
+[![npm version](https://img.shields.io/npm/v/opencv-contrib-wasm.svg)](https://www.npmjs.com/package/opencv-contrib-wasm)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+Precompiled **OpenCV 4.13.0** with **all Contrib modules** compiled to JavaScript + WebAssembly for Node.js, Deno, and browsers.
 
 ## Features
 
-- **OpenCV 4.13.0** (latest stable)
-- **All contrib modules** included (ArUco, face, xfeatures2d, etc.)
-- **SIMD optimization** enabled for maximum performance
-- **Threading support** enabled (SharedArrayBuffer)
-- **Zero runtime dependencies**
-- Works in **Node.js**, **Deno**, and **browsers**
+- **OpenCV 4.13.0** - Latest stable release
+- **All contrib modules** - ArUco, face recognition, xfeatures2d (SIFT/SURF), and more
+- **SIMD optimization** - Hardware-accelerated operations
+- **Multi-threading** - Web Workers support via SharedArrayBuffer
+- **Cross-platform** - Node.js, Deno, and all modern browsers
+- **TypeScript support** - Included type definitions
+- **Zero dependencies** - Self-contained WASM binary
 
-## Quick Start
-
-### Installation
+## Installation
 
 ```bash
 npm install opencv-contrib-wasm
 ```
 
+```bash
+yarn add opencv-contrib-wasm
+```
+
+```bash
+pnpm add opencv-contrib-wasm
+```
+
+## Quick Start
+
 ### Node.js (CommonJS)
 
 ```javascript
+const cvPromise = require('opencv-contrib-wasm');
+
 (async () => {
-    const cv = await require('opencv-contrib-wasm');
-    console.log('OpenCV.js version:', cv.getBuildInformation().match(/Version control:\s+(\S+)/)?.[1]);
+    const cv = await cvPromise;
 
-    // Create a matrix
+    // Create a 100x100 blue image
     const mat = new cv.Mat(100, 100, cv.CV_8UC3);
-    mat.setTo(new cv.Scalar(255, 0, 0)); // Blue in BGR
+    mat.setTo(new cv.Scalar(255, 0, 0));
 
-    // Convert to grayscale
-    const gray = new cv.Mat();
-    cv.cvtColor(mat, gray, cv.COLOR_BGR2GRAY);
-    console.log(`Grayscale: ${gray.rows}x${gray.cols}, channels: ${gray.channels()}`);
+    console.log(`Created ${mat.rows}x${mat.cols} image`);
 
-    // Clean up - IMPORTANT!
+    // Always clean up!
     mat.delete();
-    gray.delete();
 })();
 ```
 
@@ -48,45 +57,48 @@ import cvPromise from 'opencv-contrib-wasm';
 
 const cv = await cvPromise;
 
-// Detect ORB features
-const img = new cv.Mat(200, 200, cv.CV_8UC1);
-const orb = new cv.ORB();
-const keypoints = new cv.KeyPointVector();
-const descriptors = new cv.Mat();
-
-orb.detectAndCompute(img, new cv.Mat(), keypoints, descriptors);
-console.log(`Found ${keypoints.size()} keypoints`);
-
-// Clean up
-img.delete();
-orb.delete();
-keypoints.delete();
-descriptors.delete();
+const mat = new cv.Mat(100, 100, cv.CV_8UC3);
+console.log(`Created ${mat.rows}x${mat.cols} image`);
+mat.delete();
 ```
 
-### Browser
+### Browser (Script Tag)
 
 ```html
-<canvas id="canvas"></canvas>
-<script src="node_modules/opencv-contrib-wasm/dist/opencv.js"></script>
-<script>
-    cv.onRuntimeInitialized = () => {
-        console.log('OpenCV.js is ready!');
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenCV.js Demo</title>
+</head>
+<body>
+    <canvas id="canvas" width="400" height="300"></canvas>
 
-        // Load image from canvas
-        const src = cv.imread('canvas');
+    <script src="node_modules/opencv-contrib-wasm/dist/opencv.js"></script>
+    <script>
+        // Wait for OpenCV to initialize
+        cv.onRuntimeInitialized = function() {
+            console.log('OpenCV.js ready!');
 
-        // Apply Gaussian blur
-        const blurred = new cv.Mat();
-        cv.GaussianBlur(src, blurred, new cv.Size(5, 5), 0);
+            // Your code here
+            const mat = new cv.Mat(100, 100, cv.CV_8UC4);
+            mat.setTo(new cv.Scalar(255, 0, 0, 255));
+            cv.imshow('canvas', mat);
+            mat.delete();
+        };
+    </script>
+</body>
+</html>
+```
 
-        // Display result
-        cv.imshow('canvas', blurred);
+### Browser (ES Modules)
 
-        // Clean up
-        src.delete();
-        blurred.delete();
-    };
+```html
+<script type="module">
+    // Note: Requires a bundler or import map for npm packages
+    const cv = await import('./node_modules/opencv-contrib-wasm/dist/opencv.js');
+    await new Promise(resolve => { cv.onRuntimeInitialized = resolve; });
+
+    console.log('OpenCV.js ready!');
 </script>
 ```
 
@@ -96,244 +108,647 @@ descriptors.delete();
 import cvPromise from 'npm:opencv-contrib-wasm';
 
 const cv = await cvPromise;
-console.log('OpenCV.js loaded in Deno!');
+console.log('OpenCV.js ready in Deno!');
 ```
 
-## Examples
+---
 
-### Node.js Examples
+## JavaScript Usage Guide
 
-```bash
-# Basic Mat operations
-node examples/node/basic.js
+### Understanding Mat (Matrix)
 
-# Image processing (blur, edges, threshold)
-node examples/node/image-processing.js
-
-# Feature detection (ORB, AKAZE, BRISK)
-node examples/node/feature-detection.js
-
-# ArUco marker detection
-node examples/node/aruco-detection.js
-
-# Contour detection
-node examples/node/contours.js
-```
-
-### Browser Examples
-
-Open these files in a browser (requires a local server for WASM loading):
-
-```bash
-# Start a local server
-npx serve .
-
-# Then open:
-# http://localhost:3000/examples/browser/index.html      - Image processing
-# http://localhost:3000/examples/browser/webcam.html     - Real-time webcam
-# http://localhost:3000/examples/browser/aruco.html      - ArUco detection
-```
-
-## Included Modules
-
-### Core OpenCV Modules
-
-| Module | Description |
-|--------|-------------|
-| `core` | Basic structures (Mat, Scalar, Point, etc.) |
-| `imgproc` | Image processing (filters, transforms, drawing) |
-| `imgcodecs` | Image encoding/decoding |
-| `calib3d` | Camera calibration, 3D reconstruction |
-| `features2d` | Feature detection (ORB, BRISK, etc.) |
-| `flann` | Fast approximate nearest neighbor search |
-| `dnn` | Deep neural network inference |
-| `ml` | Machine learning algorithms |
-| `objdetect` | Object detection (cascade classifiers) |
-| `photo` | Computational photography |
-| `video` | Video analysis (optical flow, tracking) |
-
-### Contrib Modules
-
-| Module | Description |
-|--------|-------------|
-| `aruco` | ArUco markers detection and pose estimation |
-| `bgsegm` | Background segmentation algorithms |
-| `bioinspired` | Biologically inspired vision models |
-| `face` | Face recognition algorithms |
-| `img_hash` | Image hashing algorithms |
-| `line_descriptor` | Line segment detection and description |
-| `optflow` | Dense optical flow algorithms |
-| `phase_unwrapping` | Phase unwrapping algorithms |
-| `plot` | 2D plotting |
-| `reg` | Image registration |
-| `rgbd` | RGB-D camera processing |
-| `saliency` | Saliency detection |
-| `shape` | Shape matching and distance |
-| `stereo` | Stereo correspondence |
-| `structured_light` | Structured light processing |
-| `superres` | Super resolution |
-| `surface_matching` | 3D surface matching |
-| `text` | Text detection and recognition |
-| `tracking` | Object tracking algorithms |
-| `xfeatures2d` | Extra 2D features (SIFT, SURF, etc.) |
-| `ximgproc` | Extended image processing |
-| `xobjdetect` | Extended object detection |
-| `xphoto` | Extended photo processing |
-
-## API Reference
-
-### Creating Matrices
+The `Mat` class is the core data structure in OpenCV. It represents images and matrices.
 
 ```javascript
-// Empty matrix
+// Create empty Mat
 const empty = new cv.Mat();
 
-// Sized matrix with type
-const mat = new cv.Mat(rows, cols, cv.CV_8UC3);
+// Create Mat with size and type
+const mat = new cv.Mat(480, 640, cv.CV_8UC3);  // 640x480, 3 channels (BGR)
 
-// From array data
-const data = new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255]);
-const fromArray = cv.matFromArray(3, 1, cv.CV_8UC3, data);
+// Create Mat filled with zeros
+const zeros = cv.Mat.zeros(100, 100, cv.CV_8UC1);
 
-// Clone
-const cloned = mat.clone();
+// Create Mat filled with ones
+const ones = cv.Mat.ones(100, 100, cv.CV_8UC1);
 
-// Region of interest
-const roi = mat.roi(new cv.Rect(x, y, width, height));
+// Create identity matrix
+const eye = cv.Mat.eye(3, 3, cv.CV_32FC1);
+
+// Clone a Mat
+const clone = mat.clone();
+
+// Get Mat properties
+console.log('Rows:', mat.rows);
+console.log('Cols:', mat.cols);
+console.log('Channels:', mat.channels());
+console.log('Type:', mat.type());
+console.log('Total pixels:', mat.total());
+console.log('Is empty:', mat.empty());
+console.log('Is continuous:', mat.isContinuous());
+
+// Access pixel data
+const data = mat.data;        // Uint8Array for CV_8U types
+const data32F = mat.data32F;  // Float32Array for CV_32F types
+
+// Clean up - CRITICAL!
+mat.delete();
+zeros.delete();
+ones.delete();
+eye.delete();
+clone.delete();
 ```
 
-### Common Operations
+### Mat Types
 
 ```javascript
-// Color conversion
+// Unsigned 8-bit (0-255) - Most common for images
+cv.CV_8UC1   // 1 channel (grayscale)
+cv.CV_8UC3   // 3 channels (BGR color)
+cv.CV_8UC4   // 4 channels (BGRA with alpha)
+
+// Signed 8-bit (-128 to 127)
+cv.CV_8SC1, cv.CV_8SC3, cv.CV_8SC4
+
+// Unsigned 16-bit (0-65535)
+cv.CV_16UC1, cv.CV_16UC3, cv.CV_16UC4
+
+// Signed 16-bit
+cv.CV_16SC1, cv.CV_16SC3, cv.CV_16SC4
+
+// 32-bit float - For precise calculations
+cv.CV_32FC1, cv.CV_32FC3, cv.CV_32FC4
+
+// 64-bit float
+cv.CV_64FC1, cv.CV_64FC3, cv.CV_64FC4
+```
+
+### Creating Mat from Arrays
+
+```javascript
+// From Uint8Array
+const data = new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255]);
+const mat = cv.matFromArray(3, 1, cv.CV_8UC3, data);
+
+// From ImageData (browser)
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+const mat = cv.matFromImageData(imageData);
+```
+
+### Region of Interest (ROI)
+
+```javascript
+const src = new cv.Mat(400, 400, cv.CV_8UC3);
+
+// Extract a region (x=50, y=50, width=100, height=100)
+const roi = src.roi(new cv.Rect(50, 50, 100, 100));
+
+// Modify the ROI (affects original!)
+roi.setTo(new cv.Scalar(0, 255, 0));
+
+// Clean up
+roi.delete();
+src.delete();
+```
+
+### Helper Classes
+
+```javascript
+// Point (x, y)
+const point = new cv.Point(100, 200);
+console.log(point.x, point.y);
+
+// Size (width, height)
+const size = new cv.Size(640, 480);
+console.log(size.width, size.height);
+
+// Rect (x, y, width, height)
+const rect = new cv.Rect(10, 20, 100, 50);
+console.log(rect.x, rect.y, rect.width, rect.height);
+
+// Scalar (v0, v1, v2, v3) - For colors
+const blue = new cv.Scalar(255, 0, 0);      // BGR
+const green = new cv.Scalar(0, 255, 0);
+const red = new cv.Scalar(0, 0, 255);
+const white = new cv.Scalar(255, 255, 255);
+const black = new cv.Scalar(0, 0, 0);
+```
+
+---
+
+## Common Operations
+
+### Color Conversion
+
+```javascript
+const src = new cv.Mat(100, 100, cv.CV_8UC3);
+const dst = new cv.Mat();
+
+// BGR to Grayscale
 cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY);
+
+// BGR to RGB
+cv.cvtColor(src, dst, cv.COLOR_BGR2RGB);
+
+// BGR to HSV
 cv.cvtColor(src, dst, cv.COLOR_BGR2HSV);
 
-// Blur
-cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0);
-cv.medianBlur(src, dst, 5);
-cv.bilateralFilter(src, dst, 9, 75, 75);
+// BGR to Lab
+cv.cvtColor(src, dst, cv.COLOR_BGR2Lab);
 
-// Edge detection
-cv.Canny(gray, edges, 50, 150);
-cv.Sobel(gray, sobelX, cv.CV_64F, 1, 0, 3);
-cv.Laplacian(gray, laplacian, cv.CV_64F);
+// Grayscale to BGR
+cv.cvtColor(gray, dst, cv.COLOR_GRAY2BGR);
 
-// Threshold
-cv.threshold(gray, binary, 127, 255, cv.THRESH_BINARY);
-cv.adaptiveThreshold(gray, adaptive, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+// For browser canvas (RGBA)
+cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+cv.cvtColor(gray, dst, cv.COLOR_GRAY2RGBA);
 
-// Morphology
-const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
-cv.erode(src, dst, kernel);
-cv.dilate(src, dst, kernel);
-cv.morphologyEx(src, dst, cv.MORPH_OPEN, kernel);
+src.delete();
+dst.delete();
 ```
 
-### Feature Detection
+### Image Filtering
 
 ```javascript
-// ORB
-const orb = new cv.ORB(500);
+const src = new cv.Mat();
+const dst = new cv.Mat();
+
+// Gaussian Blur
+cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0);
+
+// Median Blur (good for salt-and-pepper noise)
+cv.medianBlur(src, dst, 5);
+
+// Bilateral Filter (preserves edges)
+cv.bilateralFilter(src, dst, 9, 75, 75);
+
+// Box Filter (simple average)
+cv.blur(src, dst, new cv.Size(5, 5));
+
+// Sharpen using kernel
+const kernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
+    0, -1, 0,
+    -1, 5, -1,
+    0, -1, 0
+]);
+cv.filter2D(src, dst, -1, kernel);
+kernel.delete();
+
+src.delete();
+dst.delete();
+```
+
+### Edge Detection
+
+```javascript
+const src = new cv.Mat();
+const gray = new cv.Mat();
+const edges = new cv.Mat();
+
+cv.cvtColor(src, gray, cv.COLOR_BGR2GRAY);
+
+// Canny Edge Detection
+cv.Canny(gray, edges, 50, 150);
+
+// Sobel (gradient in X or Y direction)
+const sobelX = new cv.Mat();
+const sobelY = new cv.Mat();
+cv.Sobel(gray, sobelX, cv.CV_64F, 1, 0);  // X gradient
+cv.Sobel(gray, sobelY, cv.CV_64F, 0, 1);  // Y gradient
+
+// Laplacian
+const laplacian = new cv.Mat();
+cv.Laplacian(gray, laplacian, cv.CV_64F);
+
+// Clean up
+[src, gray, edges, sobelX, sobelY, laplacian].forEach(m => m.delete());
+```
+
+### Thresholding
+
+```javascript
+const src = new cv.Mat();
+const gray = new cv.Mat();
+const dst = new cv.Mat();
+
+cv.cvtColor(src, gray, cv.COLOR_BGR2GRAY);
+
+// Binary threshold
+cv.threshold(gray, dst, 127, 255, cv.THRESH_BINARY);
+
+// Inverse binary
+cv.threshold(gray, dst, 127, 255, cv.THRESH_BINARY_INV);
+
+// Otsu's method (automatic threshold)
+cv.threshold(gray, dst, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+
+// Adaptive threshold
+cv.adaptiveThreshold(
+    gray, dst, 255,
+    cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+    cv.THRESH_BINARY,
+    11,  // block size
+    2    // C constant
+);
+
+[src, gray, dst].forEach(m => m.delete());
+```
+
+### Morphological Operations
+
+```javascript
+const src = new cv.Mat();
+const dst = new cv.Mat();
+
+// Create structuring element
+const kernel = cv.getStructuringElement(
+    cv.MORPH_RECT,       // MORPH_RECT, MORPH_CROSS, MORPH_ELLIPSE
+    new cv.Size(5, 5)
+);
+
+// Erosion - shrinks bright regions
+cv.erode(src, dst, kernel);
+
+// Dilation - expands bright regions
+cv.dilate(src, dst, kernel);
+
+// Opening - erosion followed by dilation (removes noise)
+cv.morphologyEx(src, dst, cv.MORPH_OPEN, kernel);
+
+// Closing - dilation followed by erosion (fills holes)
+cv.morphologyEx(src, dst, cv.MORPH_CLOSE, kernel);
+
+// Gradient - difference between dilation and erosion
+cv.morphologyEx(src, dst, cv.MORPH_GRADIENT, kernel);
+
+// Top Hat - difference between input and opening
+cv.morphologyEx(src, dst, cv.MORPH_TOPHAT, kernel);
+
+// Black Hat - difference between closing and input
+cv.morphologyEx(src, dst, cv.MORPH_BLACKHAT, kernel);
+
+kernel.delete();
+src.delete();
+dst.delete();
+```
+
+### Drawing Functions
+
+```javascript
+const img = new cv.Mat(400, 400, cv.CV_8UC3, new cv.Scalar(255, 255, 255));
+
+// Line
+cv.line(img, new cv.Point(0, 0), new cv.Point(400, 400), new cv.Scalar(0, 0, 255), 2);
+
+// Rectangle
+cv.rectangle(img, new cv.Point(50, 50), new cv.Point(150, 150), new cv.Scalar(0, 255, 0), 2);
+cv.rectangle(img, new cv.Point(200, 50), new cv.Point(300, 150), new cv.Scalar(0, 255, 0), -1);  // filled
+
+// Circle
+cv.circle(img, new cv.Point(200, 300), 50, new cv.Scalar(255, 0, 0), 2);
+cv.circle(img, new cv.Point(300, 300), 30, new cv.Scalar(255, 0, 0), -1);  // filled
+
+// Ellipse
+cv.ellipse(img, new cv.Point(100, 300), new cv.Size(50, 30), 45, 0, 360, new cv.Scalar(255, 0, 255), 2);
+
+// Polylines
+const points = cv.matFromArray(4, 1, cv.CV_32SC2, [50, 200, 100, 250, 150, 200, 100, 150]);
+const pts = new cv.MatVector();
+pts.push_back(points);
+cv.polylines(img, pts, true, new cv.Scalar(0, 128, 255), 2);
+
+// Put Text
+cv.putText(img, 'Hello OpenCV!', new cv.Point(50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, new cv.Scalar(0, 0, 0), 2);
+
+points.delete();
+pts.delete();
+img.delete();
+```
+
+---
+
+## Feature Detection
+
+### ORB (Oriented FAST and Rotated BRIEF)
+
+```javascript
+const img = new cv.Mat();
+const gray = new cv.Mat();
+cv.cvtColor(img, gray, cv.COLOR_BGR2GRAY);
+
+// Create ORB detector
+const orb = new cv.ORB(500);  // max 500 features
+
+// Detect keypoints and compute descriptors
 const keypoints = new cv.KeyPointVector();
 const descriptors = new cv.Mat();
 orb.detectAndCompute(gray, new cv.Mat(), keypoints, descriptors);
 
-// AKAZE
-const akaze = new cv.AKAZE();
-akaze.detectAndCompute(gray, new cv.Mat(), keypoints, descriptors);
+console.log(`Found ${keypoints.size()} keypoints`);
+
+// Access keypoint properties
+for (let i = 0; i < keypoints.size(); i++) {
+    const kp = keypoints.get(i);
+    console.log(`  Point: (${kp.pt.x}, ${kp.pt.y}), size: ${kp.size}, angle: ${kp.angle}`);
+}
 
 // Draw keypoints
-cv.drawKeypoints(src, keypoints, output, new cv.Scalar(0, 255, 0));
+const output = new cv.Mat();
+cv.drawKeypoints(img, keypoints, output, new cv.Scalar(0, 255, 0));
+
+// Clean up
+[img, gray, descriptors, output].forEach(m => m.delete());
+keypoints.delete();
+orb.delete();
 ```
 
-### ArUco Markers
+### AKAZE
+
+```javascript
+const akaze = new cv.AKAZE();
+const keypoints = new cv.KeyPointVector();
+const descriptors = new cv.Mat();
+
+akaze.detectAndCompute(gray, new cv.Mat(), keypoints, descriptors);
+
+keypoints.delete();
+descriptors.delete();
+akaze.delete();
+```
+
+### Feature Matching
+
+```javascript
+// Detect features in two images
+const orb = new cv.ORB(500);
+const kp1 = new cv.KeyPointVector();
+const kp2 = new cv.KeyPointVector();
+const desc1 = new cv.Mat();
+const desc2 = new cv.Mat();
+
+orb.detectAndCompute(img1, new cv.Mat(), kp1, desc1);
+orb.detectAndCompute(img2, new cv.Mat(), kp2, desc2);
+
+// Match with BFMatcher
+const bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+const matches = new cv.DMatchVector();
+bf.match(desc1, desc2, matches);
+
+console.log(`Found ${matches.size()} matches`);
+
+// Sort by distance
+const matchArray = [];
+for (let i = 0; i < matches.size(); i++) {
+    const m = matches.get(i);
+    matchArray.push({ queryIdx: m.queryIdx, trainIdx: m.trainIdx, distance: m.distance });
+}
+matchArray.sort((a, b) => a.distance - b.distance);
+
+// Clean up
+[desc1, desc2].forEach(m => m.delete());
+[kp1, kp2, matches].forEach(v => v.delete());
+bf.delete();
+orb.delete();
+```
+
+---
+
+## Contour Detection
+
+```javascript
+const src = new cv.Mat();
+const gray = new cv.Mat();
+const binary = new cv.Mat();
+
+cv.cvtColor(src, gray, cv.COLOR_BGR2GRAY);
+cv.threshold(gray, binary, 127, 255, cv.THRESH_BINARY);
+
+// Find contours
+const contours = new cv.MatVector();
+const hierarchy = new cv.Mat();
+cv.findContours(binary, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
+
+console.log(`Found ${contours.size()} contours`);
+
+// Draw all contours
+const output = src.clone();
+cv.drawContours(output, contours, -1, new cv.Scalar(0, 255, 0), 2);
+
+// Analyze each contour
+for (let i = 0; i < contours.size(); i++) {
+    const contour = contours.get(i);
+
+    // Area and perimeter
+    const area = cv.contourArea(contour);
+    const perimeter = cv.arcLength(contour, true);
+
+    // Bounding rectangle
+    const rect = cv.boundingRect(contour);
+
+    // Convex hull
+    const hull = new cv.Mat();
+    cv.convexHull(contour, hull);
+
+    // Centroid using moments
+    const moments = cv.moments(contour);
+    const cx = moments.m10 / moments.m00;
+    const cy = moments.m01 / moments.m00;
+
+    console.log(`Contour ${i}: area=${area.toFixed(0)}, perimeter=${perimeter.toFixed(0)}`);
+
+    hull.delete();
+}
+
+// Clean up
+[src, gray, binary, output, hierarchy].forEach(m => m.delete());
+contours.delete();
+```
+
+---
+
+## ArUco Marker Detection
 
 ```javascript
 // Create dictionary
 const dictionary = cv.getPredefinedDictionary(cv.DICT_6X6_250);
 
-// Generate marker
-const marker = new cv.Mat();
-cv.aruco_generateImageMarker(dictionary, 0, 200, marker, 1);
+// Generate a marker image
+const markerImage = new cv.Mat();
+cv.generateImageMarker(dictionary, 23, 200, markerImage, 1);  // ID 23, 200px
 
-// Detect markers
-const detector = new cv.aruco_ArucoDetector(dictionary, new cv.aruco_DetectorParameters());
+// Create detector
+const detectorParams = new cv.aruco_DetectorParameters();
+const refineParams = new cv.aruco_RefineParameters(10.0, 3.0, true);
+const detector = new cv.aruco_ArucoDetector(dictionary, detectorParams, refineParams);
+
+// Detect markers in image
 const corners = new cv.MatVector();
 const ids = new cv.Mat();
-detector.detectMarkers(image, corners, ids);
+const rejected = new cv.MatVector();
+
+detector.detectMarkers(image, corners, ids, rejected);
+
+console.log(`Detected ${ids.rows} markers`);
 
 // Draw detected markers
-cv.aruco_drawDetectedMarkers(image, corners, ids);
+if (ids.rows > 0) {
+    cv.drawDetectedMarkers(image, corners, ids);
+
+    // Access marker data
+    for (let i = 0; i < ids.rows; i++) {
+        const markerId = ids.intAt(i, 0);
+        const markerCorners = corners.get(i);
+        console.log(`Marker ID ${markerId}`);
+    }
+}
+
+// Clean up
+[markerImage, ids].forEach(m => m.delete());
+[corners, rejected].forEach(v => v.delete());
+[dictionary, detectorParams, refineParams, detector].forEach(o => o.delete());
 ```
 
-### Contours
+---
+
+## Browser-Specific: Canvas Integration
+
+### Reading from Canvas
 
 ```javascript
-const contours = new cv.MatVector();
-const hierarchy = new cv.Mat();
-cv.findContours(binary, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
+// Read image from canvas element
+const canvas = document.getElementById('myCanvas');
+const src = cv.imread(canvas);  // or cv.imread('myCanvas')
 
-// Draw all contours
-cv.drawContours(dst, contours, -1, new cv.Scalar(0, 255, 0), 2);
+// Process...
 
-// Contour properties
-const area = cv.contourArea(contours.get(0));
-const perimeter = cv.arcLength(contours.get(0), true);
-const boundingRect = cv.boundingRect(contours.get(0));
+// Display result
+cv.imshow('outputCanvas', src);
+
+src.delete();
 ```
+
+### Reading from Image Element
+
+```javascript
+const imgElement = document.getElementById('myImage');
+
+// Draw to canvas first
+const canvas = document.createElement('canvas');
+canvas.width = imgElement.naturalWidth;
+canvas.height = imgElement.naturalHeight;
+const ctx = canvas.getContext('2d');
+ctx.drawImage(imgElement, 0, 0);
+
+// Now read from canvas
+const src = cv.imread(canvas);
+
+// Process and display
+cv.imshow('outputCanvas', src);
+
+src.delete();
+```
+
+### Video Processing
+
+```javascript
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+
+// Set canvas size to match video
+canvas.width = video.videoWidth;
+canvas.height = video.videoHeight;
+
+function processFrame() {
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const src = cv.imread(canvas);
+    const gray = new cv.Mat();
+
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.imshow(canvas, gray);
+
+    src.delete();
+    gray.delete();
+
+    requestAnimationFrame(processFrame);
+}
+
+video.onplay = () => processFrame();
+```
+
+---
 
 ## Memory Management
 
-OpenCV.js uses Emscripten's memory model. **Always call `.delete()` on OpenCV objects when done:**
+OpenCV.js uses WebAssembly memory that must be manually freed.
 
-```javascript
-const mat = new cv.Mat();
-const keypoints = new cv.KeyPointVector();
-const orb = new cv.ORB();
+### Rules
 
-// ... use objects ...
-
-// Clean up
-mat.delete();
-keypoints.delete();
-orb.delete();
-```
+1. **Always call `.delete()`** on OpenCV objects when done
+2. **Never let objects go out of scope** without deleting
+3. **Track all created objects** in complex functions
 
 ### Cleanup Pattern
 
 ```javascript
-function processImage(src) {
+function processImage(inputMat) {
     const mats = [];
+
     try {
         const gray = new cv.Mat();
         mats.push(gray);
 
+        const blurred = new cv.Mat();
+        mats.push(blurred);
+
         const edges = new cv.Mat();
         mats.push(edges);
 
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        cv.Canny(gray, edges, 50, 150);
+        cv.cvtColor(inputMat, gray, cv.COLOR_BGR2GRAY);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        cv.Canny(blurred, edges, 50, 150);
 
-        return edges.clone(); // Return a clone
+        return edges.clone();  // Return a clone
     } finally {
+        // Always clean up
         mats.forEach(m => m.delete());
     }
 }
+
+// Usage
+const result = processImage(src);
+// ... use result ...
+result.delete();
 ```
+
+### Using try/finally
+
+```javascript
+const src = new cv.Mat(100, 100, cv.CV_8UC3);
+try {
+    // Process...
+} finally {
+    src.delete();
+}
+```
+
+---
 
 ## Threading Support
 
-Threading requires `SharedArrayBuffer`, which needs these HTTP headers:
+Threading requires `SharedArrayBuffer`, which needs specific HTTP headers.
+
+### Required Headers
 
 ```
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-Without these headers, OpenCV.js falls back to single-threaded mode.
-
-### Express.js Example
+### Express.js
 
 ```javascript
 app.use((req, res, next) => {
@@ -343,73 +758,108 @@ app.use((req, res, next) => {
 });
 ```
 
-## Building from Source
+### Nginx
 
-### Prerequisites
+```nginx
+add_header Cross-Origin-Opener-Policy same-origin;
+add_header Cross-Origin-Embedder-Policy require-corp;
+```
 
-- Docker
-- Git
-- Node.js 16+
+### Apache
 
-### Build Steps
+```apache
+Header set Cross-Origin-Opener-Policy "same-origin"
+Header set Cross-Origin-Embedder-Policy "require-corp"
+```
+
+Without these headers, OpenCV.js falls back to single-threaded mode automatically.
+
+---
+
+## Included Modules
+
+### Core Modules
+
+| Module | Description |
+|--------|-------------|
+| `core` | Mat, Scalar, Point, Size, basic operations |
+| `imgproc` | Image processing, filters, transforms, drawing |
+| `imgcodecs` | Image encoding/decoding |
+| `calib3d` | Camera calibration, 3D reconstruction |
+| `features2d` | Feature detection (ORB, BRISK, AKAZE) |
+| `flann` | Fast nearest neighbor search |
+| `dnn` | Deep neural network inference |
+| `ml` | Machine learning algorithms |
+| `objdetect` | Object detection, cascade classifiers |
+| `photo` | Computational photography |
+| `video` | Video analysis, optical flow, tracking |
+
+### Contrib Modules
+
+| Module | Description |
+|--------|-------------|
+| `aruco` | ArUco/ChArUco marker detection |
+| `bgsegm` | Background segmentation |
+| `face` | Face recognition (LBPHFaceRecognizer, etc.) |
+| `img_hash` | Image hashing (pHash, etc.) |
+| `tracking` | Object tracking (KCF, CSRT, etc.) |
+| `xfeatures2d` | SIFT, SURF, and more |
+| `ximgproc` | Extended image processing |
+| `xphoto` | Extended computational photography |
+
+---
+
+## Examples
+
+See the `examples/` directory:
 
 ```bash
-# Clone repository
+# Node.js
+node examples/node/basic.js
+node examples/node/image-processing.js
+node examples/node/feature-detection.js
+node examples/node/aruco-detection.js
+node examples/node/contours.js
+
+# Browser (start local server first)
+npx serve .
+# Open http://localhost:3000/examples/browser/
+```
+
+---
+
+## Building from Source
+
+```bash
 git clone https://github.com/user/build_openCVjs.git
 cd build_openCVjs
 
 # Download OpenCV sources
 npm run download
 
-# Build with Docker (takes ~30-60 minutes)
+# Build (requires Docker)
 npm run build
 ```
 
-### Build Output
-
-| File | Description | Size |
-|------|-------------|------|
-| `dist/opencv.js` | JavaScript wrapper | ~145 KB |
-| `dist/opencv_js.wasm` | WebAssembly binary | ~9.7 MB |
-| `dist/loader.js` | Optional loader utility | ~4 KB |
-
-## TypeScript
-
-TypeScript definitions are included:
-
-```typescript
-import cv from 'opencv-contrib-wasm';
-
-async function main() {
-    const opencv = await cv;
-
-    const mat: cv.Mat = new opencv.Mat(100, 100, opencv.CV_8UC3);
-    const gray: cv.Mat = new opencv.Mat();
-
-    opencv.cvtColor(mat, gray, opencv.COLOR_BGR2GRAY);
-
-    mat.delete();
-    gray.delete();
-}
-```
+---
 
 ## Troubleshooting
 
 ### "WASM file not found"
 
-Make sure the `dist/` folder contains both `opencv.js` and `opencv_js.wasm`. If building from source, run `npm run build` first.
+Ensure `dist/opencv.js` and `dist/opencv_js.wasm` exist. Run `npm run build` if building from source.
 
 ### "SharedArrayBuffer is not defined"
 
-Add the required COOP/COEP headers to your server. See the Threading Support section.
+Add COOP/COEP headers to your server. See Threading Support section.
 
 ### "Out of memory"
 
-Always call `.delete()` on OpenCV objects. OpenCV.js has limited memory (~256MB by default).
+Always call `.delete()` on OpenCV objects. Check for memory leaks.
 
-### Browser loading issues
+### Browser: "Cannot load from file://"
 
-Use a local HTTP server instead of `file://` URLs:
+Use a local HTTP server:
 
 ```bash
 npx serve .
@@ -417,12 +867,15 @@ npx serve .
 python -m http.server 8000
 ```
 
+---
+
 ## License
 
 Apache-2.0 (same as OpenCV)
 
 ## Links
 
-- [OpenCV](https://github.com/opencv/opencv) - Open Source Computer Vision Library
-- [OpenCV Contrib](https://github.com/opencv/opencv_contrib) - Extra OpenCV modules
-- [OpenCV.js Docs](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) - Official documentation
+- [OpenCV Documentation](https://docs.opencv.org/4.x/)
+- [OpenCV.js Tutorials](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html)
+- [GitHub Repository](https://github.com/user/build_openCVjs)
+- [npm Package](https://www.npmjs.com/package/opencv-contrib-wasm)
