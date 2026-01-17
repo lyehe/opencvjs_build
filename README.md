@@ -831,8 +831,8 @@ npx serve .
 ## Building from Source
 
 ```bash
-git clone https://github.com/user/build_openCVjs.git
-cd build_openCVjs
+git clone https://github.com/lyehe/opencvjs_build.git
+cd opencvjs_build
 
 # Download OpenCV sources
 npm run download
@@ -877,5 +877,5 @@ Apache-2.0 (same as OpenCV)
 
 - [OpenCV Documentation](https://docs.opencv.org/4.x/)
 - [OpenCV.js Tutorials](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html)
-- [GitHub Repository](https://github.com/user/build_openCVjs)
+- [GitHub Repository](https://github.com/lyehe/opencvjs_build)
 - [npm Package](https://www.npmjs.com/package/opencv-contrib-wasm)

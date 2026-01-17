@@ -15,8 +15,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 1. Fork and clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/build_openCVjs.git
-cd build_openCVjs
+git clone https://github.com/lyehe/opencvjs_build.git
+cd opencvjs_build
 ```
 
 2. Download OpenCV sources:
