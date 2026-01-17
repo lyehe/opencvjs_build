@@ -2,8 +2,13 @@ name: Build and Publish OpenCV.js
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       opencv_version:
@@ -58,8 +63,14 @@ jobs:
               if [ -f /src/build/bin/loader.js ]; then cp /src/build/bin/loader.js /src/dist/; fi
             "
 
-      - name: List build artifacts
-        run: ls -la dist/
+      - name: Get build info
+        id: build_info
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          ls -la dist/
+          echo "opencv_js_size=$(stat -c%s dist/opencv.js 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
+          echo "wasm_size=$(stat -c%s dist/opencv_js.wasm 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -72,7 +83,60 @@ jobs:
             dist/loader.js
           if-no-files-found: warn
 
-      - name: Create GitHub Release
+      # Create/update "latest" pre-release on push to main
+      - name: Update Latest Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: "Latest Build (${{ steps.build_info.outputs.date }})"
+          prerelease: true
+          files: |
+            dist/opencv.js
+            dist/opencv_js.wasm
+            dist/opencv_js.worker.js
+            dist/loader.js
+          body: |
+            ## Latest OpenCV.js Build
+
+            **Auto-updated on every push to main branch.**
+
+            - **Build Date:** ${{ steps.build_info.outputs.date }}
+            - **Commit:** ${{ steps.build_info.outputs.sha_short }}
+            - **OpenCV Version:** ${{ env.OPENCV_VERSION }}
+
+            ### Download Files
+
+            | File | Description |
+            |------|-------------|
+            | `opencv.js` | Main JavaScript wrapper |
+            | `opencv_js.wasm` | WebAssembly binary |
+            | `opencv_js.worker.js` | Web Worker for threading |
+            | `loader.js` | Optional loader utility |
+
+            ### Quick Usage
+
+            ```html
+            <script async src="opencv.js" onload="onOpenCvReady()"></script>
+            <script>
+              function onOpenCvReady() {
+                console.log('OpenCV.js loaded:', cv.getBuildInformation());
+              }
+            </script>
+            ```
+
+            ### Features
+            - All OpenCV contrib modules included
+            - SIMD optimization enabled
+            - Threading support enabled
+
+            ---
+            *For stable releases, use a [versioned release](../../releases) instead.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create versioned release on tag push
+      - name: Create Versioned Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
@@ -82,25 +146,70 @@ jobs:
             dist/opencv_js.worker.js
             dist/loader.js
           body: |
-            ## OpenCV.js ${{ env.OPENCV_VERSION }} with Contrib Modules
+            ## OpenCV.js ${{ github.ref_name }} with Contrib Modules
 
-            ### Features
-            - All OpenCV contrib modules included
-            - SIMD optimization enabled
-            - Threading support enabled
+            ### Installation
+
+            **npm:**
+            ```bash
+            npm install opencv-contrib-wasm
+            ```
+
+            **Direct download:** Download the files below and include in your project.
 
             ### Files
-            - `opencv.js` - Main JavaScript file (~145KB)
-            - `opencv_js.wasm` - WebAssembly binary (~9.7MB)
-            - `opencv_js.worker.js` - Web Worker for threading (if applicable)
-            - `loader.js` - Optional loader utility
 
-            ### Browser Requirements for Threading
-            Threading requires these HTTP headers:
+            | File | Description | Size |
+            |------|-------------|------|
+            | `opencv.js` | Main JavaScript wrapper | ~145KB |
+            | `opencv_js.wasm` | WebAssembly binary | ~9.7MB |
+            | `opencv_js.worker.js` | Web Worker for threading | - |
+            | `loader.js` | Optional loader utility | - |
+
+            ### Features
+            - OpenCV ${{ env.OPENCV_VERSION }} with all contrib modules
+            - SIMD optimization enabled
+            - Threading support enabled (requires COOP/COEP headers)
+
+            ### Browser Usage
+
+            ```html
+            <script async src="opencv.js" onload="onOpenCvReady()"></script>
+            <script>
+              function onOpenCvReady() {
+                console.log('OpenCV.js ready!');
+                // Your code here
+              }
+            </script>
+            ```
+
+            ### Node.js Usage
+
+            ```javascript
+            const cv = require('opencv-contrib-wasm');
+
+            cv.onRuntimeInitialized = () => {
+              console.log('OpenCV.js ready!');
+              // Your code here
+            };
+            ```
+
+            ### Threading Requirements
+
+            For multi-threading support in browsers, serve with these headers:
             ```
             Cross-Origin-Opener-Policy: same-origin
             Cross-Origin-Embedder-Policy: require-corp
             ```
+
+            ### Included Modules
+
+            **Core:** core, imgproc, imgcodecs, calib3d, features2d, flann, dnn, ml, objdetect, photo, video
+
+            **Contrib:** aruco, bgsegm, face, img_hash, tracking, xfeatures2d, ximgproc, xobjdetect, xphoto, and more
+
+            ---
+            [Full documentation](../../#readme) | [Examples](../../tree/main/examples)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
