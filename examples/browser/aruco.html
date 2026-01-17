@@ -248,6 +248,7 @@
         let stream = null;
         let dictionary = null;
         let detectorParams = null;
+        let refineParams = null;
         let detector = null;
 
         // Wait for OpenCV to load
@@ -270,6 +271,7 @@
             // Clean up existing
             if (dictionary) dictionary.delete();
             if (detectorParams) detectorParams.delete();
+            if (refineParams) refineParams.delete();
             if (detector) detector.delete();
 
             // Get dictionary type
@@ -278,9 +280,10 @@
 
             // Create detector parameters
             detectorParams = new cv.aruco_DetectorParameters();
+            refineParams = new cv.aruco_RefineParameters(10.0, 3.0, true);
 
             // Create detector
-            detector = new cv.aruco_ArucoDetector(dictionary, detectorParams);
+            detector = new cv.aruco_ArucoDetector(dictionary, detectorParams, refineParams);
         }
 
         // Change dictionary
@@ -300,7 +303,7 @@
 
             for (const id of markerIds) {
                 const marker = new cv.Mat();
-                cv.aruco_generateImageMarker(dictionary, id, markerSize, marker, 1);
+                cv.generateImageMarker(dictionary, id, markerSize, marker, 1);
 
                 // Create canvas for this marker
                 const item = document.createElement('div');
@@ -389,7 +392,7 @@
 
                 // Draw results
                 if (ids.rows > 0) {
-                    cv.aruco_drawDetectedMarkers(src, corners, ids);
+                    cv.drawDetectedMarkers(src, corners, ids);
                 }
 
                 cv.imshow(canvasOutput, src);
@@ -441,6 +444,7 @@
         window.addEventListener('beforeunload', () => {
             if (dictionary) dictionary.delete();
             if (detectorParams) detectorParams.delete();
+            if (refineParams) refineParams.delete();
             if (detector) detector.delete();
         });
     </script>

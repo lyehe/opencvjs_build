@@ -5,7 +5,6 @@
  * - Creating ArUco dictionaries
  * - Generating ArUco markers
  * - Detecting markers in images
- * - Estimating marker poses
  *
  * Run: node examples/node/aruco-detection.js
  */
@@ -41,7 +40,7 @@
 
     for (const id of markersToGenerate) {
         const marker = new cv.Mat();
-        cv.aruco_generateImageMarker(dictionary, id, markerSize, marker, 1);
+        cv.generateImageMarker(dictionary, id, markerSize, marker, 1);
         generatedMarkers.push(marker);
         console.log(`Generated marker ID ${id}: ${marker.rows}x${marker.cols}`);
     }
@@ -79,8 +78,11 @@
     // ============================================
     console.log('\n=== Example 4: Detect Markers ===');
 
+    // Create detector with parameters
+    // aruco_RefineParameters(minRepDistance, errorCorrectionRate, checkAllOrders)
     const detectorParams = new cv.aruco_DetectorParameters();
-    const detector = new cv.aruco_ArucoDetector(dictionary, detectorParams);
+    const refineParams = new cv.aruco_RefineParameters(10.0, 3.0, true);
+    const detector = new cv.aruco_ArucoDetector(dictionary, detectorParams, refineParams);
 
     const corners = new cv.MatVector();
     const ids = new cv.Mat();
@@ -117,7 +119,7 @@
     cv.cvtColor(testImage, colorImage, cv.COLOR_GRAY2BGR);
 
     if (ids.rows > 0) {
-        cv.aruco_drawDetectedMarkers(colorImage, corners, ids);
+        cv.drawDetectedMarkers(colorImage, corners, ids);
         console.log('Drew detected markers on image');
     }
 
@@ -154,7 +156,7 @@
     }
 
     // ============================================
-    // Example 8: Charuco Board (if available)
+    // Example 8: CharucoBoard (if available)
     // ============================================
     console.log('\n=== Example 8: CharucoBoard Creation ===');
 
@@ -175,7 +177,7 @@
         board.delete();
         boardImage.delete();
     } catch (e) {
-        console.log('CharucoBoard not available in this build');
+        console.log('CharucoBoard creation:', e.message || 'not available in this build');
     }
 
     // ============================================
@@ -188,6 +190,7 @@
     colorImage.delete();
     dictionary.delete();
     detectorParams.delete();
+    refineParams.delete();
     detector.delete();
     corners.delete();
     ids.delete();
