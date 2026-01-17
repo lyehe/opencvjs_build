@@ -156,16 +156,20 @@
     }
 
     // ============================================
-    // Example 8: CharucoBoard (if available)
+    // Example 8: CharucoBoard Creation
     // ============================================
     console.log('\n=== Example 8: CharucoBoard Creation ===');
 
     try {
+        // CharucoBoard(size, squareLength, markerLength, dictionary, ids)
+        // ids can be empty Mat to auto-generate marker IDs
+        const ids = new cv.Mat();
         const board = new cv.aruco_CharucoBoard(
             new cv.Size(5, 7),  // 5x7 squares
             0.04,               // square length (4cm)
             0.02,               // marker length (2cm)
-            dictionary
+            dictionary,
+            ids                 // marker IDs (empty = auto-generate)
         );
         console.log('Created CharucoBoard: 5x7 squares');
 
@@ -176,8 +180,9 @@
 
         board.delete();
         boardImage.delete();
+        ids.delete();
     } catch (e) {
-        console.log('CharucoBoard creation:', e.message || 'not available in this build');
+        console.log('CharucoBoard error:', e.message);
     }
 
     // ============================================
