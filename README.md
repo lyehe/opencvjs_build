@@ -811,6 +811,25 @@ Without these headers, OpenCV.js falls back to single-threaded mode automaticall
 
 ## Examples
 
+### Interactive Demo
+
+Try the interactive feature demo that showcases 20+ OpenCV operations:
+
+```bash
+npx serve .
+# Open http://localhost:3000/examples/browser/demo.html
+```
+
+**Features demonstrated:**
+- **Basic Filters:** Grayscale, Blur, Sharpen
+- **Edge Detection:** Canny, Sobel, Laplacian
+- **Morphology:** Dilate, Erode, Opening, Closing
+- **Thresholding:** Binary, Adaptive, Otsu's Method
+- **Feature Detection:** Contours, Harris Corners, ORB Keypoints
+- **Color Operations:** HSV, Histogram Equalization, Invert
+
+### Code Examples
+
 See the `examples/` directory:
 
 ```bash
@@ -825,6 +844,13 @@ node examples/node/contours.js
 npx serve .
 # Open http://localhost:3000/examples/browser/
 ```
+
+| Example | Description |
+|---------|-------------|
+| `demo.html` | Interactive demo with 20+ filters |
+| `index.html` | Basic image processing |
+| `webcam.html` | Real-time webcam processing |
+| `aruco.html` | ArUco marker detection |
 
 ---
 
