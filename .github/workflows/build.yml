@@ -94,15 +94,23 @@ jobs:
           name: opencv-full
           path: dist/full/
 
+      - name: Prepare release assets
+        run: |
+          # Rename files to avoid name collisions
+          mv dist/essential/opencv.js dist/essential/opencv-essential.js
+          mv dist/essential/opencv_js.wasm dist/essential/opencv_js-essential.wasm
+          mv dist/full/opencv.js dist/full/opencv-full.js
+          mv dist/full/opencv_js.wasm dist/full/opencv_js-full.wasm
+          ls -la dist/essential/
+          ls -la dist/full/
+
       - name: Get release info
         id: release_info
         run: |
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "essential_wasm_size=$(du -h dist/essential/opencv_js.wasm | cut -f1)" >> $GITHUB_OUTPUT
-          echo "full_wasm_size=$(du -h dist/full/opencv_js.wasm | cut -f1)" >> $GITHUB_OUTPUT
-          ls -la dist/essential/
-          ls -la dist/full/
+          echo "essential_wasm_size=$(du -h dist/essential/opencv_js-essential.wasm | cut -f1)" >> $GITHUB_OUTPUT
+          echo "full_wasm_size=$(du -h dist/full/opencv_js-full.wasm | cut -f1)" >> $GITHUB_OUTPUT
 
       # Create/update "latest" pre-release on push to main
       - name: Update Latest Release
@@ -113,10 +121,10 @@ jobs:
           name: "Latest Build (${{ steps.release_info.outputs.date }})"
           prerelease: true
           files: |
-            dist/essential/opencv.js
-            dist/essential/opencv_js.wasm
-            dist/full/opencv.js
-            dist/full/opencv_js.wasm
+            dist/essential/opencv-essential.js
+            dist/essential/opencv_js-essential.wasm
+            dist/full/opencv-full.js
+            dist/full/opencv_js-full.wasm
           body: |
             ## Latest OpenCV.js Build
 
@@ -138,15 +146,14 @@ jobs:
             **Essential Build** (faster loading, smaller size):
             | File | Description |
             |------|-------------|
-            | `dist/essential/opencv.js` | JavaScript wrapper |
-            | `dist/essential/opencv_js.wasm` | WebAssembly binary |
+            | `opencv-essential.js` | JavaScript wrapper |
+            | `opencv_js-essential.wasm` | WebAssembly binary |
 
             **Full Build** (all features):
             | File | Description |
             |------|-------------|
-            | `dist/full/opencv.js` | JavaScript wrapper |
-            | `dist/full/opencv_js.wasm` | WebAssembly binary |
-            | `dist/full/opencv_js.worker.js` | Web Worker for threading |
+            | `opencv-full.js` | JavaScript wrapper |
+            | `opencv_js-full.wasm` | WebAssembly binary |
 
             ### Quick Usage
 
@@ -169,10 +176,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/essential/opencv.js
-            dist/essential/opencv_js.wasm
-            dist/full/opencv.js
-            dist/full/opencv_js.wasm
+            dist/essential/opencv-essential.js
+            dist/essential/opencv_js-essential.wasm
+            dist/full/opencv-full.js
+            dist/full/opencv_js-full.wasm
           body: |
             ## OpenCV.js ${{ github.ref_name }} with Contrib Modules
 
