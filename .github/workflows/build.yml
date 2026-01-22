@@ -141,19 +141,45 @@ jobs:
             | **Essential** | ${{ steps.release_info.outputs.essential_wasm_size }} | Core image processing, fast loading |
             | **Full** | ${{ steps.release_info.outputs.full_wasm_size }} | All features including DNN, contrib, threading |
 
+            ### Feature Comparison
+
+            | Feature | Essential | Full |
+            |---------|:---------:|:----:|
+            | **Core Modules** | | |
+            | Basic operations (Mat, Scalar, Point) | ✅ | ✅ |
+            | Image processing (blur, threshold, morphology) | ✅ | ✅ |
+            | Edge detection (Canny, Sobel, Laplacian) | ✅ | ✅ |
+            | Drawing functions (lines, shapes, text) | ✅ | ✅ |
+            | Color conversion (BGR, HSV, Lab) | ✅ | ✅ |
+            | Contour detection | ✅ | ✅ |
+            | Feature detection (ORB, AKAZE, BRISK) | ✅ | ✅ |
+            | Camera calibration (calib3d) | ✅ | ✅ |
+            | **Advanced Modules** | | |
+            | DNN (deep neural network inference) | ❌ | ✅ |
+            | Object detection (Haar, HOG) | ❌ | ✅ |
+            | Photo (denoising, HDR, inpainting) | ❌ | ✅ |
+            | Video analysis (optical flow, tracking) | ❌ | ✅ |
+            | Machine learning (ml) | ❌ | ✅ |
+            | Stitching | ❌ | ✅ |
+            | **Contrib Modules** | | |
+            | ArUco marker detection | ❌ | ✅ |
+            | SIFT/SURF (xfeatures2d) | ❌ | ✅ |
+            | Face recognition | ❌ | ✅ |
+            | Extended image processing (ximgproc) | ❌ | ✅ |
+            | Background segmentation (bgsegm) | ❌ | ✅ |
+            | Object tracking (KCF, CSRT) | ❌ | ✅ |
+            | Image hashing (pHash) | ❌ | ✅ |
+            | WeChat QR code detection | ❌ | ✅ |
+            | **Performance** | | |
+            | SIMD optimization | ✅ | ✅ |
+            | Multi-threading (Web Workers) | ❌ | ✅ |
+
             ### Download Files
 
-            **Essential Build** (faster loading, smaller size):
-            | File | Description |
-            |------|-------------|
-            | `opencv-essential.js` | JavaScript wrapper |
-            | `opencv_js-essential.wasm` | WebAssembly binary |
-
-            **Full Build** (all features):
-            | File | Description |
-            |------|-------------|
-            | `opencv-full.js` | JavaScript wrapper |
-            | `opencv_js-full.wasm` | WebAssembly binary |
+            | Build | JavaScript | WebAssembly |
+            |-------|------------|-------------|
+            | Essential | `opencv-essential.js` | `opencv_js-essential.wasm` |
+            | Full | `opencv-full.js` | `opencv_js-full.wasm` |
 
             ### Quick Usage
 
@@ -225,15 +251,34 @@ jobs:
 
             | Feature | Essential | Full |
             |---------|:---------:|:----:|
-            | Blur, threshold, morphology | ✅ | ✅ |
-            | Edge detection (Canny, Sobel) | ✅ | ✅ |
-            | ORB, AKAZE, BRISK | ✅ | ✅ |
-            | SIFT (xfeatures2d) | ❌ | ✅ |
-            | DNN inference | ❌ | ✅ |
-            | fastNlMeansDenoising | ❌ | ✅ |
-            | Haar cascades | ❌ | ✅ |
-            | ArUco markers | ❌ | ✅ |
-            | Threading (Web Workers) | ❌ | ✅ |
+            | **Core Modules** | | |
+            | Basic operations (Mat, Scalar, Point) | ✅ | ✅ |
+            | Image processing (blur, threshold, morphology) | ✅ | ✅ |
+            | Edge detection (Canny, Sobel, Laplacian) | ✅ | ✅ |
+            | Drawing functions (lines, shapes, text) | ✅ | ✅ |
+            | Color conversion (BGR, HSV, Lab) | ✅ | ✅ |
+            | Contour detection | ✅ | ✅ |
+            | Feature detection (ORB, AKAZE, BRISK) | ✅ | ✅ |
+            | Camera calibration (calib3d) | ✅ | ✅ |
+            | **Advanced Modules** | | |
+            | DNN (deep neural network inference) | ❌ | ✅ |
+            | Object detection (Haar, HOG) | ❌ | ✅ |
+            | Photo (denoising, HDR, inpainting) | ❌ | ✅ |
+            | Video analysis (optical flow, tracking) | ❌ | ✅ |
+            | Machine learning (ml) | ❌ | ✅ |
+            | Stitching | ❌ | ✅ |
+            | **Contrib Modules** | | |
+            | ArUco marker detection | ❌ | ✅ |
+            | SIFT/SURF (xfeatures2d) | ❌ | ✅ |
+            | Face recognition | ❌ | ✅ |
+            | Extended image processing (ximgproc) | ❌ | ✅ |
+            | Background segmentation (bgsegm) | ❌ | ✅ |
+            | Object tracking (KCF, CSRT) | ❌ | ✅ |
+            | Image hashing (pHash) | ❌ | ✅ |
+            | WeChat QR code detection | ❌ | ✅ |
+            | **Performance** | | |
+            | SIMD optimization | ✅ | ✅ |
+            | Multi-threading (Web Workers) | ❌ | ✅ |
 
             ### Threading Requirements (Full Build)
 
