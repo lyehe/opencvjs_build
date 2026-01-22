@@ -1,7 +1,7 @@
 {
   "name": "opencv-contrib-wasm",
   "version": "4.13.0",
-  "description": "Precompiled OpenCV 4.13.0 with all Contrib modules to JavaScript + WebAssembly for Node.js, Deno, and browsers. Includes SIMD optimization and multi-threading support.",
+  "description": "Precompiled OpenCV 4.13.0 with all Contrib modules to JavaScript + WebAssembly for Node.js, Deno, and browsers. Includes SIMD optimization and multi-threading support. Available in Essential (~3MB) and Full (~12MB) builds.",
   "main": "src/index.js",
   "module": "src/index.mjs",
   "types": "types/index.d.ts",
@@ -11,7 +11,18 @@
       "import": "./src/index.mjs",
       "require": "./src/index.js"
     },
-    "./dist/*": "./dist/*"
+    "./essential": {
+      "types": "./types/index.d.ts",
+      "import": "./src/essential.mjs",
+      "require": "./src/essential.js"
+    },
+    "./full": {
+      "types": "./types/index.d.ts",
+      "import": "./src/full.mjs",
+      "require": "./src/full.js"
+    },
+    "./dist/essential/*": "./dist/essential/*",
+    "./dist/full/*": "./dist/full/*"
   },
   "files": [
     "src/",
@@ -21,10 +32,13 @@
   ],
   "scripts": {
     "download": "bash scripts/download-opencv.sh",
-    "build": "bash scripts/build.sh",
+    "build": "npm run build:essential && npm run build:full",
+    "build:essential": "BUILD_TYPE=essential bash scripts/build.sh",
+    "build:full": "BUILD_TYPE=full bash scripts/build.sh",
     "build:docker": "docker build -t opencv-wasm-builder . && docker run --rm -v \"$(pwd)\":/src opencv-wasm-builder",
-    "clean": "rm -rf opencv opencv_contrib build dist/*.js dist/*.wasm",
+    "clean": "rm -rf opencv opencv_contrib build_essential build_full dist/essential dist/full",
     "test": "node examples/node/basic.js && node examples/node/image-processing.js && node examples/node/feature-detection.js && node examples/node/aruco-detection.js && node examples/node/contours.js",
+    "generate-markers": "node examples/node/generate-markers.js",
     "prepublishOnly": "echo 'Ready to publish'"
   },
   "keywords": [
@@ -52,7 +66,7 @@
     "deno"
   ],
   "author": "",
-  "license": "Apache-2.0",
+  "license": "Unlicense",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lyehe/opencvjs_build.git"

@@ -1,19 +1,42 @@
 # opencv-contrib-wasm
 
 [![npm version](https://img.shields.io/npm/v/opencv-contrib-wasm.svg)](https://www.npmjs.com/package/opencv-contrib-wasm)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](LICENSE)
 
 Precompiled **OpenCV 4.13.0** with **all Contrib modules** compiled to JavaScript + WebAssembly for Node.js, Deno, and browsers.
 
 ## Features
 
 - **OpenCV 4.13.0** - Latest stable release
+- **Dual builds** - Essential (~3MB) for fast loading, Full (~12MB) for all features
 - **All contrib modules** - ArUco, face recognition, xfeatures2d (SIFT/SURF), and more
 - **SIMD optimization** - Hardware-accelerated operations
-- **Multi-threading** - Web Workers support via SharedArrayBuffer
+- **Multi-threading** - Web Workers support via SharedArrayBuffer (full build)
 - **Cross-platform** - Node.js, Deno, and all modern browsers
 - **TypeScript support** - Included type definitions
 - **Zero dependencies** - Self-contained WASM binary
+
+## Builds
+
+| Build | WASM Size | Features | Use Case |
+|-------|-----------|----------|----------|
+| **Essential** | ~3MB | Core, imgproc, features2d | Web apps, fast loading |
+| **Full** | ~12MB | All modules + contrib + DNN + threading | Full CV applications |
+
+### Feature Comparison
+
+| Feature | Essential | Full |
+|---------|:---------:|:----:|
+| Blur, threshold, morphology | Yes | Yes |
+| Edge detection (Canny, Sobel) | Yes | Yes |
+| ORB, AKAZE, BRISK | Yes | Yes |
+| Drawing (lines, shapes, text) | Yes | Yes |
+| SIFT (xfeatures2d) | No | Yes |
+| DNN inference | No | Yes |
+| fastNlMeansDenoising | No | Yes |
+| Haar cascades, HOG | No | Yes |
+| ArUco markers | No | Yes |
+| Threading (Web Workers) | No | Yes |
 
 ## Installation
 
@@ -31,10 +54,27 @@ pnpm add opencv-contrib-wasm
 
 ## Quick Start
 
+### Choosing a Build
+
+```javascript
+// Essential build - smaller (~3MB), faster loading
+import cv from 'opencv-contrib-wasm/essential';
+
+// Full build - all features (~12MB), includes DNN, contrib, threading
+import cv from 'opencv-contrib-wasm/full';
+
+// Default (full build, backwards compatible)
+import cv from 'opencv-contrib-wasm';
+```
+
 ### Node.js (CommonJS)
 
 ```javascript
-const cvPromise = require('opencv-contrib-wasm');
+// Use essential build for basic image processing
+const cvPromise = require('opencv-contrib-wasm/essential');
+
+// Or use full build for all features
+// const cvPromise = require('opencv-contrib-wasm/full');
 
 (async () => {
     const cv = await cvPromise;
@@ -53,7 +93,11 @@ const cvPromise = require('opencv-contrib-wasm');
 ### Node.js (ES Modules)
 
 ```javascript
-import cvPromise from 'opencv-contrib-wasm';
+// Essential build for fast loading
+import cvPromise from 'opencv-contrib-wasm/essential';
+
+// Or full build for all features
+// import cvPromise from 'opencv-contrib-wasm/full';
 
 const cv = await cvPromise;
 
@@ -73,7 +117,12 @@ mat.delete();
 <body>
     <canvas id="canvas" width="400" height="300"></canvas>
 
-    <script src="node_modules/opencv-contrib-wasm/dist/opencv.js"></script>
+    <!-- Essential build (faster loading) -->
+    <script src="node_modules/opencv-contrib-wasm/dist/essential/opencv.js"></script>
+
+    <!-- Or Full build (all features, requires COOP/COEP headers for threading) -->
+    <!-- <script src="node_modules/opencv-contrib-wasm/dist/full/opencv.js"></script> -->
+
     <script>
         // Wait for OpenCV to initialize
         cv.onRuntimeInitialized = function() {
@@ -95,7 +144,7 @@ mat.delete();
 ```html
 <script type="module">
     // Note: Requires a bundler or import map for npm packages
-    const cv = await import('./node_modules/opencv-contrib-wasm/dist/opencv.js');
+    const cv = await import('./node_modules/opencv-contrib-wasm/dist/essential/opencv.js');
     await new Promise(resolve => { cv.onRuntimeInitialized = resolve; });
 
     console.log('OpenCV.js ready!');
@@ -105,7 +154,11 @@ mat.delete();
 ### Deno
 
 ```typescript
-import cvPromise from 'npm:opencv-contrib-wasm';
+// Essential build
+import cvPromise from 'npm:opencv-contrib-wasm/essential';
+
+// Or full build
+// import cvPromise from 'npm:opencv-contrib-wasm/full';
 
 const cv = await cvPromise;
 console.log('OpenCV.js ready in Deno!');
@@ -863,8 +916,29 @@ cd opencvjs_build
 # Download OpenCV sources
 npm run download
 
-# Build (requires Docker)
+# Build both versions (requires Docker)
 npm run build
+
+# Or build individually
+npm run build:essential  # Essential build only (~3MB)
+npm run build:full       # Full build only (~12MB)
+
+# Clean build artifacts
+npm run clean
+```
+
+### Build Output
+
+```
+dist/
+├── essential/
+│   ├── opencv.js           (~150KB)
+│   └── opencv_js.wasm      (~3MB)
+├── full/
+│   ├── opencv.js           (~200KB)
+│   ├── opencv_js.wasm      (~12MB)
+│   └── opencv_js.worker.js (threading)
+└── README.md
 ```
 
 ---
@@ -873,7 +947,7 @@ npm run build
 
 ### "WASM file not found"
 
-Ensure `dist/opencv.js` and `dist/opencv_js.wasm` exist. Run `npm run build` if building from source.
+Ensure the build files exist in `dist/essential/` or `dist/full/`. Run `npm run build` if building from source.
 
 ### "SharedArrayBuffer is not defined"
 
@@ -897,7 +971,7 @@ python -m http.server 8000
 
 ## License
 
-Apache-2.0 (same as OpenCV)
+This project is released into the public domain under the [Unlicense](LICENSE). You are free to use, modify, and distribute this code without any restrictions.
 
 ## Links
 
