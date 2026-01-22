@@ -19,6 +19,9 @@ on:
 env:
   OPENCV_VERSION: ${{ github.event.inputs.opencv_version || '4.13.0' }}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
