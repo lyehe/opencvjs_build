@@ -71,9 +71,7 @@ jobs:
           path: |
             dist/${{ matrix.build_type }}/opencv.js
             dist/${{ matrix.build_type }}/opencv_js.wasm
-            dist/${{ matrix.build_type }}/opencv_js.worker.js
-            dist/${{ matrix.build_type }}/loader.js
-          if-no-files-found: warn
+          if-no-files-found: error
 
   release:
     needs: build
@@ -117,11 +115,8 @@ jobs:
           files: |
             dist/essential/opencv.js
             dist/essential/opencv_js.wasm
-            dist/essential/loader.js
             dist/full/opencv.js
             dist/full/opencv_js.wasm
-            dist/full/opencv_js.worker.js
-            dist/full/loader.js
           body: |
             ## Latest OpenCV.js Build
 
@@ -176,11 +171,8 @@ jobs:
           files: |
             dist/essential/opencv.js
             dist/essential/opencv_js.wasm
-            dist/essential/loader.js
             dist/full/opencv.js
             dist/full/opencv_js.wasm
-            dist/full/opencv_js.worker.js
-            dist/full/loader.js
           body: |
             ## OpenCV.js ${{ github.ref_name }} with Contrib Modules
 
