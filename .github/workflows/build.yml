@@ -3,12 +3,12 @@ name: Build and Publish OpenCV.js
 on:
   push:
     branches:
-      - main
+      - master
     tags:
       - 'v*'
   pull_request:
     branches:
-      - main
+      - master
   workflow_dispatch:
     inputs:
       opencv_version:
@@ -22,6 +22,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [essential, full]
 
     steps:
       - name: Checkout repository
@@ -38,97 +41,124 @@ jobs:
           git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv.git
           git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv_contrib.git
 
-      - name: Build OpenCV.js with Docker
+      - name: Build OpenCV.js (${{ matrix.build_type }})
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/src \
             -u $(id -u):$(id -g) \
+            -e BUILD_TYPE=${{ matrix.build_type }} \
             emscripten/emsdk:latest \
-            bash -c "
-              mkdir -p /src/dist && \
-              python3 /src/opencv/platforms/js/build_js.py /src/build \
-                --build_wasm \
-                --disable_single_file \
-                --simd \
-                --threads \
-                --cmake_option='-DOPENCV_EXTRA_MODULES_PATH=/src/opencv_contrib/modules' \
-                --cmake_option='-DCMAKE_CXX_STANDARD=17' \
-                --cmake_option='-DBUILD_DOCS=OFF' \
-                --cmake_option='-DBUILD_EXAMPLES=OFF' \
-                --cmake_option='-DBUILD_TESTS=OFF' \
-                --cmake_option='-DBUILD_PERF_TESTS=OFF' && \
-              cp /src/build/bin/opencv.js /src/dist/ && \
-              cp /src/build/bin/opencv_js.wasm /src/dist/ && \
-              if [ -f /src/build/bin/opencv_js.worker.js ]; then cp /src/build/bin/opencv_js.worker.js /src/dist/; fi && \
-              if [ -f /src/build/bin/loader.js ]; then cp /src/build/bin/loader.js /src/dist/; fi
-            "
+            bash /src/scripts/build.sh
 
       - name: Get build info
         id: build_info
         run: |
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          ls -la dist/
-          echo "opencv_js_size=$(stat -c%s dist/opencv.js 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
-          echo "wasm_size=$(stat -c%s dist/opencv_js.wasm 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
+          ls -la dist/${{ matrix.build_type }}/
+          echo "opencv_js_size=$(stat -c%s dist/${{ matrix.build_type }}/opencv.js 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
+          echo "wasm_size=$(stat -c%s dist/${{ matrix.build_type }}/opencv_js.wasm 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
+          # Human readable sizes
+          echo "wasm_size_mb=$(du -h dist/${{ matrix.build_type }}/opencv_js.wasm | cut -f1)" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: opencv-wasm-build
+          name: opencv-${{ matrix.build_type }}
           path: |
-            dist/opencv.js
-            dist/opencv_js.wasm
-            dist/opencv_js.worker.js
-            dist/loader.js
+            dist/${{ matrix.build_type }}/opencv.js
+            dist/${{ matrix.build_type }}/opencv_js.wasm
+            dist/${{ matrix.build_type }}/opencv_js.worker.js
+            dist/${{ matrix.build_type }}/loader.js
           if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download essential artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencv-essential
+          path: dist/essential/
+
+      - name: Download full artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencv-full
+          path: dist/full/
+
+      - name: Get release info
+        id: release_info
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "essential_wasm_size=$(du -h dist/essential/opencv_js.wasm | cut -f1)" >> $GITHUB_OUTPUT
+          echo "full_wasm_size=$(du -h dist/full/opencv_js.wasm | cut -f1)" >> $GITHUB_OUTPUT
+          ls -la dist/essential/
+          ls -la dist/full/
 
       # Create/update "latest" pre-release on push to main
       - name: Update Latest Release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: latest
-          name: "Latest Build (${{ steps.build_info.outputs.date }})"
+          name: "Latest Build (${{ steps.release_info.outputs.date }})"
           prerelease: true
           files: |
-            dist/opencv.js
-            dist/opencv_js.wasm
-            dist/opencv_js.worker.js
-            dist/loader.js
+            dist/essential/opencv.js
+            dist/essential/opencv_js.wasm
+            dist/essential/loader.js
+            dist/full/opencv.js
+            dist/full/opencv_js.wasm
+            dist/full/opencv_js.worker.js
+            dist/full/loader.js
           body: |
             ## Latest OpenCV.js Build
 
             **Auto-updated on every push to main branch.**
 
-            - **Build Date:** ${{ steps.build_info.outputs.date }}
-            - **Commit:** ${{ steps.build_info.outputs.sha_short }}
+            - **Build Date:** ${{ steps.release_info.outputs.date }}
+            - **Commit:** ${{ steps.release_info.outputs.sha_short }}
             - **OpenCV Version:** ${{ env.OPENCV_VERSION }}
+
+            ### Available Builds
+
+            | Build | WASM Size | Use Case |
+            |-------|-----------|----------|
+            | **Essential** | ${{ steps.release_info.outputs.essential_wasm_size }} | Core image processing, fast loading |
+            | **Full** | ${{ steps.release_info.outputs.full_wasm_size }} | All features including DNN, contrib, threading |
 
             ### Download Files
 
+            **Essential Build** (faster loading, smaller size):
             | File | Description |
             |------|-------------|
-            | `opencv.js` | Main JavaScript wrapper |
-            | `opencv_js.wasm` | WebAssembly binary |
-            | `opencv_js.worker.js` | Web Worker for threading |
-            | `loader.js` | Optional loader utility |
+            | `dist/essential/opencv.js` | JavaScript wrapper |
+            | `dist/essential/opencv_js.wasm` | WebAssembly binary |
+
+            **Full Build** (all features):
+            | File | Description |
+            |------|-------------|
+            | `dist/full/opencv.js` | JavaScript wrapper |
+            | `dist/full/opencv_js.wasm` | WebAssembly binary |
+            | `dist/full/opencv_js.worker.js` | Web Worker for threading |
 
             ### Quick Usage
 
-            ```html
-            <script async src="opencv.js" onload="onOpenCvReady()"></script>
-            <script>
-              function onOpenCvReady() {
-                console.log('OpenCV.js loaded:', cv.getBuildInformation());
-              }
-            </script>
-            ```
+            ```javascript
+            // Essential build (smaller, faster)
+            import cv from 'opencv-contrib-wasm/essential';
 
-            ### Features
-            - All OpenCV contrib modules included
-            - SIMD optimization enabled
-            - Threading support enabled
+            // Full build (all features)
+            import cv from 'opencv-contrib-wasm/full';
+            ```
 
             ---
             *For stable releases, use a [versioned release](../../releases) instead.*
@@ -141,60 +171,69 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/opencv.js
-            dist/opencv_js.wasm
-            dist/opencv_js.worker.js
-            dist/loader.js
+            dist/essential/opencv.js
+            dist/essential/opencv_js.wasm
+            dist/essential/loader.js
+            dist/full/opencv.js
+            dist/full/opencv_js.wasm
+            dist/full/opencv_js.worker.js
+            dist/full/loader.js
           body: |
             ## OpenCV.js ${{ github.ref_name }} with Contrib Modules
 
+            ### Dual Build System
+
+            This release includes two builds optimized for different use cases:
+
+            | Build | WASM Size | Features | Use Case |
+            |-------|-----------|----------|----------|
+            | **Essential** | ~3MB | Core, imgproc, features2d | Web apps needing fast load times |
+            | **Full** | ~12MB | All modules + contrib + DNN | Full CV applications, research |
+
             ### Installation
 
-            **npm:**
             ```bash
             npm install opencv-contrib-wasm
             ```
 
-            **Direct download:** Download the files below and include in your project.
+            ### Usage
 
-            ### Files
+            ```javascript
+            // Essential build - smaller, faster loading
+            import cv from 'opencv-contrib-wasm/essential';
 
-            | File | Description | Size |
-            |------|-------------|------|
-            | `opencv.js` | Main JavaScript wrapper | ~145KB |
-            | `opencv_js.wasm` | WebAssembly binary | ~9.7MB |
-            | `opencv_js.worker.js` | Web Worker for threading | - |
-            | `loader.js` | Optional loader utility | - |
+            // Full build - all features including DNN, contrib
+            import cv from 'opencv-contrib-wasm/full';
 
-            ### Features
-            - OpenCV ${{ env.OPENCV_VERSION }} with all contrib modules
-            - SIMD optimization enabled
-            - Threading support enabled (requires COOP/COEP headers)
+            // Default export (full build)
+            import cv from 'opencv-contrib-wasm';
+            ```
 
             ### Browser Usage
 
             ```html
-            <script async src="opencv.js" onload="onOpenCvReady()"></script>
-            <script>
-              function onOpenCvReady() {
-                console.log('OpenCV.js ready!');
-                // Your code here
-              }
-            </script>
+            <!-- Essential build -->
+            <script src="node_modules/opencv-contrib-wasm/dist/essential/opencv.js"></script>
+
+            <!-- Full build (with threading support) -->
+            <script src="node_modules/opencv-contrib-wasm/dist/full/opencv.js"></script>
             ```
 
-            ### Node.js Usage
+            ### Feature Comparison
 
-            ```javascript
-            const cv = require('opencv-contrib-wasm');
+            | Feature | Essential | Full |
+            |---------|:---------:|:----:|
+            | Blur, threshold, morphology | ✅ | ✅ |
+            | Edge detection (Canny, Sobel) | ✅ | ✅ |
+            | ORB, AKAZE, BRISK | ✅ | ✅ |
+            | SIFT (xfeatures2d) | ❌ | ✅ |
+            | DNN inference | ❌ | ✅ |
+            | fastNlMeansDenoising | ❌ | ✅ |
+            | Haar cascades | ❌ | ✅ |
+            | ArUco markers | ❌ | ✅ |
+            | Threading (Web Workers) | ❌ | ✅ |
 
-            cv.onRuntimeInitialized = () => {
-              console.log('OpenCV.js ready!');
-              // Your code here
-            };
-            ```
-
-            ### Threading Requirements
+            ### Threading Requirements (Full Build)
 
             For multi-threading support in browsers, serve with these headers:
             ```
@@ -202,19 +241,13 @@ jobs:
             Cross-Origin-Embedder-Policy: require-corp
             ```
 
-            ### Included Modules
-
-            **Core:** core, imgproc, imgcodecs, calib3d, features2d, flann, dnn, ml, objdetect, photo, video
-
-            **Contrib:** aruco, bgsegm, face, img_hash, tracking, xfeatures2d, ximgproc, xobjdetect, xphoto, and more
-
             ---
             [Full documentation](../../#readme) | [Examples](../../tree/main/examples)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
-    needs: build
+    needs: release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
@@ -228,11 +261,25 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Download build artifacts
+      - name: Download essential artifacts
         uses: actions/download-artifact@v4
         with:
-          name: opencv-wasm-build
-          path: dist/
+          name: opencv-essential
+          path: dist/essential/
+
+      - name: Download full artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencv-full
+          path: dist/full/
+
+      - name: Verify artifacts
+        run: |
+          echo "Essential build:"
+          ls -la dist/essential/
+          echo ""
+          echo "Full build:"
+          ls -la dist/full/
 
       - name: Publish to npm
         run: npm publish --access public
