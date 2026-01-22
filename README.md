@@ -27,16 +27,34 @@ Precompiled **OpenCV 4.13.0** with **all Contrib modules** compiled to JavaScrip
 
 | Feature | Essential | Full |
 |---------|:---------:|:----:|
-| Blur, threshold, morphology | Yes | Yes |
-| Edge detection (Canny, Sobel) | Yes | Yes |
-| ORB, AKAZE, BRISK | Yes | Yes |
-| Drawing (lines, shapes, text) | Yes | Yes |
-| SIFT (xfeatures2d) | No | Yes |
-| DNN inference | No | Yes |
-| fastNlMeansDenoising | No | Yes |
-| Haar cascades, HOG | No | Yes |
-| ArUco markers | No | Yes |
-| Threading (Web Workers) | No | Yes |
+| **Core Modules** | | |
+| Basic operations (Mat, Scalar, Point) | ✅ | ✅ |
+| Image processing (blur, threshold, morphology) | ✅ | ✅ |
+| Edge detection (Canny, Sobel, Laplacian) | ✅ | ✅ |
+| Drawing functions (lines, shapes, text) | ✅ | ✅ |
+| Color conversion (BGR, HSV, Lab) | ✅ | ✅ |
+| Contour detection | ✅ | ✅ |
+| Feature detection (ORB, AKAZE, BRISK) | ✅ | ✅ |
+| Camera calibration (calib3d) | ✅ | ✅ |
+| **Advanced Modules** | | |
+| DNN (deep neural network inference) | ❌ | ✅ |
+| Object detection (Haar, HOG) | ❌ | ✅ |
+| Photo (denoising, HDR, inpainting) | ❌ | ✅ |
+| Video analysis (optical flow, motion) | ❌ | ✅ |
+| Machine learning (ml) | ❌ | ✅ |
+| Image stitching | ❌ | ✅ |
+| **Contrib Modules** | | |
+| ArUco marker detection | ❌ | ✅ |
+| SIFT/SURF (xfeatures2d) | ❌ | ✅ |
+| Face recognition | ❌ | ✅ |
+| Extended image processing (ximgproc) | ❌ | ✅ |
+| Background segmentation (bgsegm) | ❌ | ✅ |
+| Object tracking (KCF, CSRT) | ❌ | ✅ |
+| Image hashing (pHash) | ❌ | ✅ |
+| QR code detection | ❌ | ✅ |
+| **Performance** | | |
+| SIMD optimization | ✅ | ✅ |
+| Multi-threading (Web Workers) | ❌ | ✅ |
 
 ## Installation
 
@@ -831,34 +849,59 @@ Without these headers, OpenCV.js falls back to single-threaded mode automaticall
 
 ## Included Modules
 
-### Core Modules
+### Essential Build Modules
 
-| Module | Description |
-|--------|-------------|
-| `core` | Mat, Scalar, Point, Size, basic operations |
-| `imgproc` | Image processing, filters, transforms, drawing |
-| `imgcodecs` | Image encoding/decoding |
-| `calib3d` | Camera calibration, 3D reconstruction |
-| `features2d` | Feature detection (ORB, BRISK, AKAZE) |
-| `flann` | Fast nearest neighbor search |
-| `dnn` | Deep neural network inference |
-| `ml` | Machine learning algorithms |
-| `objdetect` | Object detection, cascade classifiers |
-| `photo` | Computational photography |
-| `video` | Video analysis, optical flow, tracking |
+| Module | Description | Web Use Case |
+|--------|-------------|--------------|
+| `core` | Mat, Scalar, Point, Size, basic operations | Foundation for all CV |
+| `imgproc` | Filters, transforms, drawing, contours | Image manipulation |
+| `imgcodecs` | Image encoding/decoding | Load/save images |
+| `calib3d` | Camera calibration, 3D reconstruction | AR applications |
+| `features2d` | ORB, BRISK, AKAZE detection | Image matching |
+| `flann` | Fast nearest neighbor search | Feature matching |
 
-### Contrib Modules
+### Full Build - Additional Core Modules
 
-| Module | Description |
-|--------|-------------|
-| `aruco` | ArUco/ChArUco marker detection |
-| `bgsegm` | Background segmentation |
-| `face` | Face recognition (LBPHFaceRecognizer, etc.) |
-| `img_hash` | Image hashing (pHash, etc.) |
-| `tracking` | Object tracking (KCF, CSRT, etc.) |
-| `xfeatures2d` | SIFT, SURF, and more |
-| `ximgproc` | Extended image processing |
-| `xphoto` | Extended computational photography |
+| Module | Description | Web Use Case |
+|--------|-------------|--------------|
+| `dnn` | Deep neural network inference | ML in browser (TensorFlow, ONNX) |
+| `ml` | Machine learning algorithms | Classification, clustering |
+| `objdetect` | Haar cascades, HOG descriptors | Face/object detection |
+| `photo` | Denoising, HDR, inpainting | Photo enhancement |
+| `video` | Optical flow, motion analysis | Video/webcam processing |
+| `stitching` | Image stitching | Panorama creation |
+
+### Full Build - Contrib Modules
+
+| Module | Description | Web Use Case |
+|--------|-------------|--------------|
+| `aruco` | ArUco/ChArUco marker detection | AR markers, camera pose |
+| `xfeatures2d` | SIFT, SURF (non-free) | Better feature matching |
+| `face` | Face recognition (LBPH, Eigen, Fisher) | Identity verification |
+| `tracking` | KCF, CSRT, MIL trackers | Object tracking in video |
+| `bgsegm` | Background subtraction | Motion detection, webcam |
+| `ximgproc` | Edge-preserving filters, superpixels | Advanced segmentation |
+| `xphoto` | White balance, denoising | Photo correction |
+| `img_hash` | pHash, average hash | Image deduplication |
+| `wechat_qrcode` | QR code detection | Barcode scanning |
+| `optflow` | Dense optical flow | Motion analysis |
+| `line_descriptor` | Line segment detection | Structure detection |
+| `saliency` | Saliency detection | Focus detection |
+| `quality` | Image quality assessment | Quality metrics |
+| `bioinspired` | Retina-inspired processing | Enhancement |
+| `dnn_superres` | DNN-based super resolution | Image upscaling |
+| `dnn_objdetect` | DNN object detection | YOLO, SSD models |
+
+### Not Included (WASM Limitations)
+
+| Module | Reason |
+|--------|--------|
+| `text` | Requires Tesseract OCR binary |
+| `stereo` | WASM compatibility issues |
+| `rgbd` | Requires depth camera hardware |
+| `cuda*` | No GPU access in WASM |
+| `viz`, `ovis` | Require native 3D libraries |
+| `freetype` | Browser handles fonts natively |
 
 ---
 
