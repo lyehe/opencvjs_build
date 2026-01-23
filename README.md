@@ -1022,12 +1022,11 @@ The compiled WebAssembly binaries contain code from:
 |-----------|---------|
 | OpenCV | Apache-2.0 |
 | OpenCV Contrib | Apache-2.0 (some modules BSD-3-Clause) |
-| Eigen | MPL-2.0 |
 
 See [licenses/](licenses/) for full license texts.
 
-**Companion Libraries (not included):**
-- [Ceres.js](https://github.com/Pterodactylus/Ceres.js) (MPL-2.0) - For bundle adjustment/SfM workflows
+**Recommended Companion Libraries (not included):**
+- [Ceres.js](https://github.com/Pterodactylus/Ceres.js) (MPL-2.0) - Bundle adjustment for SfM workflows
 
 ## Links
 
