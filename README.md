@@ -891,6 +891,14 @@ Without these headers, OpenCV.js falls back to single-threaded mode automaticall
 | `bioinspired` | Retina-inspired processing | Enhancement |
 | `dnn_superres` | DNN-based super resolution | Image upscaling |
 | `dnn_objdetect` | DNN object detection | YOLO, SSD models |
+| `alphamat` | Alpha matting | Image segmentation |
+| `ccalib` | Custom calibration patterns | Camera calibration |
+| `plot` | 1D/2D plotting | Data visualization |
+| `rapid` | Silhouette-based 3D tracking | 3D object tracking |
+| `structured_light` | Structured light patterns | 3D scanning |
+| `surface_matching` | 3D point pair features | 3D object recognition |
+| `xobjdetect` | Waldboost cascade detection | Object detection |
+| `dpm` | Deformable parts model | Object detection |
 
 ### Not Included (WASM Limitations)
 
@@ -898,9 +906,11 @@ Without these headers, OpenCV.js falls back to single-threaded mode automaticall
 |--------|--------|
 | `text` | Requires Tesseract OCR binary |
 | `stereo` | WASM compatibility issues |
-| `rgbd` | Requires depth camera hardware |
+| `rgbd` | WASM compatibility issues |
+| `sfm` | Requires Ceres Solver |
 | `cuda*` | No GPU access in WASM |
 | `viz`, `ovis` | Require native 3D libraries |
+| `hdf` | Requires HDF5 library |
 | `freetype` | Browser handles fonts natively |
 
 ---
