@@ -1014,7 +1014,20 @@ python -m http.server 8000
 
 ## License
 
-This project is released into the public domain under the [Unlicense](LICENSE). You are free to use, modify, and distribute this code without any restrictions.
+This project's build scripts and wrapper code are released into the public domain under the [Unlicense](LICENSE).
+
+The compiled WebAssembly binaries contain code from:
+
+| Component | License |
+|-----------|---------|
+| OpenCV | Apache-2.0 |
+| OpenCV Contrib | Apache-2.0 (some modules BSD-3-Clause) |
+| Eigen | MPL-2.0 |
+
+See [licenses/](licenses/) for full license texts.
+
+**Companion Libraries (not included):**
+- [Ceres.js](https://github.com/Pterodactylus/Ceres.js) (MPL-2.0) - For bundle adjustment/SfM workflows
 
 ## Links
 

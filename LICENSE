@@ -22,3 +22,61 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <https://unlicense.org>
+
+-------------------------------------------------------------------------------
+
+THIRD-PARTY LICENSES
+
+This project compiles and distributes OpenCV and OpenCV Contrib modules.
+The compiled WebAssembly binaries contain code from the following projects:
+
+-------------------------------------------------------------------------------
+
+OpenCV - Open Source Computer Vision Library
+https://opencv.org
+
+Copyright (C) 2000-2024, Intel Corporation, all rights reserved.
+Copyright (C) 2009-2011, Willow Garage Inc., all rights reserved.
+Copyright (C) 2009-2016, NVIDIA Corporation, all rights reserved.
+Copyright (C) 2010-2013, Advanced Micro Devices, Inc., all rights reserved.
+Copyright (C) 2015-2024, OpenCV Foundation, all rights reserved.
+Copyright (C) 2015-2016, Itseez Inc., all rights reserved.
+Copyright (C) 2019-2024, Xperience AI, all rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+-------------------------------------------------------------------------------
+
+OpenCV Contrib Modules
+https://github.com/opencv/opencv_contrib
+
+Various contributors, licensed under the Apache License, Version 2.0.
+Some modules contain code with additional licenses:
+
+- xfeatures2d (SIFT/SURF): Non-free algorithms, see OpenCV documentation
+- face: BSD-3-Clause for some components
+- aruco: BSD-3-Clause
+
+-------------------------------------------------------------------------------
+
+Eigen
+https://eigen.tuxfamily.org
+
+Mozilla Public License 2.0 (header-only library used during compilation)
+
+-------------------------------------------------------------------------------
+
+COMPANION LIBRARIES (not included, recommended for SfM workflows)
+
+Ceres.js - https://github.com/Pterodactylus/Ceres.js
+Mozilla Public License 2.0
