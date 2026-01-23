@@ -78,10 +78,21 @@ case "$BUILD_TYPE" in
             "-DBUILD_opencv_reg=ON"
             "-DBUILD_opencv_signal=ON"
 
-            # Note: text, stereo, rgbd disabled - require external deps or have WASM issues
-            # "-DBUILD_opencv_text=ON"
-            # "-DBUILD_opencv_stereo=ON"
-            # "-DBUILD_opencv_rgbd=ON"
+            # Contrib modules - additional
+            "-DBUILD_opencv_alphamat=ON"
+            "-DBUILD_opencv_ccalib=ON"
+            "-DBUILD_opencv_plot=ON"
+            "-DBUILD_opencv_rapid=ON"
+            "-DBUILD_opencv_structured_light=ON"
+            "-DBUILD_opencv_surface_matching=ON"
+            "-DBUILD_opencv_xobjdetect=ON"
+            "-DBUILD_opencv_dpm=ON"
+
+            # Note: text, stereo, rgbd, sfm disabled - require external deps or have WASM issues
+            # "-DBUILD_opencv_text=ON"       # Requires Tesseract
+            # "-DBUILD_opencv_stereo=ON"     # WASM issues
+            # "-DBUILD_opencv_rgbd=ON"       # WASM issues
+            # "-DBUILD_opencv_sfm=ON"        # Requires Ceres Solver
 
             # Enable non-free algorithms (SIFT, SURF, etc.)
             "-DOPENCV_ENABLE_NONFREE=ON"
