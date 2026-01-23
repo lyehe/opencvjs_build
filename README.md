@@ -1025,9 +1025,6 @@ The compiled WebAssembly binaries contain code from:
 
 See [licenses/](licenses/) for full license texts.
 
-**Recommended Companion Libraries (not included):**
-- [Ceres.js](https://github.com/Pterodactylus/Ceres.js) (MPL-2.0) - Bundle adjustment for SfM workflows
-
 ## Links
 
 - [OpenCV Documentation](https://docs.opencv.org/4.x/)

@@ -67,16 +67,3 @@ Some modules contain code with additional licenses:
 - face: BSD-3-Clause for some components
 - aruco: BSD-3-Clause
 
--------------------------------------------------------------------------------
-
-BUILD-TIME DEPENDENCIES (not distributed in binaries)
-
-Eigen - https://eigen.tuxfamily.org
-Mozilla Public License 2.0 (header-only, used during compilation)
-
--------------------------------------------------------------------------------
-
-RECOMMENDED COMPANION LIBRARIES (not included)
-
-Ceres.js - https://github.com/Pterodactylus/Ceres.js
-Mozilla Public License 2.0 (for bundle adjustment/SfM workflows)
