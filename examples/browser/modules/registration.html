@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Registration - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles specific to registration demo */
+        .dual-upload {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        .upload-zone {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            transition: all var(--transition-normal);
+            cursor: pointer;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-card);
+        }
+
+        .upload-zone.has-image {
+            padding: var(--spacing-sm);
+        }
+
+        .upload-zone img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+        }
+
+        .upload-zone .placeholder {
+            color: var(--text-muted);
+        }
+
+        .upload-zone .placeholder svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.5;
+        }
+
+        .visualization-modes {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .viz-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .viz-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--border-accent);
+        }
+
+        .viz-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .result-item {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .result-item canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .result-label {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-input);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .matrix-display {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+
+        .matrix-display table {
+            border-collapse: collapse;
+            width: auto;
+        }
+
+        .matrix-display td {
+            padding: 4px 12px;
+            text-align: right;
+            color: var(--accent-secondary);
+        }
+
+        .shift-display {
+            display: flex;
+            gap: var(--spacing-xl);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .shift-value {
+            text-align: center;
+        }
+
+        .shift-value .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .shift-value .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            font-family: monospace;
+        }
+
+        .mask-canvas-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .mask-canvas-container canvas {
+            cursor: crosshair;
+        }
+
+        .mask-tools {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .multi-image-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .multi-image-list .thumbnail {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            transition: border-color var(--transition-fast);
+        }
+
+        .multi-image-list .thumbnail:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .multi-image-list .thumbnail.selected {
+            border-color: var(--success);
+        }
+
+        .opacity-slider-container {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .opacity-slider-container label {
+            min-width: 80px;
+            color: var(--text-secondary);
+        }
+
+        .opacity-slider-container input[type="range"] {
+            flex: 1;
+        }
+
+        .feature-matches-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .feature-matches-info .info-item {
+            text-align: center;
+        }
+
+        .feature-matches-info .info-item .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .feature-matches-info .info-item .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .dual-upload {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Image Registration</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Image Registration</h1>
+            <p>Align and register images using feature-based methods, correlation techniques, and homography estimation. Essential for panorama stitching, medical imaging, and change detection.</p>
+        </header>
+
+        <!-- Feature Availability Check -->
+        <div id="feature-check" class="alert alert-info" style="display: none;"></div>
+
+        <!-- Section 1: Feature-Based Registration -->
+        <section class="demo-section" id="feature-based-section">
+            <h3>1. Feature-Based Registration</h3>
+            <p class="mb-md">Detect features in both images, match them, find the geometric transformation, and warp one image to align with the other.</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Panorama stitching, object recognition, 3D reconstruction, augmented reality.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="feature-detector">Feature Detector</label>
+                    <select id="feature-detector">
+                        <option value="ORB">ORB (Fast)</option>
+                        <option value="AKAZE">AKAZE (Robust)</option>
+                        <option value="BRISK">BRISK</option>
+                        <option value="SIFT" disabled>SIFT (Not available)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="max-features">Max Features</label>
+                    <input type="number" id="max-features" value="500" min="50" max="2000" step="50">
+                </div>
+                <div class="form-group">
+                    <label for="match-ratio">Match Ratio (Lowe's)</label>
+                    <input type="range" id="match-ratio" min="0.5" max="0.9" step="0.05" value="0.75">
+                    <span class="range-value" id="match-ratio-value">0.75</span>
+                </div>
+                <button class="btn btn-primary" id="run-feature-registration">Run Registration</button>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-1" data-target="ref-image-1">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Reference Image</div>
+                        <div style="font-size: 0.8rem; margin-top: 4px;">Click or drag to upload</div>
+                    </div>
+                    <img id="ref-image-1" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-1" data-target="mov-image-1">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Moving Image</div>
+                        <div style="font-size: 0.8rem; margin-top: 4px;">Click or drag to upload</div>
+                    </div>
+                    <img id="mov-image-1" style="display: none;">
+                </div>
+            </div>
+
+            <div id="feature-results" style="display: none;">
+                <h4 class="mb-md">Results</h4>
+                <div class="feature-matches-info" id="feature-info">
+                    <div class="info-item">
+                        <div class="label">Reference Features</div>
+                        <div class="value" id="ref-features-count">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Moving Features</div>
+                        <div class="value" id="mov-features-count">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Good Matches</div>
+                        <div class="value" id="good-matches-count">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Inliers</div>
+                        <div class="value" id="inliers-count">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Processing Time</div>
+                        <div class="value" id="feature-time">-</div>
+                    </div>
+                </div>
+                <div class="result-grid mt-lg">
+                    <div class="result-item">
+                        <canvas id="matches-canvas"></canvas>
+                        <div class="result-label">Feature Matches</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="aligned-canvas"></canvas>
+                        <div class="result-label">Aligned Result</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="overlay-canvas"></canvas>
+                        <div class="result-label">Overlay Blend</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: ECC Registration -->
+        <section class="demo-section" id="ecc-section">
+            <h3>2. ECC (Enhanced Correlation Coefficient)</h3>
+            <p class="mb-md">Iterative optimization method for finding the transformation that maximizes image correlation. Works well for small misalignments.</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Video stabilization, medical image alignment, precision registration where sub-pixel accuracy is needed.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="motion-type">Motion Type</label>
+                    <select id="motion-type">
+                        <option value="translation">Translation</option>
+                        <option value="euclidean">Euclidean (Translation + Rotation)</option>
+                        <option value="affine">Affine</option>
+                        <option value="homography">Homography</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ecc-iterations">Max Iterations</label>
+                    <input type="number" id="ecc-iterations" value="50" min="10" max="500" step="10">
+                </div>
+                <div class="form-group">
+                    <label for="ecc-epsilon">Termination Epsilon</label>
+                    <select id="ecc-epsilon">
+                        <option value="1e-3">1e-3 (Fast)</option>
+                        <option value="1e-4" selected>1e-4 (Balanced)</option>
+                        <option value="1e-5">1e-5 (Precise)</option>
+                        <option value="1e-6">1e-6 (Very Precise)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="gaussian-filter">Gaussian Filter Size</label>
+                    <select id="gaussian-filter">
+                        <option value="0">None</option>
+                        <option value="3">3x3</option>
+                        <option value="5" selected>5x5</option>
+                        <option value="7">7x7</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="run-ecc-registration">Run ECC</button>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-2" data-target="ref-image-2">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Reference Image</div>
+                    </div>
+                    <img id="ref-image-2" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-2" data-target="mov-image-2">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Moving Image</div>
+                    </div>
+                    <img id="mov-image-2" style="display: none;">
+                </div>
+            </div>
+
+            <div id="ecc-results" style="display: none;">
+                <h4 class="mb-md">Results</h4>
+                <div class="metrics">
+                    <div class="metric">
+                        <span class="metric-label">ECC Value</span>
+                        <span class="metric-value" id="ecc-value">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Iterations</span>
+                        <span class="metric-value" id="ecc-iters">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Time</span>
+                        <span class="metric-value" id="ecc-time">-</span>
+                    </div>
+                </div>
+                <h5 class="mt-lg mb-md">Warp Matrix</h5>
+                <div class="matrix-display" id="warp-matrix"></div>
+                <div class="result-grid mt-lg">
+                    <div class="result-item">
+                        <canvas id="ecc-before-canvas"></canvas>
+                        <div class="result-label">Difference Before</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="ecc-aligned-canvas"></canvas>
+                        <div class="result-label">Aligned Result</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="ecc-after-canvas"></canvas>
+                        <div class="result-label">Difference After</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Template Matching for Alignment -->
+        <section class="demo-section" id="template-section">
+            <h3>3. Template Matching for Alignment</h3>
+            <p class="mb-md">Find the location of a template (smaller image) within a larger image. Useful for simple translation-only alignment.</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Object localization, simple alignment when only translation is needed, finding regions of interest.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="template-method">Matching Method</label>
+                    <select id="template-method">
+                        <option value="TM_CCOEFF_NORMED">Correlation Coefficient (Normalized)</option>
+                        <option value="TM_CCORR_NORMED">Cross Correlation (Normalized)</option>
+                        <option value="TM_SQDIFF_NORMED">Squared Difference (Normalized)</option>
+                        <option value="TM_CCOEFF">Correlation Coefficient</option>
+                        <option value="TM_CCORR">Cross Correlation</option>
+                        <option value="TM_SQDIFF">Squared Difference</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="run-template-matching">Find Template</button>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-3" data-target="ref-image-3">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Large Image (Search In)</div>
+                    </div>
+                    <img id="ref-image-3" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-3" data-target="mov-image-3">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Template (Find This)</div>
+                    </div>
+                    <img id="mov-image-3" style="display: none;">
+                </div>
+            </div>
+
+            <div id="template-results" style="display: none;">
+                <h4 class="mb-md">Results</h4>
+                <div class="metrics">
+                    <div class="metric">
+                        <span class="metric-label">Match Score</span>
+                        <span class="metric-value" id="template-score">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Location (X, Y)</span>
+                        <span class="metric-value" id="template-location">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Time</span>
+                        <span class="metric-value" id="template-time">-</span>
+                    </div>
+                </div>
+                <div class="result-grid mt-lg">
+                    <div class="result-item">
+                        <canvas id="template-result-canvas"></canvas>
+                        <div class="result-label">Detected Location</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="template-heatmap-canvas"></canvas>
+                        <div class="result-label">Match Heatmap</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Phase Correlation -->
+        <section class="demo-section" id="phase-section">
+            <h3>4. Phase Correlation</h3>
+            <p class="mb-md">Fast Fourier-based method for estimating translation between images. Very efficient for detecting small shifts.</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Real-time video stabilization, satellite image alignment, detecting motion between frames.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="phase-window">Apply Hanning Window</label>
+                    <select id="phase-window">
+                        <option value="yes">Yes (Recommended)</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="run-phase-correlation">Estimate Shift</button>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-4" data-target="ref-image-4">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Reference Image</div>
+                    </div>
+                    <img id="ref-image-4" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-4" data-target="mov-image-4">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Shifted Image</div>
+                    </div>
+                    <img id="mov-image-4" style="display: none;">
+                </div>
+            </div>
+
+            <div id="phase-results" style="display: none;">
+                <h4 class="mb-md">Estimated Shift</h4>
+                <div class="shift-display">
+                    <div class="shift-value">
+                        <div class="label">Horizontal (dx)</div>
+                        <div class="value" id="phase-dx">0.00 px</div>
+                    </div>
+                    <div class="shift-value">
+                        <div class="label">Vertical (dy)</div>
+                        <div class="value" id="phase-dy">0.00 px</div>
+                    </div>
+                    <div class="shift-value">
+                        <div class="label">Response</div>
+                        <div class="value" id="phase-response">-</div>
+                    </div>
+                    <div class="shift-value">
+                        <div class="label">Time</div>
+                        <div class="value" id="phase-time">-</div>
+                    </div>
+                </div>
+                <div class="result-grid mt-lg">
+                    <div class="result-item">
+                        <canvas id="phase-corrected-canvas"></canvas>
+                        <div class="result-label">Shift Corrected</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="phase-overlay-canvas"></canvas>
+                        <div class="result-label">Overlay (Red=Ref, Cyan=Corrected)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Image Alignment Visualization -->
+        <section class="demo-section" id="visualization-section">
+            <h3>5. Image Alignment Visualization</h3>
+            <p class="mb-md">Compare aligned images using different visualization modes to assess registration quality.</p>
+
+            <div class="demo-controls">
+                <div class="visualization-modes" id="viz-modes">
+                    <button class="viz-btn active" data-mode="sideBySide">Side by Side</button>
+                    <button class="viz-btn" data-mode="overlay">Overlay</button>
+                    <button class="viz-btn" data-mode="difference">Difference</button>
+                    <button class="viz-btn" data-mode="checkerboard">Checkerboard</button>
+                    <button class="viz-btn" data-mode="colorComposite">Color Composite</button>
+                </div>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-5" data-target="ref-image-5">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Image A</div>
+                    </div>
+                    <img id="ref-image-5" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-5" data-target="mov-image-5">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Image B</div>
+                    </div>
+                    <img id="mov-image-5" style="display: none;">
+                </div>
+            </div>
+
+            <div id="viz-controls" style="display: none;">
+                <div class="opacity-slider-container" id="opacity-control" style="display: none;">
+                    <label>Opacity:</label>
+                    <input type="range" id="viz-opacity" min="0" max="1" step="0.05" value="0.5">
+                    <span id="viz-opacity-value">50%</span>
+                </div>
+                <div class="form-group" id="checker-size-control" style="display: none; margin-top: var(--spacing-md);">
+                    <label for="checker-size">Checkerboard Size</label>
+                    <select id="checker-size">
+                        <option value="16">16px</option>
+                        <option value="32" selected>32px</option>
+                        <option value="64">64px</option>
+                        <option value="128">128px</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="viz-results" style="display: none;">
+                <div class="result-item" style="max-width: 800px; margin: 0 auto;">
+                    <canvas id="viz-canvas"></canvas>
+                    <div class="result-label" id="viz-label">Visualization</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Multi-Image Alignment -->
+        <section class="demo-section" id="multi-section">
+            <h3>6. Multi-Image Alignment</h3>
+            <p class="mb-md">Align multiple images to a common reference. Useful for focus stacking, HDR imaging, and time-lapse processing.</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Focus stacking (combine sharp regions from multiple images), HDR alignment, time-lapse stabilization.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="multi-method">Alignment Method</label>
+                    <select id="multi-method">
+                        <option value="ecc">ECC (Best for small shifts)</option>
+                        <option value="feature">Feature-Based (Best for larger changes)</option>
+                    </select>
+                </div>
+                <label class="file-input-label">
+                    <input type="file" id="multi-file-input" accept="image/*" multiple hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload Multiple Images
+                </label>
+                <button class="btn btn-primary" id="run-multi-alignment" disabled>Align All to Reference</button>
+                <button class="btn btn-secondary" id="clear-multi-images">Clear All</button>
+            </div>
+
+            <div id="multi-thumbnails" class="multi-image-list"></div>
+
+            <div id="multi-results" style="display: none;">
+                <h4 class="mb-md">Alignment Results</h4>
+                <div class="metrics">
+                    <div class="metric">
+                        <span class="metric-label">Images Processed</span>
+                        <span class="metric-value" id="multi-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total Time</span>
+                        <span class="metric-value" id="multi-time">-</span>
+                    </div>
+                </div>
+                <div id="multi-aligned-grid" class="result-grid mt-lg"></div>
+            </div>
+        </section>
+
+        <!-- Section 7: Registration with Masks -->
+        <section class="demo-section" id="mask-section">
+            <h3>7. Registration with Masks</h3>
+            <p class="mb-md">Specify regions of interest for registration. Useful when parts of the image should be ignored (moving objects, occlusions).</p>
+
+            <div class="alert alert-info mb-md">
+                <strong>Use Cases:</strong> Ignoring moving objects during alignment, focusing on specific regions, handling partial occlusions.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="mask-method">Registration Method</label>
+                    <select id="mask-method">
+                        <option value="feature">Feature-Based with Mask</option>
+                    </select>
+                </div>
+                <div class="mask-tools">
+                    <button class="btn btn-secondary" id="draw-include">Draw Include Region</button>
+                    <button class="btn btn-secondary" id="draw-exclude">Draw Exclude Region</button>
+                    <button class="btn btn-secondary" id="clear-mask">Clear Mask</button>
+                </div>
+                <button class="btn btn-primary" id="run-masked-registration">Run with Mask</button>
+            </div>
+
+            <div class="dual-upload mb-lg">
+                <div class="upload-zone" id="ref-upload-7" data-target="ref-image-7">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Reference Image (Draw mask here)</div>
+                    </div>
+                    <img id="ref-image-7" style="display: none;">
+                </div>
+                <div class="upload-zone" id="mov-upload-7" data-target="mov-image-7">
+                    <input type="file" accept="image/*" hidden>
+                    <div class="placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <div>Moving Image</div>
+                    </div>
+                    <img id="mov-image-7" style="display: none;">
+                </div>
+            </div>
+
+            <div id="mask-draw-area" style="display: none;" class="mb-lg">
+                <p class="mb-sm">Draw on the image below. Green = Include, Red = Exclude</p>
+                <div class="mask-canvas-container">
+                    <canvas id="mask-draw-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="mask-results" style="display: none;">
+                <h4 class="mb-md">Results</h4>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <canvas id="mask-preview-canvas"></canvas>
+                        <div class="result-label">Mask Preview</div>
+                    </div>
+                    <div class="result-item">
+                        <canvas id="masked-aligned-canvas"></canvas>
+                        <div class="result-label">Aligned Result</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+    <script>
+        // ===============================
+        // Global State
+        // ===============================
+        const state = {
+            images: {},
+            masks: {},
+            multiImages: [],
+            currentMaskMode: null,
+            isDrawing: false,
+            lastPoint: null
+        };
+
+        // ===============================
+        // Initialization
+        // ===============================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (progress) => {
+                        document.getElementById('loading-progress').style.width = `${progress}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    const overlay = document.getElementById('loading-overlay');
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                }, 500);
+
+                // Check feature availability
+                checkFeatureAvailability();
+
+                // Setup all event listeners
+                setupUploadZones();
+                setupFeatureBasedSection();
+                setupECCSection();
+                setupTemplateMatchingSection();
+                setupPhaseCorrelationSection();
+                setupVisualizationSection();
+                setupMultiImageSection();
+                setupMaskedRegistrationSection();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = `Error: ${error.message}`;
+                console.error('Failed to load OpenCV:', error);
+            }
+        });
+
+        // ===============================
+        // Feature Availability Check
+        // ===============================
+        function checkFeatureAvailability() {
+            const features = {
+                'ORB': typeof cv.ORB !== 'undefined',
+                'AKAZE': typeof cv.AKAZE !== 'undefined',
+                'BRISK': typeof cv.BRISK !== 'undefined',
+                'SIFT': typeof cv.SIFT !== 'undefined',
+                'findTransformECC': typeof cv.findTransformECC !== 'undefined',
+                'matchTemplate': typeof cv.matchTemplate !== 'undefined',
+                'phaseCorrelate': typeof cv.phaseCorrelate !== 'undefined',
+                'findHomography': typeof cv.findHomography !== 'undefined',
+                'warpPerspective': typeof cv.warpPerspective !== 'undefined',
+                'warpAffine': typeof cv.warpAffine !== 'undefined'
+            };
+
+            const missing = Object.entries(features).filter(([_, available]) => !available).map(([name]) => name);
+
+            if (missing.length > 0) {
+                const alertEl = document.getElementById('feature-check');
+                alertEl.innerHTML = `<strong>Note:</strong> Some features may not be available: ${missing.join(', ')}. Using the full OpenCV.js build is recommended.`;
+                alertEl.style.display = 'block';
+            }
+
+            // Update UI based on availability
+            const siftOption = document.querySelector('#feature-detector option[value="SIFT"]');
+            if (siftOption && features['SIFT']) {
+                siftOption.disabled = false;
+                siftOption.textContent = 'SIFT (Accurate)';
+            }
+
+            return features;
+        }
+
+        // ===============================
+        // Upload Zone Setup
+        // ===============================
+        function setupUploadZones() {
+            document.querySelectorAll('.upload-zone').forEach(zone => {
+                const input = zone.querySelector('input[type="file"]');
+                const targetId = zone.dataset.target;
+                const targetImg = document.getElementById(targetId);
+
+                // Click to upload
+                zone.addEventListener('click', (e) => {
+                    if (e.target !== input) {
+                        input.click();
+                    }
+                });
+
+                // Drag and drop
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('has-dragover');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('has-dragover');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('has-dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleImageUpload(files[0], targetImg, zone);
+                    }
+                });
+
+                // File input change
+                input.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleImageUpload(e.target.files[0], targetImg, zone);
+                    }
+                });
+            });
+        }
+
+        function handleImageUpload(file, imgElement, zone) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imgElement.src = e.target.result;
+                imgElement.style.display = 'block';
+                zone.querySelector('.placeholder').style.display = 'none';
+                zone.classList.add('has-image');
+
+                // Store reference
+                state.images[imgElement.id] = imgElement;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ===============================
+        // Section 1: Feature-Based Registration
+        // ===============================
+        function setupFeatureBasedSection() {
+            const ratioSlider = document.getElementById('match-ratio');
+            const ratioValue = document.getElementById('match-ratio-value');
+
+            ratioSlider.addEventListener('input', () => {
+                ratioValue.textContent = ratioSlider.value;
+            });
+
+            document.getElementById('run-feature-registration').addEventListener('click', runFeatureRegistration);
+        }
+
+        async function runFeatureRegistration() {
+            const refImg = document.getElementById('ref-image-1');
+            const movImg = document.getElementById('mov-image-1');
+
+            if (!refImg.src || !movImg.src) {
+                UIComponents.showToast({ message: 'Please upload both images', type: 'warning' });
+                return;
+            }
+
+            const startTime = performance.now();
+
+            try {
+                // Load images as Mat
+                const refMat = cv.imread(refImg);
+                const movMat = cv.imread(movImg);
+
+                // Convert to grayscale
+                const refGray = new cv.Mat();
+                const movGray = new cv.Mat();
+                cv.cvtColor(refMat, refGray, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(movMat, movGray, cv.COLOR_RGBA2GRAY);
+
+                // Get detector type
+                const detectorType = document.getElementById('feature-detector').value;
+                const maxFeatures = parseInt(document.getElementById('max-features').value);
+                const matchRatio = parseFloat(document.getElementById('match-ratio').value);
+
+                // Create detector
+                let detector;
+                switch (detectorType) {
+                    case 'ORB':
+                        detector = new cv.ORB(maxFeatures);
+                        break;
+                    case 'AKAZE':
+                        detector = new cv.AKAZE();
+                        break;
+                    case 'BRISK':
+                        detector = new cv.BRISK();
+                        break;
+                    case 'SIFT':
+                        detector = new cv.SIFT(maxFeatures);
+                        break;
+                    default:
+                        detector = new cv.ORB(maxFeatures);
+                }
+
+                // Detect keypoints and compute descriptors
+                const refKeypoints = new cv.KeyPointVector();
+                const movKeypoints = new cv.KeyPointVector();
+                const refDescriptors = new cv.Mat();
+                const movDescriptors = new cv.Mat();
+
+                detector.detectAndCompute(refGray, new cv.Mat(), refKeypoints, refDescriptors);
+                detector.detectAndCompute(movGray, new cv.Mat(), movKeypoints, movDescriptors);
+
+                document.getElementById('ref-features-count').textContent = refKeypoints.size();
+                document.getElementById('mov-features-count').textContent = movKeypoints.size();
+
+                // Match descriptors
+                const matcher = new cv.BFMatcher(detectorType === 'SIFT' ? cv.NORM_L2 : cv.NORM_HAMMING, false);
+                const matches = new cv.DMatchVectorVector();
+                matcher.knnMatch(movDescriptors, refDescriptors, matches, 2);
+
+                // Apply Lowe's ratio test
+                const goodMatches = new cv.DMatchVector();
+                for (let i = 0; i < matches.size(); i++) {
+                    const match = matches.get(i);
+                    if (match.size() >= 2) {
+                        const m = match.get(0);
+                        const n = match.get(1);
+                        if (m.distance < matchRatio * n.distance) {
+                            goodMatches.push_back(m);
+                        }
+                    }
+                }
+
+                document.getElementById('good-matches-count').textContent = goodMatches.size();
+
+                if (goodMatches.size() < 4) {
+                    UIComponents.showToast({ message: 'Not enough matches found. Try different parameters.', type: 'error' });
+                    cleanup();
+                    return;
+                }
+
+                // Draw matches
+                const matchesImg = new cv.Mat();
+                cv.drawMatches(movMat, movKeypoints, refMat, refKeypoints, goodMatches, matchesImg);
+                cv.imshow('matches-canvas', matchesImg);
+
+                // Extract matched points
+                const srcPoints = [];
+                const dstPoints = [];
+                for (let i = 0; i < goodMatches.size(); i++) {
+                    const match = goodMatches.get(i);
+                    const srcKp = movKeypoints.get(match.queryIdx);
+                    const dstKp = refKeypoints.get(match.trainIdx);
+                    srcPoints.push(srcKp.pt.x, srcKp.pt.y);
+                    dstPoints.push(dstKp.pt.x, dstKp.pt.y);
+                }
+
+                const srcPtsMat = cv.matFromArray(goodMatches.size(), 1, cv.CV_32FC2, srcPoints);
+                const dstPtsMat = cv.matFromArray(goodMatches.size(), 1, cv.CV_32FC2, dstPoints);
+
+                // Find homography
+                const mask = new cv.Mat();
+                const H = cv.findHomography(srcPtsMat, dstPtsMat, cv.RANSAC, 5.0, mask);
+
+                // Count inliers
+                let inlierCount = 0;
+                for (let i = 0; i < mask.rows; i++) {
+                    if (mask.data[i] !== 0) inlierCount++;
+                }
+                document.getElementById('inliers-count').textContent = inlierCount;
+
+                // Warp moving image
+                const aligned = new cv.Mat();
+                cv.warpPerspective(movMat, aligned, H, new cv.Size(refMat.cols, refMat.rows));
+                cv.imshow('aligned-canvas', aligned);
+
+                // Create overlay blend
+                const overlay = new cv.Mat();
+                cv.addWeighted(refMat, 0.5, aligned, 0.5, 0, overlay);
+                cv.imshow('overlay-canvas', overlay);
+
+                const endTime = performance.now();
+                document.getElementById('feature-time').textContent = `${(endTime - startTime).toFixed(0)} ms`;
+
+                document.getElementById('feature-results').style.display = 'block';
+
+                // Cleanup
+                function cleanup() {
+                    refMat.delete();
+                    movMat.delete();
+                    refGray.delete();
+                    movGray.delete();
+                    detector.delete();
+                    refKeypoints.delete();
+                    movKeypoints.delete();
+                    refDescriptors.delete();
+                    movDescriptors.delete();
+                    matcher.delete();
+                    matches.delete();
+                    goodMatches.delete();
+                    if (matchesImg) matchesImg.delete();
+                    srcPtsMat.delete();
+                    dstPtsMat.delete();
+                    if (mask) mask.delete();
+                    if (H) H.delete();
+                    if (aligned) aligned.delete();
+                    if (overlay) overlay.delete();
+                }
+
+                cleanup();
+
+            } catch (error) {
+                console.error('Feature registration error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        // ===============================
+        // Section 2: ECC Registration
+        // ===============================
+        function setupECCSection() {
+            document.getElementById('run-ecc-registration').addEventListener('click', runECCRegistration);
+        }
+
+        async function runECCRegistration() {
+            const refImg = document.getElementById('ref-image-2');
+            const movImg = document.getElementById('mov-image-2');
+
+            if (!refImg.src || !movImg.src) {
+                UIComponents.showToast({ message: 'Please upload both images', type: 'warning' });
+                return;
+            }
+
+            // Check if findTransformECC is available
+            if (typeof cv.findTransformECC === 'undefined') {
+                UIComponents.showToast({ message: 'findTransformECC is not available in this OpenCV.js build', type: 'error' });
+                return;
+            }
+
+            const startTime = performance.now();
+
+            try {
+                // Load images
+                const refMat = cv.imread(refImg);
+                const movMat = cv.imread(movImg);
+
+                // Convert to grayscale and float
+                const refGray = new cv.Mat();
+                const movGray = new cv.Mat();
+                cv.cvtColor(refMat, refGray, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(movMat, movGray, cv.COLOR_RGBA2GRAY);
+
+                const refFloat = new cv.Mat();
+                const movFloat = new cv.Mat();
+                refGray.convertTo(refFloat, cv.CV_32F);
+                movGray.convertTo(movFloat, cv.CV_32F);
+
+                // Get parameters
+                const motionType = document.getElementById('motion-type').value;
+                const maxIterations = parseInt(document.getElementById('ecc-iterations').value);
+                const epsilon = parseFloat(document.getElementById('ecc-epsilon').value);
+                const gaussianSize = parseInt(document.getElementById('gaussian-filter').value);
+
+                // Motion type mapping
+                let cvMotionType;
+                let warpMatrixSize;
+                switch (motionType) {
+                    case 'translation':
+                        cvMotionType = cv.MOTION_TRANSLATION;
+                        warpMatrixSize = [2, 3];
+                        break;
+                    case 'euclidean':
+                        cvMotionType = cv.MOTION_EUCLIDEAN;
+                        warpMatrixSize = [2, 3];
+                        break;
+                    case 'affine':
+                        cvMotionType = cv.MOTION_AFFINE;
+                        warpMatrixSize = [2, 3];
+                        break;
+                    case 'homography':
+                        cvMotionType = cv.MOTION_HOMOGRAPHY;
+                        warpMatrixSize = [3, 3];
+                        break;
+                    default:
+                        cvMotionType = cv.MOTION_TRANSLATION;
+                        warpMatrixSize = [2, 3];
+                }
+
+                // Initialize warp matrix
+                let warpMatrix;
+                if (cvMotionType === cv.MOTION_HOMOGRAPHY) {
+                    warpMatrix = cv.Mat.eye(3, 3, cv.CV_32F);
+                } else {
+                    warpMatrix = cv.Mat.eye(2, 3, cv.CV_32F);
+                }
+
+                // Create termination criteria
+                const criteria = new cv.TermCriteria(cv.TermCriteria_COUNT + cv.TermCriteria_EPS, maxIterations, epsilon);
+
+                // Apply Gaussian blur if specified
+                let refBlurred = refFloat;
+                let movBlurred = movFloat;
+                if (gaussianSize > 0) {
+                    refBlurred = new cv.Mat();
+                    movBlurred = new cv.Mat();
+                    cv.GaussianBlur(refFloat, refBlurred, new cv.Size(gaussianSize, gaussianSize), 0);
+                    cv.GaussianBlur(movFloat, movBlurred, new cv.Size(gaussianSize, gaussianSize), 0);
+                }
+
+                // Create difference before
+                const diffBefore = new cv.Mat();
+                cv.absdiff(refGray, movGray, diffBefore);
+                cv.imshow('ecc-before-canvas', diffBefore);
+
+                // Run ECC
+                let eccValue;
+                try {
+                    eccValue = cv.findTransformECC(refBlurred, movBlurred, warpMatrix, cvMotionType, criteria, new cv.Mat(), gaussianSize);
+                } catch (e) {
+                    console.error('ECC failed:', e);
+                    UIComponents.showToast({ message: 'ECC alignment failed. Images may be too different.', type: 'error' });
+                    return;
+                }
+
+                // Warp the moving image
+                const aligned = new cv.Mat();
+                if (cvMotionType === cv.MOTION_HOMOGRAPHY) {
+                    cv.warpPerspective(movMat, aligned, warpMatrix, new cv.Size(refMat.cols, refMat.rows), cv.INTER_LINEAR + cv.WARP_INVERSE_MAP);
+                } else {
+                    cv.warpAffine(movMat, aligned, warpMatrix, new cv.Size(refMat.cols, refMat.rows), cv.INTER_LINEAR + cv.WARP_INVERSE_MAP);
+                }
+                cv.imshow('ecc-aligned-canvas', aligned);
+
+                // Create difference after
+                const alignedGray = new cv.Mat();
+                cv.cvtColor(aligned, alignedGray, cv.COLOR_RGBA2GRAY);
+                const diffAfter = new cv.Mat();
+                cv.absdiff(refGray, alignedGray, diffAfter);
+                cv.imshow('ecc-after-canvas', diffAfter);
+
+                // Display warp matrix
+                displayWarpMatrix(warpMatrix);
+
+                const endTime = performance.now();
+
+                // Update metrics
+                document.getElementById('ecc-value').textContent = eccValue.toFixed(6);
+                document.getElementById('ecc-iters').textContent = maxIterations;
+                document.getElementById('ecc-time').textContent = `${(endTime - startTime).toFixed(0)} ms`;
+
+                document.getElementById('ecc-results').style.display = 'block';
+
+                // Cleanup
+                refMat.delete();
+                movMat.delete();
+                refGray.delete();
+                movGray.delete();
+                refFloat.delete();
+                movFloat.delete();
+                if (gaussianSize > 0) {
+                    refBlurred.delete();
+                    movBlurred.delete();
+                }
+                warpMatrix.delete();
+                diffBefore.delete();
+                aligned.delete();
+                alignedGray.delete();
+                diffAfter.delete();
+
+            } catch (error) {
+                console.error('ECC registration error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        function displayWarpMatrix(matrix) {
+            let html = '<table>';
+            for (let i = 0; i < matrix.rows; i++) {
+                html += '<tr>';
+                for (let j = 0; j < matrix.cols; j++) {
+                    const value = matrix.floatAt(i, j);
+                    html += `<td>${value.toFixed(6)}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            document.getElementById('warp-matrix').innerHTML = html;
+        }
+
+        // ===============================
+        // Section 3: Template Matching
+        // ===============================
+        function setupTemplateMatchingSection() {
+            document.getElementById('run-template-matching').addEventListener('click', runTemplateMatching);
+        }
+
+        function runTemplateMatching() {
+            const searchImg = document.getElementById('ref-image-3');
+            const templateImg = document.getElementById('mov-image-3');
+
+            if (!searchImg.src || !templateImg.src) {
+                UIComponents.showToast({ message: 'Please upload both images', type: 'warning' });
+                return;
+            }
+
+            const startTime = performance.now();
+
+            try {
+                const searchMat = cv.imread(searchImg);
+                const templateMat = cv.imread(templateImg);
+
+                // Get method
+                const methodName = document.getElementById('template-method').value;
+                const method = cv[methodName];
+
+                // Perform template matching
+                const result = new cv.Mat();
+                cv.matchTemplate(searchMat, templateMat, result, method);
+
+                // Find min and max locations
+                const minMaxLoc = cv.minMaxLoc(result);
+
+                // For SQDIFF methods, minimum is best match; for others, maximum is best
+                const isMinMethod = methodName.includes('SQDIFF');
+                const matchLoc = isMinMethod ? minMaxLoc.minLoc : minMaxLoc.maxLoc;
+                const matchScore = isMinMethod ? minMaxLoc.minVal : minMaxLoc.maxVal;
+
+                // Draw rectangle on result
+                const displayMat = searchMat.clone();
+                const pt1 = new cv.Point(matchLoc.x, matchLoc.y);
+                const pt2 = new cv.Point(matchLoc.x + templateMat.cols, matchLoc.y + templateMat.rows);
+                cv.rectangle(displayMat, pt1, pt2, new cv.Scalar(0, 255, 0, 255), 3);
+                cv.imshow('template-result-canvas', displayMat);
+
+                // Create heatmap visualization
+                const heatmap = new cv.Mat();
+                cv.normalize(result, heatmap, 0, 255, cv.NORM_MINMAX, cv.CV_8U);
+                const heatmapColor = new cv.Mat();
+                cv.applyColorMap(heatmap, heatmapColor, cv.COLORMAP_JET);
+                cv.imshow('template-heatmap-canvas', heatmapColor);
+
+                const endTime = performance.now();
+
+                // Update metrics
+                document.getElementById('template-score').textContent = matchScore.toFixed(4);
+                document.getElementById('template-location').textContent = `(${matchLoc.x}, ${matchLoc.y})`;
+                document.getElementById('template-time').textContent = `${(endTime - startTime).toFixed(0)} ms`;
+
+                document.getElementById('template-results').style.display = 'block';
+
+                // Cleanup
+                searchMat.delete();
+                templateMat.delete();
+                result.delete();
+                displayMat.delete();
+                heatmap.delete();
+                heatmapColor.delete();
+
+            } catch (error) {
+                console.error('Template matching error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        // ===============================
+        // Section 4: Phase Correlation
+        // ===============================
+        function setupPhaseCorrelationSection() {
+            document.getElementById('run-phase-correlation').addEventListener('click', runPhaseCorrelation);
+        }
+
+        function runPhaseCorrelation() {
+            const refImg = document.getElementById('ref-image-4');
+            const movImg = document.getElementById('mov-image-4');
+
+            if (!refImg.src || !movImg.src) {
+                UIComponents.showToast({ message: 'Please upload both images', type: 'warning' });
+                return;
+            }
+
+            if (typeof cv.phaseCorrelate === 'undefined') {
+                UIComponents.showToast({ message: 'phaseCorrelate is not available in this OpenCV.js build', type: 'error' });
+                return;
+            }
+
+            const startTime = performance.now();
+
+            try {
+                const refMat = cv.imread(refImg);
+                const movMat = cv.imread(movImg);
+
+                // Convert to grayscale and float
+                const refGray = new cv.Mat();
+                const movGray = new cv.Mat();
+                cv.cvtColor(refMat, refGray, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(movMat, movGray, cv.COLOR_RGBA2GRAY);
+
+                const refFloat = new cv.Mat();
+                const movFloat = new cv.Mat();
+                refGray.convertTo(refFloat, cv.CV_32F);
+                movGray.convertTo(movFloat, cv.CV_32F);
+
+                // Apply Hanning window if selected
+                const applyWindow = document.getElementById('phase-window').value === 'yes';
+                let window = new cv.Mat();
+                if (applyWindow) {
+                    cv.createHanningWindow(window, new cv.Size(refFloat.cols, refFloat.rows), cv.CV_32F);
+                    cv.multiply(refFloat, window, refFloat);
+                    cv.multiply(movFloat, window, movFloat);
+                }
+
+                // Run phase correlation
+                const response = new cv.Mat();
+                const shift = cv.phaseCorrelate(refFloat, movFloat, window, response);
+
+                const dx = shift.x;
+                const dy = shift.y;
+                const responseVal = response.doubleAt(0, 0);
+
+                // Apply the correction
+                const M = cv.matFromArray(2, 3, cv.CV_32F, [1, 0, dx, 0, 1, dy]);
+                const corrected = new cv.Mat();
+                cv.warpAffine(movMat, corrected, M, new cv.Size(refMat.cols, refMat.rows));
+                cv.imshow('phase-corrected-canvas', corrected);
+
+                // Create color composite overlay
+                const refGrayBGR = new cv.Mat();
+                const correctedGray = new cv.Mat();
+                cv.cvtColor(refGray, refGrayBGR, cv.COLOR_GRAY2RGBA);
+                cv.cvtColor(corrected, correctedGray, cv.COLOR_RGBA2GRAY);
+
+                const overlay = new cv.Mat(refMat.rows, refMat.cols, cv.CV_8UC4);
+                for (let i = 0; i < refMat.rows; i++) {
+                    for (let j = 0; j < refMat.cols; j++) {
+                        const refVal = refGray.ucharAt(i, j);
+                        const corrVal = correctedGray.ucharAt(i, j);
+                        overlay.ucharPtr(i, j)[0] = refVal;       // R = reference
+                        overlay.ucharPtr(i, j)[1] = corrVal;      // G = corrected
+                        overlay.ucharPtr(i, j)[2] = corrVal;      // B = corrected
+                        overlay.ucharPtr(i, j)[3] = 255;
+                    }
+                }
+                cv.imshow('phase-overlay-canvas', overlay);
+
+                const endTime = performance.now();
+
+                // Update display
+                document.getElementById('phase-dx').textContent = `${dx.toFixed(2)} px`;
+                document.getElementById('phase-dy').textContent = `${dy.toFixed(2)} px`;
+                document.getElementById('phase-response').textContent = responseVal.toFixed(4);
+                document.getElementById('phase-time').textContent = `${(endTime - startTime).toFixed(0)} ms`;
+
+                document.getElementById('phase-results').style.display = 'block';
+
+                // Cleanup
+                refMat.delete();
+                movMat.delete();
+                refGray.delete();
+                movGray.delete();
+                refFloat.delete();
+                movFloat.delete();
+                window.delete();
+                response.delete();
+                M.delete();
+                corrected.delete();
+                refGrayBGR.delete();
+                correctedGray.delete();
+                overlay.delete();
+
+            } catch (error) {
+                console.error('Phase correlation error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        // ===============================
+        // Section 5: Visualization Modes
+        // ===============================
+        function setupVisualizationSection() {
+            const vizBtns = document.querySelectorAll('#viz-modes .viz-btn');
+            vizBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    vizBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateVisualization();
+                });
+            });
+
+            document.getElementById('viz-opacity').addEventListener('input', (e) => {
+                document.getElementById('viz-opacity-value').textContent = `${Math.round(e.target.value * 100)}%`;
+                updateVisualization();
+            });
+
+            document.getElementById('checker-size').addEventListener('change', updateVisualization);
+
+            // Watch for image uploads
+            ['ref-image-5', 'mov-image-5'].forEach(id => {
+                const img = document.getElementById(id);
+                const observer = new MutationObserver(() => {
+                    if (img.src) updateVisualization();
+                });
+                observer.observe(img, { attributes: true, attributeFilter: ['src'] });
+            });
+        }
+
+        function updateVisualization() {
+            const refImg = document.getElementById('ref-image-5');
+            const movImg = document.getElementById('mov-image-5');
+
+            if (!refImg.src || !movImg.src) return;
+
+            const mode = document.querySelector('#viz-modes .viz-btn.active').dataset.mode;
+
+            // Show/hide relevant controls
+            document.getElementById('viz-controls').style.display = 'block';
+            document.getElementById('opacity-control').style.display = mode === 'overlay' ? 'flex' : 'none';
+            document.getElementById('checker-size-control').style.display = mode === 'checkerboard' ? 'block' : 'none';
+
+            try {
+                const refMat = cv.imread(refImg);
+                const movMat = cv.imread(movImg);
+
+                // Ensure same size
+                const resizedMov = new cv.Mat();
+                cv.resize(movMat, resizedMov, new cv.Size(refMat.cols, refMat.rows));
+
+                let result;
+
+                switch (mode) {
+                    case 'sideBySide':
+                        result = createSideBySide(refMat, resizedMov);
+                        break;
+                    case 'overlay':
+                        const opacity = parseFloat(document.getElementById('viz-opacity').value);
+                        result = createOverlay(refMat, resizedMov, opacity);
+                        break;
+                    case 'difference':
+                        result = createDifference(refMat, resizedMov);
+                        break;
+                    case 'checkerboard':
+                        const size = parseInt(document.getElementById('checker-size').value);
+                        result = createCheckerboard(refMat, resizedMov, size);
+                        break;
+                    case 'colorComposite':
+                        result = createColorComposite(refMat, resizedMov);
+                        break;
+                    default:
+                        result = refMat.clone();
+                }
+
+                cv.imshow('viz-canvas', result);
+                document.getElementById('viz-label').textContent = getVisualizationLabel(mode);
+                document.getElementById('viz-results').style.display = 'block';
+
+                // Cleanup
+                refMat.delete();
+                movMat.delete();
+                resizedMov.delete();
+                result.delete();
+
+            } catch (error) {
+                console.error('Visualization error:', error);
+            }
+        }
+
+        function createSideBySide(img1, img2) {
+            const result = new cv.Mat(img1.rows, img1.cols * 2, img1.type());
+            const roi1 = result.roi(new cv.Rect(0, 0, img1.cols, img1.rows));
+            const roi2 = result.roi(new cv.Rect(img1.cols, 0, img2.cols, img2.rows));
+            img1.copyTo(roi1);
+            img2.copyTo(roi2);
+            roi1.delete();
+            roi2.delete();
+            return result;
+        }
+
+        function createOverlay(img1, img2, alpha) {
+            const result = new cv.Mat();
+            cv.addWeighted(img1, 1 - alpha, img2, alpha, 0, result);
+            return result;
+        }
+
+        function createDifference(img1, img2) {
+            const gray1 = new cv.Mat();
+            const gray2 = new cv.Mat();
+            cv.cvtColor(img1, gray1, cv.COLOR_RGBA2GRAY);
+            cv.cvtColor(img2, gray2, cv.COLOR_RGBA2GRAY);
+
+            const diff = new cv.Mat();
+            cv.absdiff(gray1, gray2, diff);
+
+            // Apply color map for better visualization
+            const result = new cv.Mat();
+            cv.applyColorMap(diff, result, cv.COLORMAP_JET);
+
+            gray1.delete();
+            gray2.delete();
+            diff.delete();
+            return result;
+        }
+
+        function createCheckerboard(img1, img2, blockSize) {
+            const result = img1.clone();
+            for (let y = 0; y < img1.rows; y += blockSize) {
+                for (let x = 0; x < img1.cols; x += blockSize) {
+                    const blockRow = Math.floor(y / blockSize);
+                    const blockCol = Math.floor(x / blockSize);
+                    if ((blockRow + blockCol) % 2 === 1) {
+                        const w = Math.min(blockSize, img1.cols - x);
+                        const h = Math.min(blockSize, img1.rows - y);
+                        const srcRoi = img2.roi(new cv.Rect(x, y, w, h));
+                        const dstRoi = result.roi(new cv.Rect(x, y, w, h));
+                        srcRoi.copyTo(dstRoi);
+                        srcRoi.delete();
+                        dstRoi.delete();
+                    }
+                }
+            }
+            return result;
+        }
+
+        function createColorComposite(img1, img2) {
+            const gray1 = new cv.Mat();
+            const gray2 = new cv.Mat();
+            cv.cvtColor(img1, gray1, cv.COLOR_RGBA2GRAY);
+            cv.cvtColor(img2, gray2, cv.COLOR_RGBA2GRAY);
+
+            const result = new cv.Mat(img1.rows, img1.cols, cv.CV_8UC4);
+            for (let i = 0; i < img1.rows; i++) {
+                for (let j = 0; j < img1.cols; j++) {
+                    const val1 = gray1.ucharAt(i, j);
+                    const val2 = gray2.ucharAt(i, j);
+                    result.ucharPtr(i, j)[0] = val1;    // R
+                    result.ucharPtr(i, j)[1] = val2;    // G
+                    result.ucharPtr(i, j)[2] = val2;    // B
+                    result.ucharPtr(i, j)[3] = 255;     // A
+                }
+            }
+
+            gray1.delete();
+            gray2.delete();
+            return result;
+        }
+
+        function getVisualizationLabel(mode) {
+            const labels = {
+                sideBySide: 'Side by Side Comparison',
+                overlay: 'Blended Overlay',
+                difference: 'Difference Map (Heatmap)',
+                checkerboard: 'Checkerboard Blend',
+                colorComposite: 'Color Composite (Red = A, Cyan = B)'
+            };
+            return labels[mode] || 'Visualization';
+        }
+
+        // ===============================
+        // Section 6: Multi-Image Alignment
+        // ===============================
+        function setupMultiImageSection() {
+            const fileInput = document.getElementById('multi-file-input');
+            const thumbnailsContainer = document.getElementById('multi-thumbnails');
+            const alignBtn = document.getElementById('run-multi-alignment');
+            const clearBtn = document.getElementById('clear-multi-images');
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = () => {
+                            state.multiImages.push(img);
+
+                            const thumb = document.createElement('img');
+                            thumb.className = 'thumbnail';
+                            thumb.src = event.target.result;
+                            if (state.multiImages.length === 1) {
+                                thumb.classList.add('selected');
+                                thumb.title = 'Reference Image';
+                            }
+                            thumb.addEventListener('click', () => {
+                                thumbnailsContainer.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('selected'));
+                                thumb.classList.add('selected');
+                            });
+                            thumbnailsContainer.appendChild(thumb);
+
+                            alignBtn.disabled = state.multiImages.length < 2;
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            clearBtn.addEventListener('click', () => {
+                state.multiImages = [];
+                thumbnailsContainer.innerHTML = '';
+                alignBtn.disabled = true;
+                document.getElementById('multi-results').style.display = 'none';
+            });
+
+            alignBtn.addEventListener('click', runMultiImageAlignment);
+        }
+
+        async function runMultiImageAlignment() {
+            if (state.multiImages.length < 2) {
+                UIComponents.showToast({ message: 'Please upload at least 2 images', type: 'warning' });
+                return;
+            }
+
+            const startTime = performance.now();
+            const method = document.getElementById('multi-method').value;
+            const resultsGrid = document.getElementById('multi-aligned-grid');
+            resultsGrid.innerHTML = '';
+
+            try {
+                // First image is reference
+                const refImg = state.multiImages[0];
+                const refMat = cv.imread(refImg);
+                const refGray = new cv.Mat();
+                cv.cvtColor(refMat, refGray, cv.COLOR_RGBA2GRAY);
+
+                // Add reference to results
+                addMultiResult(resultsGrid, refMat, 'Reference', 0);
+
+                // Process each subsequent image
+                for (let i = 1; i < state.multiImages.length; i++) {
+                    const movMat = cv.imread(state.multiImages[i]);
+                    const movGray = new cv.Mat();
+                    cv.cvtColor(movMat, movGray, cv.COLOR_RGBA2GRAY);
+
+                    let aligned;
+                    if (method === 'ecc') {
+                        aligned = alignWithECC(refMat, movMat, refGray, movGray);
+                    } else {
+                        aligned = alignWithFeatures(refMat, movMat, refGray, movGray);
+                    }
+
+                    if (aligned) {
+                        addMultiResult(resultsGrid, aligned, `Image ${i + 1}`, i);
+                        aligned.delete();
+                    } else {
+                        addMultiResult(resultsGrid, movMat, `Image ${i + 1} (Failed)`, i);
+                    }
+
+                    movMat.delete();
+                    movGray.delete();
+                }
+
+                const endTime = performance.now();
+
+                document.getElementById('multi-count').textContent = state.multiImages.length;
+                document.getElementById('multi-time').textContent = `${(endTime - startTime).toFixed(0)} ms`;
+                document.getElementById('multi-results').style.display = 'block';
+
+                refMat.delete();
+                refGray.delete();
+
+            } catch (error) {
+                console.error('Multi-image alignment error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        function addMultiResult(container, mat, label, index) {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+
+            const canvas = document.createElement('canvas');
+            canvas.id = `multi-result-${index}`;
+            item.appendChild(canvas);
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'result-label';
+            labelDiv.textContent = label;
+            item.appendChild(labelDiv);
+
+            container.appendChild(item);
+            cv.imshow(canvas, mat);
+        }
+
+        function alignWithECC(refMat, movMat, refGray, movGray) {
+            try {
+                const refFloat = new cv.Mat();
+                const movFloat = new cv.Mat();
+                refGray.convertTo(refFloat, cv.CV_32F);
+                movGray.convertTo(movFloat, cv.CV_32F);
+
+                const warpMatrix = cv.Mat.eye(2, 3, cv.CV_32F);
+                const criteria = new cv.TermCriteria(cv.TermCriteria_COUNT + cv.TermCriteria_EPS, 50, 1e-4);
+
+                cv.findTransformECC(refFloat, movFloat, warpMatrix, cv.MOTION_EUCLIDEAN, criteria);
+
+                const aligned = new cv.Mat();
+                cv.warpAffine(movMat, aligned, warpMatrix, new cv.Size(refMat.cols, refMat.rows), cv.INTER_LINEAR + cv.WARP_INVERSE_MAP);
+
+                refFloat.delete();
+                movFloat.delete();
+                warpMatrix.delete();
+
+                return aligned;
+            } catch (e) {
+                console.error('ECC alignment failed for image:', e);
+                return null;
+            }
+        }
+
+        function alignWithFeatures(refMat, movMat, refGray, movGray) {
+            try {
+                const detector = new cv.ORB(500);
+                const refKp = new cv.KeyPointVector();
+                const movKp = new cv.KeyPointVector();
+                const refDesc = new cv.Mat();
+                const movDesc = new cv.Mat();
+
+                detector.detectAndCompute(refGray, new cv.Mat(), refKp, refDesc);
+                detector.detectAndCompute(movGray, new cv.Mat(), movKp, movDesc);
+
+                const matcher = new cv.BFMatcher(cv.NORM_HAMMING, false);
+                const matches = new cv.DMatchVectorVector();
+                matcher.knnMatch(movDesc, refDesc, matches, 2);
+
+                const goodMatches = [];
+                for (let i = 0; i < matches.size(); i++) {
+                    const match = matches.get(i);
+                    if (match.size() >= 2) {
+                        const m = match.get(0);
+                        const n = match.get(1);
+                        if (m.distance < 0.75 * n.distance) {
+                            goodMatches.push(m);
+                        }
+                    }
+                }
+
+                if (goodMatches.length < 4) {
+                    throw new Error('Not enough matches');
+                }
+
+                const srcPoints = [];
+                const dstPoints = [];
+                goodMatches.forEach(match => {
+                    const srcKp = movKp.get(match.queryIdx);
+                    const dstKp = refKp.get(match.trainIdx);
+                    srcPoints.push(srcKp.pt.x, srcKp.pt.y);
+                    dstPoints.push(dstKp.pt.x, dstKp.pt.y);
+                });
+
+                const srcPtsMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, srcPoints);
+                const dstPtsMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, dstPoints);
+
+                const H = cv.findHomography(srcPtsMat, dstPtsMat, cv.RANSAC);
+
+                const aligned = new cv.Mat();
+                cv.warpPerspective(movMat, aligned, H, new cv.Size(refMat.cols, refMat.rows));
+
+                // Cleanup
+                detector.delete();
+                refKp.delete();
+                movKp.delete();
+                refDesc.delete();
+                movDesc.delete();
+                matcher.delete();
+                matches.delete();
+                srcPtsMat.delete();
+                dstPtsMat.delete();
+                H.delete();
+
+                return aligned;
+            } catch (e) {
+                console.error('Feature alignment failed for image:', e);
+                return null;
+            }
+        }
+
+        // ===============================
+        // Section 7: Masked Registration
+        // ===============================
+        function setupMaskedRegistrationSection() {
+            const refImg = document.getElementById('ref-image-7');
+            const drawCanvas = document.getElementById('mask-draw-canvas');
+            const drawArea = document.getElementById('mask-draw-area');
+            let ctx;
+
+            // Watch for reference image upload
+            const observer = new MutationObserver(() => {
+                if (refImg.src && refImg.complete) {
+                    setupMaskDrawing();
+                }
+            });
+            observer.observe(refImg, { attributes: true, attributeFilter: ['src'] });
+
+            refImg.addEventListener('load', setupMaskDrawing);
+
+            function setupMaskDrawing() {
+                drawCanvas.width = refImg.naturalWidth || refImg.width;
+                drawCanvas.height = refImg.naturalHeight || refImg.height;
+                ctx = drawCanvas.getContext('2d');
+
+                // Draw the image
+                ctx.drawImage(refImg, 0, 0);
+
+                // Initialize mask
+                state.masks['ref-7'] = new cv.Mat(drawCanvas.height, drawCanvas.width, cv.CV_8UC1, new cv.Scalar(255));
+
+                drawArea.style.display = 'block';
+            }
+
+            // Drawing controls
+            document.getElementById('draw-include').addEventListener('click', () => {
+                state.currentMaskMode = 'include';
+                document.getElementById('draw-include').classList.add('active');
+                document.getElementById('draw-exclude').classList.remove('active');
+            });
+
+            document.getElementById('draw-exclude').addEventListener('click', () => {
+                state.currentMaskMode = 'exclude';
+                document.getElementById('draw-exclude').classList.add('active');
+                document.getElementById('draw-include').classList.remove('active');
+            });
+
+            document.getElementById('clear-mask').addEventListener('click', () => {
+                if (refImg.src) {
+                    ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                    ctx.drawImage(refImg, 0, 0);
+                    state.masks['ref-7'] = new cv.Mat(drawCanvas.height, drawCanvas.width, cv.CV_8UC1, new cv.Scalar(255));
+                }
+            });
+
+            // Drawing events
+            drawCanvas.addEventListener('mousedown', (e) => {
+                if (!state.currentMaskMode) return;
+                state.isDrawing = true;
+                const rect = drawCanvas.getBoundingClientRect();
+                const scaleX = drawCanvas.width / rect.width;
+                const scaleY = drawCanvas.height / rect.height;
+                state.lastPoint = {
+                    x: (e.clientX - rect.left) * scaleX,
+                    y: (e.clientY - rect.top) * scaleY
+                };
+            });
+
+            drawCanvas.addEventListener('mousemove', (e) => {
+                if (!state.isDrawing || !state.currentMaskMode) return;
+
+                const rect = drawCanvas.getBoundingClientRect();
+                const scaleX = drawCanvas.width / rect.width;
+                const scaleY = drawCanvas.height / rect.height;
+                const currentPoint = {
+                    x: (e.clientX - rect.left) * scaleX,
+                    y: (e.clientY - rect.top) * scaleY
+                };
+
+                ctx.beginPath();
+                ctx.moveTo(state.lastPoint.x, state.lastPoint.y);
+                ctx.lineTo(currentPoint.x, currentPoint.y);
+                ctx.lineWidth = 20;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = state.currentMaskMode === 'include' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+                ctx.stroke();
+
+                // Update mask
+                const maskValue = state.currentMaskMode === 'include' ? 255 : 0;
+                cv.line(state.masks['ref-7'],
+                    new cv.Point(Math.round(state.lastPoint.x), Math.round(state.lastPoint.y)),
+                    new cv.Point(Math.round(currentPoint.x), Math.round(currentPoint.y)),
+                    new cv.Scalar(maskValue), 20);
+
+                state.lastPoint = currentPoint;
+            });
+
+            drawCanvas.addEventListener('mouseup', () => {
+                state.isDrawing = false;
+            });
+
+            drawCanvas.addEventListener('mouseleave', () => {
+                state.isDrawing = false;
+            });
+
+            document.getElementById('run-masked-registration').addEventListener('click', runMaskedRegistration);
+        }
+
+        function runMaskedRegistration() {
+            const refImg = document.getElementById('ref-image-7');
+            const movImg = document.getElementById('mov-image-7');
+
+            if (!refImg.src || !movImg.src) {
+                UIComponents.showToast({ message: 'Please upload both images', type: 'warning' });
+                return;
+            }
+
+            try {
+                const refMat = cv.imread(refImg);
+                const movMat = cv.imread(movImg);
+                const mask = state.masks['ref-7'] || new cv.Mat(refMat.rows, refMat.cols, cv.CV_8UC1, new cv.Scalar(255));
+
+                // Show mask preview
+                const maskPreview = new cv.Mat();
+                cv.cvtColor(mask, maskPreview, cv.COLOR_GRAY2RGBA);
+                cv.imshow('mask-preview-canvas', maskPreview);
+
+                // Convert to grayscale
+                const refGray = new cv.Mat();
+                const movGray = new cv.Mat();
+                cv.cvtColor(refMat, refGray, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(movMat, movGray, cv.COLOR_RGBA2GRAY);
+
+                // Detect features with mask
+                const detector = new cv.ORB(500);
+                const refKp = new cv.KeyPointVector();
+                const movKp = new cv.KeyPointVector();
+                const refDesc = new cv.Mat();
+                const movDesc = new cv.Mat();
+
+                detector.detectAndCompute(refGray, mask, refKp, refDesc);
+                detector.detectAndCompute(movGray, new cv.Mat(), movKp, movDesc);
+
+                // Match and find homography
+                const matcher = new cv.BFMatcher(cv.NORM_HAMMING, false);
+                const matches = new cv.DMatchVectorVector();
+                matcher.knnMatch(movDesc, refDesc, matches, 2);
+
+                const goodMatches = [];
+                for (let i = 0; i < matches.size(); i++) {
+                    const match = matches.get(i);
+                    if (match.size() >= 2) {
+                        const m = match.get(0);
+                        const n = match.get(1);
+                        if (m.distance < 0.75 * n.distance) {
+                            goodMatches.push(m);
+                        }
+                    }
+                }
+
+                if (goodMatches.length < 4) {
+                    UIComponents.showToast({ message: 'Not enough matches in masked region', type: 'error' });
+                    return;
+                }
+
+                const srcPoints = [];
+                const dstPoints = [];
+                goodMatches.forEach(match => {
+                    const srcKp = movKp.get(match.queryIdx);
+                    const dstKp = refKp.get(match.trainIdx);
+                    srcPoints.push(srcKp.pt.x, srcKp.pt.y);
+                    dstPoints.push(dstKp.pt.x, dstKp.pt.y);
+                });
+
+                const srcPtsMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, srcPoints);
+                const dstPtsMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, dstPoints);
+
+                const H = cv.findHomography(srcPtsMat, dstPtsMat, cv.RANSAC);
+
+                const aligned = new cv.Mat();
+                cv.warpPerspective(movMat, aligned, H, new cv.Size(refMat.cols, refMat.rows));
+                cv.imshow('masked-aligned-canvas', aligned);
+
+                document.getElementById('mask-results').style.display = 'block';
+
+                // Cleanup
+                refMat.delete();
+                movMat.delete();
+                maskPreview.delete();
+                refGray.delete();
+                movGray.delete();
+                detector.delete();
+                refKp.delete();
+                movKp.delete();
+                refDesc.delete();
+                movDesc.delete();
+                matcher.delete();
+                matches.delete();
+                srcPtsMat.delete();
+                dstPtsMat.delete();
+                H.delete();
+                aligned.delete();
+
+            } catch (error) {
+                console.error('Masked registration error:', error);
+                UIComponents.showToast({ message: `Error: ${error.message}`, type: 'error' });
+            }
+        }
+    </script>
+</body>
+</html>

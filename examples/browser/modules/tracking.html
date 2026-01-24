@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking & Motion - OpenCV.js Demos</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for tracking demos */
+        .selection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .roi-box {
+            position: absolute;
+            border: 2px dashed var(--accent-primary);
+            background: rgba(99, 102, 241, 0.2);
+            pointer-events: none;
+        }
+
+        .tracking-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .tracking-status.tracking {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .tracking-status.lost {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
+        .tracking-status.selecting {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .tracking-status.idle {
+            background: rgba(152, 152, 168, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .flow-legend {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .flow-legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .flow-legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .triple-output {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        @media (max-width: 900px) {
+            .triple-output {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .instruction-text {
+            background: var(--bg-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Tracking & Motion</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Tracking & Motion</h1>
+            <p>Video tracking and motion analysis using video, tracking, optflow, and bgsegm modules</p>
+        </header>
+
+        <!-- Demo 1: Object Tracking -->
+        <section class="demo-section" id="object-tracking-section">
+            <h3>1. Object Tracking</h3>
+            <p class="instruction-text">
+                Start the webcam, then click and drag on the video to select an object to track.
+                The tracker will follow the selected object in real-time.
+            </p>
+
+            <div class="demo-controls">
+                <div id="tracking-webcam-controls"></div>
+
+                <div class="form-group">
+                    <label for="tracker-select">Tracker Algorithm</label>
+                    <select id="tracker-select">
+                        <option value="kcf">KCF Tracker</option>
+                        <option value="csrt">CSRT Tracker</option>
+                    </select>
+                </div>
+
+                <button id="reset-tracking-btn" class="btn btn-secondary" disabled>Reset Tracking</button>
+
+                <div class="tracking-status idle" id="tracking-status">
+                    <span>Idle</span>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container" id="tracking-container" style="position: relative;">
+                    <video id="tracking-video" autoplay playsinline style="display: none;"></video>
+                    <canvas id="tracking-canvas"></canvas>
+                    <span class="canvas-label">Object Tracking</span>
+                    <div class="selection-overlay" id="selection-overlay" style="display: none;"></div>
+                    <div class="roi-box" id="roi-box" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="metrics" id="tracking-metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="tracking-fps">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value" id="tracking-state">Stopped</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">ROI</span>
+                    <span class="metric-value" id="tracking-roi">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo 2: Optical Flow (Lucas-Kanade) -->
+        <section class="demo-section" id="lucas-kanade-section">
+            <h3>2. Optical Flow (Lucas-Kanade)</h3>
+            <p class="instruction-text">
+                Detects good features to track using Shi-Tomasi corner detection and tracks them
+                across frames using Lucas-Kanade sparse optical flow.
+            </p>
+
+            <div class="demo-controls">
+                <div id="lk-webcam-controls"></div>
+
+                <div class="form-group">
+                    <label for="lk-max-points">Max Points</label>
+                    <div class="range-group">
+                        <input type="range" id="lk-max-points" min="50" max="200" value="100" step="10">
+                        <span class="range-value" id="lk-max-points-value">100</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <label for="lk-show-points" style="margin-bottom: 0;">Show Points</label>
+                    <div class="toggle active" id="lk-show-points" role="switch" aria-checked="true"></div>
+                </div>
+
+                <button id="lk-reset-points" class="btn btn-secondary">Detect New Points</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <video id="lk-video" autoplay playsinline style="display: none;"></video>
+                    <canvas id="lk-canvas"></canvas>
+                    <span class="canvas-label">Lucas-Kanade Optical Flow</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="lk-fps">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Points</span>
+                    <span class="metric-value" id="lk-points-count">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo 3: Dense Optical Flow (Farneback) -->
+        <section class="demo-section" id="farneback-section">
+            <h3>3. Dense Optical Flow (Farneback)</h3>
+            <p class="instruction-text">
+                Calculates dense optical flow using Farneback algorithm. Motion direction is
+                encoded as color hue, and magnitude as brightness in HSV color space.
+            </p>
+
+            <div class="demo-controls">
+                <div id="farneback-webcam-controls"></div>
+
+                <div class="form-group">
+                    <label for="farneback-scale">Pyramid Scale</label>
+                    <div class="range-group">
+                        <input type="range" id="farneback-scale" min="0.3" max="0.9" value="0.5" step="0.1">
+                        <span class="range-value" id="farneback-scale-value">0.5</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="farneback-levels">Pyramid Levels</label>
+                    <div class="range-group">
+                        <input type="range" id="farneback-levels" min="1" max="5" value="3" step="1">
+                        <span class="range-value" id="farneback-levels-value">3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <video id="farneback-video" autoplay playsinline style="display: none;"></video>
+                    <canvas id="farneback-canvas"></canvas>
+                    <span class="canvas-label">Dense Optical Flow (HSV Visualization)</span>
+                </div>
+            </div>
+
+            <div class="flow-legend">
+                <div class="flow-legend-item">
+                    <div class="flow-legend-color" style="background: linear-gradient(90deg, red, yellow, lime, cyan, blue, magenta, red);"></div>
+                    <span>Direction (Hue)</span>
+                </div>
+                <div class="flow-legend-item">
+                    <div class="flow-legend-color" style="background: linear-gradient(90deg, #333, #fff);"></div>
+                    <span>Magnitude (Brightness)</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="farneback-fps">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Avg Flow</span>
+                    <span class="metric-value" id="farneback-avg-flow">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo 4: Background Subtraction -->
+        <section class="demo-section" id="background-subtraction-section">
+            <h3>4. Background Subtraction</h3>
+            <p class="instruction-text">
+                Separates foreground objects from the background using statistical models.
+                Useful for motion detection and object segmentation in video surveillance.
+            </p>
+
+            <div class="demo-controls">
+                <div id="bgsub-webcam-controls"></div>
+
+                <div class="form-group">
+                    <label for="bgsub-method">Method</label>
+                    <select id="bgsub-method">
+                        <option value="mog2">MOG2</option>
+                        <option value="knn">KNN</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bgsub-history">History</label>
+                    <div class="range-group">
+                        <input type="range" id="bgsub-history" min="100" max="1000" value="500" step="50">
+                        <span class="range-value" id="bgsub-history-value">500</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bgsub-threshold">Var Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="bgsub-threshold" min="8" max="64" value="16" step="4">
+                        <span class="range-value" id="bgsub-threshold-value">16</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <label for="bgsub-shadows" style="margin-bottom: 0;">Detect Shadows</label>
+                    <div class="toggle active" id="bgsub-shadows" role="switch" aria-checked="true"></div>
+                </div>
+            </div>
+
+            <div class="demo-output triple-output">
+                <div class="canvas-container">
+                    <video id="bgsub-video" autoplay playsinline style="display: none;"></video>
+                    <canvas id="bgsub-original-canvas"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="bgsub-mask-canvas"></canvas>
+                    <span class="canvas-label">Foreground Mask</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="bgsub-fg-canvas"></canvas>
+                    <span class="canvas-label">Foreground Objects</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="bgsub-fps">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Foreground %</span>
+                    <span class="metric-value" id="bgsub-fg-percent">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo 5: Motion Detection -->
+        <section class="demo-section" id="motion-detection-section">
+            <h3>5. Motion Detection</h3>
+            <p class="instruction-text">
+                Simple frame differencing approach to detect motion. Compares consecutive frames
+                and highlights areas where changes exceed the threshold.
+            </p>
+
+            <div class="demo-controls">
+                <div id="motion-webcam-controls"></div>
+
+                <div class="form-group">
+                    <label for="motion-threshold">Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="motion-threshold" min="10" max="100" value="30" step="5">
+                        <span class="range-value" id="motion-threshold-value">30</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="motion-blur">Blur Size</label>
+                    <div class="range-group">
+                        <input type="range" id="motion-blur" min="1" max="15" value="5" step="2">
+                        <span class="range-value" id="motion-blur-value">5</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <label for="motion-highlight" style="margin-bottom: 0;">Highlight Motion</label>
+                    <div class="toggle active" id="motion-highlight" role="switch" aria-checked="true"></div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <video id="motion-video" autoplay playsinline style="display: none;"></video>
+                    <canvas id="motion-canvas"></canvas>
+                    <span class="canvas-label">Motion Detection</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="motion-fps">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Motion %</span>
+                    <span class="metric-value" id="motion-percent">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Motion Area</span>
+                    <span class="metric-value" id="motion-area">--</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // ========================================
+        // Global State & Initialization
+        // ========================================
+
+        const demos = {
+            tracking: { stream: null, animationId: null, running: false },
+            lk: { stream: null, animationId: null, running: false },
+            farneback: { stream: null, animationId: null, running: false },
+            bgsub: { stream: null, animationId: null, running: false },
+            motion: { stream: null, animationId: null, running: false }
+        };
+
+        // FPS calculation helper
+        class FPSCounter {
+            constructor() {
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.fps = 0;
+            }
+
+            update() {
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                }
+                return this.fps;
+            }
+
+            reset() {
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.fps = 0;
+            }
+        }
+
+        // Check feature availability
+        function checkTrackerAvailability() {
+            const trackerSelect = document.getElementById('tracker-select');
+            const kcfAvailable = typeof cv.TrackerKCF !== 'undefined';
+            const csrtAvailable = typeof cv.TrackerCSRT !== 'undefined';
+
+            if (!kcfAvailable && !csrtAvailable) {
+                trackerSelect.innerHTML = '<option value="none" disabled>No trackers available</option>';
+                trackerSelect.disabled = true;
+            } else {
+                trackerSelect.innerHTML = '';
+                if (kcfAvailable) {
+                    trackerSelect.innerHTML += '<option value="kcf">KCF Tracker</option>';
+                }
+                if (csrtAvailable) {
+                    trackerSelect.innerHTML += '<option value="csrt">CSRT Tracker</option>';
+                }
+            }
+        }
+
+        function checkBgSubAvailability() {
+            const methodSelect = document.getElementById('bgsub-method');
+            const mog2Available = typeof cv.BackgroundSubtractorMOG2 !== 'undefined';
+            const knnAvailable = typeof cv.BackgroundSubtractorKNN !== 'undefined';
+
+            methodSelect.innerHTML = '';
+            if (mog2Available) {
+                methodSelect.innerHTML += '<option value="mog2">MOG2</option>';
+            }
+            if (knnAvailable) {
+                methodSelect.innerHTML += '<option value="knn">KNN</option>';
+            }
+            if (!mog2Available && !knnAvailable) {
+                methodSelect.innerHTML = '<option value="none" disabled>No methods available</option>';
+                methodSelect.disabled = true;
+            }
+        }
+
+        // ========================================
+        // Demo 1: Object Tracking
+        // ========================================
+
+        const trackingState = {
+            video: null,
+            canvas: null,
+            ctx: null,
+            tracker: null,
+            roi: null,
+            isSelecting: false,
+            isTracking: false,
+            startX: 0,
+            startY: 0,
+            fpsCounter: new FPSCounter(),
+            prevFrame: null
+        };
+
+        function initTrackingDemo() {
+            trackingState.video = document.getElementById('tracking-video');
+            trackingState.canvas = document.getElementById('tracking-canvas');
+            trackingState.ctx = trackingState.canvas.getContext('2d');
+
+            const controlsContainer = document.getElementById('tracking-webcam-controls');
+            const webcamControls = UIComponents.createWebcamControls({
+                onStart: startTrackingWebcam,
+                onStop: stopTrackingWebcam
+            });
+            controlsContainer.appendChild(webcamControls);
+
+            // ROI selection events
+            const overlay = document.getElementById('selection-overlay');
+            const roiBox = document.getElementById('roi-box');
+            const container = document.getElementById('tracking-container');
+
+            overlay.addEventListener('mousedown', (e) => {
+                if (!demos.tracking.running) return;
+
+                const rect = container.getBoundingClientRect();
+                trackingState.startX = e.clientX - rect.left;
+                trackingState.startY = e.clientY - rect.top;
+                trackingState.isSelecting = true;
+
+                roiBox.style.display = 'block';
+                roiBox.style.left = trackingState.startX + 'px';
+                roiBox.style.top = trackingState.startY + 'px';
+                roiBox.style.width = '0px';
+                roiBox.style.height = '0px';
+
+                updateTrackingStatus('selecting', 'Selecting ROI...');
+            });
+
+            overlay.addEventListener('mousemove', (e) => {
+                if (!trackingState.isSelecting) return;
+
+                const rect = container.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+
+                const width = currentX - trackingState.startX;
+                const height = currentY - trackingState.startY;
+
+                roiBox.style.width = Math.abs(width) + 'px';
+                roiBox.style.height = Math.abs(height) + 'px';
+                roiBox.style.left = (width < 0 ? currentX : trackingState.startX) + 'px';
+                roiBox.style.top = (height < 0 ? currentY : trackingState.startY) + 'px';
+            });
+
+            overlay.addEventListener('mouseup', (e) => {
+                if (!trackingState.isSelecting) return;
+                trackingState.isSelecting = false;
+
+                const rect = container.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+
+                // Calculate ROI in video coordinates
+                const scaleX = trackingState.video.videoWidth / container.clientWidth;
+                const scaleY = trackingState.video.videoHeight / container.clientHeight;
+
+                const x = Math.min(trackingState.startX, endX) * scaleX;
+                const y = Math.min(trackingState.startY, endY) * scaleY;
+                const w = Math.abs(endX - trackingState.startX) * scaleX;
+                const h = Math.abs(endY - trackingState.startY) * scaleY;
+
+                if (w > 10 && h > 10) {
+                    trackingState.roi = new cv.Rect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+                    initializeTracker();
+                } else {
+                    roiBox.style.display = 'none';
+                    updateTrackingStatus('idle', 'Selection too small');
+                }
+            });
+
+            document.getElementById('reset-tracking-btn').addEventListener('click', resetTracking);
+        }
+
+        function initializeTracker() {
+            const trackerType = document.getElementById('tracker-select').value;
+
+            if (trackingState.tracker) {
+                trackingState.tracker.delete();
+                trackingState.tracker = null;
+            }
+
+            try {
+                if (trackerType === 'kcf' && typeof cv.TrackerKCF !== 'undefined') {
+                    trackingState.tracker = new cv.TrackerKCF();
+                } else if (trackerType === 'csrt' && typeof cv.TrackerCSRT !== 'undefined') {
+                    trackingState.tracker = new cv.TrackerCSRT();
+                } else {
+                    updateTrackingStatus('lost', 'Tracker not available');
+                    return;
+                }
+
+                // Capture current frame and initialize tracker
+                const frame = captureVideoFrame(trackingState.video);
+                trackingState.tracker.init(frame, trackingState.roi);
+                frame.delete();
+
+                trackingState.isTracking = true;
+                document.getElementById('reset-tracking-btn').disabled = false;
+                document.getElementById('roi-box').style.display = 'none';
+                updateTrackingStatus('tracking', 'Tracking...');
+
+                document.getElementById('tracking-roi').textContent =
+                    `${Math.round(trackingState.roi.x)},${Math.round(trackingState.roi.y)} ${Math.round(trackingState.roi.width)}x${Math.round(trackingState.roi.height)}`;
+
+            } catch (err) {
+                console.error('Tracker initialization error:', err);
+                updateTrackingStatus('lost', 'Init failed');
+            }
+        }
+
+        function resetTracking() {
+            if (trackingState.tracker) {
+                trackingState.tracker.delete();
+                trackingState.tracker = null;
+            }
+            trackingState.roi = null;
+            trackingState.isTracking = false;
+            document.getElementById('roi-box').style.display = 'none';
+            document.getElementById('reset-tracking-btn').disabled = true;
+            document.getElementById('tracking-roi').textContent = '--';
+            updateTrackingStatus('idle', 'Select an object');
+        }
+
+        function updateTrackingStatus(state, text) {
+            const statusEl = document.getElementById('tracking-status');
+            statusEl.className = 'tracking-status ' + state;
+            statusEl.querySelector('span').textContent = text;
+        }
+
+        async function startTrackingWebcam() {
+            try {
+                demos.tracking.stream = await Utils.getWebcam();
+                trackingState.video.srcObject = demos.tracking.stream;
+
+                trackingState.video.onloadedmetadata = () => {
+                    trackingState.canvas.width = trackingState.video.videoWidth;
+                    trackingState.canvas.height = trackingState.video.videoHeight;
+
+                    demos.tracking.running = true;
+                    document.getElementById('selection-overlay').style.display = 'block';
+                    document.getElementById('tracking-state').textContent = 'Running';
+                    updateTrackingStatus('idle', 'Select an object');
+                    trackingState.fpsCounter.reset();
+
+                    processTrackingFrame();
+                };
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({ message: 'Webcam access denied', type: 'error' });
+            }
+        }
+
+        function stopTrackingWebcam() {
+            demos.tracking.running = false;
+            if (demos.tracking.animationId) {
+                cancelAnimationFrame(demos.tracking.animationId);
+                demos.tracking.animationId = null;
+            }
+            if (demos.tracking.stream) {
+                Utils.stopWebcam(demos.tracking.stream);
+                demos.tracking.stream = null;
+            }
+            trackingState.video.srcObject = null;
+            document.getElementById('selection-overlay').style.display = 'none';
+            document.getElementById('tracking-state').textContent = 'Stopped';
+            document.getElementById('tracking-fps').textContent = '--';
+            resetTracking();
+        }
+
+        function processTrackingFrame() {
+            if (!demos.tracking.running) return;
+
+            const frame = captureVideoFrame(trackingState.video);
+
+            try {
+                if (trackingState.isTracking && trackingState.tracker) {
+                    const [success, box] = trackingState.tracker.update(frame);
+
+                    if (success) {
+                        // Draw bounding box
+                        const pt1 = new cv.Point(box.x, box.y);
+                        const pt2 = new cv.Point(box.x + box.width, box.y + box.height);
+                        cv.rectangle(frame, pt1, pt2, new cv.Scalar(99, 102, 241, 255), 2);
+
+                        // Draw center point
+                        const center = new cv.Point(box.x + box.width / 2, box.y + box.height / 2);
+                        cv.circle(frame, center, 4, new cv.Scalar(16, 185, 129, 255), -1);
+
+                        trackingState.roi = box;
+                        document.getElementById('tracking-roi').textContent =
+                            `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}`;
+                    } else {
+                        updateTrackingStatus('lost', 'Lost');
+                        trackingState.isTracking = false;
+                    }
+                }
+
+                cv.imshow(trackingState.canvas, frame);
+
+            } catch (err) {
+                console.error('Tracking frame error:', err);
+            }
+
+            frame.delete();
+
+            const fps = trackingState.fpsCounter.update();
+            document.getElementById('tracking-fps').textContent = fps;
+
+            demos.tracking.animationId = requestAnimationFrame(processTrackingFrame);
+        }
+
+        // ========================================
+        // Demo 2: Lucas-Kanade Optical Flow
+        // ========================================
+
+        const lkState = {
+            video: null,
+            canvas: null,
+            prevGray: null,
+            prevPoints: null,
+            colors: [],
+            fpsCounter: new FPSCounter(),
+            showPoints: true
+        };
+
+        function initLKDemo() {
+            lkState.video = document.getElementById('lk-video');
+            lkState.canvas = document.getElementById('lk-canvas');
+
+            const controlsContainer = document.getElementById('lk-webcam-controls');
+            const webcamControls = UIComponents.createWebcamControls({
+                onStart: startLKWebcam,
+                onStop: stopLKWebcam
+            });
+            controlsContainer.appendChild(webcamControls);
+
+            // Max points slider
+            const maxPointsSlider = document.getElementById('lk-max-points');
+            const maxPointsValue = document.getElementById('lk-max-points-value');
+            maxPointsSlider.addEventListener('input', () => {
+                maxPointsValue.textContent = maxPointsSlider.value;
+            });
+
+            // Show points toggle
+            const showPointsToggle = document.getElementById('lk-show-points');
+            showPointsToggle.addEventListener('click', () => {
+                lkState.showPoints = showPointsToggle.classList.toggle('active');
+            });
+
+            // Reset points button
+            document.getElementById('lk-reset-points').addEventListener('click', () => {
+                if (demos.lk.running) {
+                    detectLKPoints();
+                }
+            });
+
+            // Generate random colors for tracks
+            for (let i = 0; i < 200; i++) {
+                lkState.colors.push([
+                    Math.floor(Math.random() * 256),
+                    Math.floor(Math.random() * 256),
+                    Math.floor(Math.random() * 256)
+                ]);
+            }
+        }
+
+        function detectLKPoints() {
+            if (lkState.prevGray) {
+                lkState.prevGray.delete();
+            }
+            if (lkState.prevPoints) {
+                lkState.prevPoints.delete();
+            }
+
+            const frame = captureVideoFrame(lkState.video);
+            lkState.prevGray = new cv.Mat();
+            cv.cvtColor(frame, lkState.prevGray, cv.COLOR_RGBA2GRAY);
+
+            const maxCorners = parseInt(document.getElementById('lk-max-points').value);
+            lkState.prevPoints = new cv.Mat();
+
+            cv.goodFeaturesToTrack(
+                lkState.prevGray,
+                lkState.prevPoints,
+                maxCorners,
+                0.01,
+                10
+            );
+
+            frame.delete();
+        }
+
+        async function startLKWebcam() {
+            try {
+                demos.lk.stream = await Utils.getWebcam();
+                lkState.video.srcObject = demos.lk.stream;
+
+                lkState.video.onloadedmetadata = () => {
+                    lkState.canvas.width = lkState.video.videoWidth;
+                    lkState.canvas.height = lkState.video.videoHeight;
+
+                    demos.lk.running = true;
+                    lkState.fpsCounter.reset();
+
+                    // Wait a moment for video to stabilize, then detect points
+                    setTimeout(() => {
+                        detectLKPoints();
+                        processLKFrame();
+                    }, 500);
+                };
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({ message: 'Webcam access denied', type: 'error' });
+            }
+        }
+
+        function stopLKWebcam() {
+            demos.lk.running = false;
+            if (demos.lk.animationId) {
+                cancelAnimationFrame(demos.lk.animationId);
+                demos.lk.animationId = null;
+            }
+            if (demos.lk.stream) {
+                Utils.stopWebcam(demos.lk.stream);
+                demos.lk.stream = null;
+            }
+            lkState.video.srcObject = null;
+
+            if (lkState.prevGray) {
+                lkState.prevGray.delete();
+                lkState.prevGray = null;
+            }
+            if (lkState.prevPoints) {
+                lkState.prevPoints.delete();
+                lkState.prevPoints = null;
+            }
+
+            document.getElementById('lk-fps').textContent = '--';
+            document.getElementById('lk-points-count').textContent = '--';
+        }
+
+        function processLKFrame() {
+            if (!demos.lk.running) return;
+
+            const frame = captureVideoFrame(lkState.video);
+            const gray = new cv.Mat();
+            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+            try {
+                if (lkState.prevPoints && lkState.prevPoints.rows > 0) {
+                    const nextPoints = new cv.Mat();
+                    const status = new cv.Mat();
+                    const err = new cv.Mat();
+
+                    cv.calcOpticalFlowPyrLK(
+                        lkState.prevGray,
+                        gray,
+                        lkState.prevPoints,
+                        nextPoints,
+                        status,
+                        err,
+                        new cv.Size(21, 21),
+                        3
+                    );
+
+                    // Draw flow vectors
+                    let goodPointsCount = 0;
+                    const goodNew = [];
+                    const goodOld = [];
+
+                    for (let i = 0; i < status.rows; i++) {
+                        if (status.data[i] === 1) {
+                            const newPt = { x: nextPoints.data32F[i * 2], y: nextPoints.data32F[i * 2 + 1] };
+                            const oldPt = { x: lkState.prevPoints.data32F[i * 2], y: lkState.prevPoints.data32F[i * 2 + 1] };
+
+                            goodNew.push(newPt);
+                            goodOld.push(oldPt);
+                            goodPointsCount++;
+
+                            // Draw flow line
+                            const color = lkState.colors[i % lkState.colors.length];
+                            cv.line(
+                                frame,
+                                new cv.Point(Math.round(oldPt.x), Math.round(oldPt.y)),
+                                new cv.Point(Math.round(newPt.x), Math.round(newPt.y)),
+                                new cv.Scalar(color[0], color[1], color[2], 255),
+                                2
+                            );
+
+                            // Draw point
+                            if (lkState.showPoints) {
+                                cv.circle(
+                                    frame,
+                                    new cv.Point(Math.round(newPt.x), Math.round(newPt.y)),
+                                    4,
+                                    new cv.Scalar(color[0], color[1], color[2], 255),
+                                    -1
+                                );
+                            }
+                        }
+                    }
+
+                    document.getElementById('lk-points-count').textContent = goodPointsCount;
+
+                    // Update previous frame and points
+                    lkState.prevGray.delete();
+                    lkState.prevGray = gray.clone();
+
+                    // Update points - rebuild from good points
+                    lkState.prevPoints.delete();
+                    if (goodNew.length > 0) {
+                        lkState.prevPoints = cv.matFromArray(goodNew.length, 1, cv.CV_32FC2,
+                            goodNew.flatMap(p => [p.x, p.y]));
+                    } else {
+                        // Re-detect points if we lost them all
+                        detectLKPoints();
+                    }
+
+                    nextPoints.delete();
+                    status.delete();
+                    err.delete();
+                } else {
+                    // Need to detect points
+                    lkState.prevGray = gray.clone();
+                    detectLKPoints();
+                }
+
+                cv.imshow(lkState.canvas, frame);
+
+            } catch (err) {
+                console.error('LK frame error:', err);
+            }
+
+            frame.delete();
+            gray.delete();
+
+            const fps = lkState.fpsCounter.update();
+            document.getElementById('lk-fps').textContent = fps;
+
+            demos.lk.animationId = requestAnimationFrame(processLKFrame);
+        }
+
+        // ========================================
+        // Demo 3: Dense Optical Flow (Farneback)
+        // ========================================
+
+        const farnebackState = {
+            video: null,
+            canvas: null,
+            prevGray: null,
+            fpsCounter: new FPSCounter()
+        };
+
+        function initFarnebackDemo() {
+            farnebackState.video = document.getElementById('farneback-video');
+            farnebackState.canvas = document.getElementById('farneback-canvas');
+
+            const controlsContainer = document.getElementById('farneback-webcam-controls');
+            const webcamControls = UIComponents.createWebcamControls({
+                onStart: startFarnebackWebcam,
+                onStop: stopFarnebackWebcam
+            });
+            controlsContainer.appendChild(webcamControls);
+
+            // Sliders
+            const scaleSlider = document.getElementById('farneback-scale');
+            const scaleValue = document.getElementById('farneback-scale-value');
+            scaleSlider.addEventListener('input', () => {
+                scaleValue.textContent = scaleSlider.value;
+            });
+
+            const levelsSlider = document.getElementById('farneback-levels');
+            const levelsValue = document.getElementById('farneback-levels-value');
+            levelsSlider.addEventListener('input', () => {
+                levelsValue.textContent = levelsSlider.value;
+            });
+        }
+
+        async function startFarnebackWebcam() {
+            try {
+                demos.farneback.stream = await Utils.getWebcam();
+                farnebackState.video.srcObject = demos.farneback.stream;
+
+                farnebackState.video.onloadedmetadata = () => {
+                    farnebackState.canvas.width = farnebackState.video.videoWidth;
+                    farnebackState.canvas.height = farnebackState.video.videoHeight;
+
+                    demos.farneback.running = true;
+                    farnebackState.fpsCounter.reset();
+
+                    // Initialize previous frame
+                    const frame = captureVideoFrame(farnebackState.video);
+                    farnebackState.prevGray = new cv.Mat();
+                    cv.cvtColor(frame, farnebackState.prevGray, cv.COLOR_RGBA2GRAY);
+                    frame.delete();
+
+                    processFarnebackFrame();
+                };
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({ message: 'Webcam access denied', type: 'error' });
+            }
+        }
+
+        function stopFarnebackWebcam() {
+            demos.farneback.running = false;
+            if (demos.farneback.animationId) {
+                cancelAnimationFrame(demos.farneback.animationId);
+                demos.farneback.animationId = null;
+            }
+            if (demos.farneback.stream) {
+                Utils.stopWebcam(demos.farneback.stream);
+                demos.farneback.stream = null;
+            }
+            farnebackState.video.srcObject = null;
+
+            if (farnebackState.prevGray) {
+                farnebackState.prevGray.delete();
+                farnebackState.prevGray = null;
+            }
+
+            document.getElementById('farneback-fps').textContent = '--';
+            document.getElementById('farneback-avg-flow').textContent = '--';
+        }
+
+        function processFarnebackFrame() {
+            if (!demos.farneback.running) return;
+
+            const frame = captureVideoFrame(farnebackState.video);
+            const gray = new cv.Mat();
+            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+            try {
+                const flow = new cv.Mat();
+                const pyrScale = parseFloat(document.getElementById('farneback-scale').value);
+                const levels = parseInt(document.getElementById('farneback-levels').value);
+
+                cv.calcOpticalFlowFarneback(
+                    farnebackState.prevGray,
+                    gray,
+                    flow,
+                    pyrScale,
+                    levels,
+                    15,    // winsize
+                    3,     // iterations
+                    5,     // polyN
+                    1.2,   // polySigma
+                    0      // flags
+                );
+
+                // Convert flow to HSV visualization
+                const hsv = new cv.Mat(flow.rows, flow.cols, cv.CV_8UC3);
+                const mag = new cv.Mat();
+                const angle = new cv.Mat();
+
+                // Split flow into x and y components
+                const flowChannels = new cv.MatVector();
+                cv.split(flow, flowChannels);
+                const flowX = flowChannels.get(0);
+                const flowY = flowChannels.get(1);
+
+                cv.cartToPolar(flowX, flowY, mag, angle, true);
+
+                // Normalize magnitude
+                let maxMag = 0;
+                let avgMag = 0;
+                const magData = mag.data32F;
+                for (let i = 0; i < magData.length; i++) {
+                    if (magData[i] > maxMag) maxMag = magData[i];
+                    avgMag += magData[i];
+                }
+                avgMag /= magData.length;
+
+                document.getElementById('farneback-avg-flow').textContent = avgMag.toFixed(2);
+
+                // Create HSV image
+                const hsvData = hsv.data;
+                const angleData = angle.data32F;
+                for (let i = 0; i < flow.rows * flow.cols; i++) {
+                    const h = (angleData[i] / 2) % 180;  // Hue from angle
+                    const s = 255;  // Full saturation
+                    const v = Math.min(255, (magData[i] / Math.max(maxMag, 1)) * 255 * 3);  // Value from magnitude
+
+                    hsvData[i * 3] = h;
+                    hsvData[i * 3 + 1] = s;
+                    hsvData[i * 3 + 2] = v;
+                }
+
+                // Convert HSV to BGR for display
+                const bgr = new cv.Mat();
+                cv.cvtColor(hsv, bgr, cv.COLOR_HSV2RGB);
+
+                // Convert to RGBA
+                const rgba = new cv.Mat();
+                cv.cvtColor(bgr, rgba, cv.COLOR_RGB2RGBA);
+
+                cv.imshow(farnebackState.canvas, rgba);
+
+                // Update previous frame
+                farnebackState.prevGray.delete();
+                farnebackState.prevGray = gray.clone();
+
+                // Cleanup
+                flow.delete();
+                hsv.delete();
+                mag.delete();
+                angle.delete();
+                flowX.delete();
+                flowY.delete();
+                flowChannels.delete();
+                bgr.delete();
+                rgba.delete();
+
+            } catch (err) {
+                console.error('Farneback frame error:', err);
+            }
+
+            frame.delete();
+            gray.delete();
+
+            const fps = farnebackState.fpsCounter.update();
+            document.getElementById('farneback-fps').textContent = fps;
+
+            demos.farneback.animationId = requestAnimationFrame(processFarnebackFrame);
+        }
+
+        // ========================================
+        // Demo 4: Background Subtraction
+        // ========================================
+
+        const bgsubState = {
+            video: null,
+            originalCanvas: null,
+            maskCanvas: null,
+            fgCanvas: null,
+            subtractor: null,
+            fpsCounter: new FPSCounter()
+        };
+
+        function initBgSubDemo() {
+            bgsubState.video = document.getElementById('bgsub-video');
+            bgsubState.originalCanvas = document.getElementById('bgsub-original-canvas');
+            bgsubState.maskCanvas = document.getElementById('bgsub-mask-canvas');
+            bgsubState.fgCanvas = document.getElementById('bgsub-fg-canvas');
+
+            const controlsContainer = document.getElementById('bgsub-webcam-controls');
+            const webcamControls = UIComponents.createWebcamControls({
+                onStart: startBgSubWebcam,
+                onStop: stopBgSubWebcam
+            });
+            controlsContainer.appendChild(webcamControls);
+
+            checkBgSubAvailability();
+
+            // Sliders
+            const historySlider = document.getElementById('bgsub-history');
+            const historyValue = document.getElementById('bgsub-history-value');
+            historySlider.addEventListener('input', () => {
+                historyValue.textContent = historySlider.value;
+                if (demos.bgsub.running) recreateBgSubtractor();
+            });
+
+            const thresholdSlider = document.getElementById('bgsub-threshold');
+            const thresholdValue = document.getElementById('bgsub-threshold-value');
+            thresholdSlider.addEventListener('input', () => {
+                thresholdValue.textContent = thresholdSlider.value;
+                if (demos.bgsub.running) recreateBgSubtractor();
+            });
+
+            // Method select
+            document.getElementById('bgsub-method').addEventListener('change', () => {
+                if (demos.bgsub.running) recreateBgSubtractor();
+            });
+
+            // Shadows toggle
+            const shadowsToggle = document.getElementById('bgsub-shadows');
+            shadowsToggle.addEventListener('click', () => {
+                shadowsToggle.classList.toggle('active');
+                if (demos.bgsub.running) recreateBgSubtractor();
+            });
+        }
+
+        function recreateBgSubtractor() {
+            if (bgsubState.subtractor) {
+                bgsubState.subtractor.delete();
+            }
+
+            const method = document.getElementById('bgsub-method').value;
+            const history = parseInt(document.getElementById('bgsub-history').value);
+            const threshold = parseInt(document.getElementById('bgsub-threshold').value);
+            const detectShadows = document.getElementById('bgsub-shadows').classList.contains('active');
+
+            try {
+                if (method === 'mog2' && typeof cv.BackgroundSubtractorMOG2 !== 'undefined') {
+                    bgsubState.subtractor = new cv.BackgroundSubtractorMOG2(history, threshold, detectShadows);
+                } else if (method === 'knn' && typeof cv.BackgroundSubtractorKNN !== 'undefined') {
+                    bgsubState.subtractor = new cv.BackgroundSubtractorKNN(history, threshold, detectShadows);
+                }
+            } catch (err) {
+                console.error('Failed to create background subtractor:', err);
+            }
+        }
+
+        async function startBgSubWebcam() {
+            try {
+                demos.bgsub.stream = await Utils.getWebcam();
+                bgsubState.video.srcObject = demos.bgsub.stream;
+
+                bgsubState.video.onloadedmetadata = () => {
+                    bgsubState.originalCanvas.width = bgsubState.video.videoWidth;
+                    bgsubState.originalCanvas.height = bgsubState.video.videoHeight;
+                    bgsubState.maskCanvas.width = bgsubState.video.videoWidth;
+                    bgsubState.maskCanvas.height = bgsubState.video.videoHeight;
+                    bgsubState.fgCanvas.width = bgsubState.video.videoWidth;
+                    bgsubState.fgCanvas.height = bgsubState.video.videoHeight;
+
+                    recreateBgSubtractor();
+
+                    demos.bgsub.running = true;
+                    bgsubState.fpsCounter.reset();
+
+                    processBgSubFrame();
+                };
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({ message: 'Webcam access denied', type: 'error' });
+            }
+        }
+
+        function stopBgSubWebcam() {
+            demos.bgsub.running = false;
+            if (demos.bgsub.animationId) {
+                cancelAnimationFrame(demos.bgsub.animationId);
+                demos.bgsub.animationId = null;
+            }
+            if (demos.bgsub.stream) {
+                Utils.stopWebcam(demos.bgsub.stream);
+                demos.bgsub.stream = null;
+            }
+            bgsubState.video.srcObject = null;
+
+            if (bgsubState.subtractor) {
+                bgsubState.subtractor.delete();
+                bgsubState.subtractor = null;
+            }
+
+            document.getElementById('bgsub-fps').textContent = '--';
+            document.getElementById('bgsub-fg-percent').textContent = '--';
+        }
+
+        function processBgSubFrame() {
+            if (!demos.bgsub.running || !bgsubState.subtractor) return;
+
+            const frame = captureVideoFrame(bgsubState.video);
+
+            try {
+                // Apply background subtraction
+                const fgMask = new cv.Mat();
+                bgsubState.subtractor.apply(frame, fgMask);
+
+                // Calculate foreground percentage
+                const nonZero = cv.countNonZero(fgMask);
+                const total = fgMask.rows * fgMask.cols;
+                const fgPercent = ((nonZero / total) * 100).toFixed(1);
+                document.getElementById('bgsub-fg-percent').textContent = fgPercent + '%';
+
+                // Display original
+                cv.imshow(bgsubState.originalCanvas, frame);
+
+                // Display mask
+                cv.imshow(bgsubState.maskCanvas, fgMask);
+
+                // Extract foreground
+                const fg = new cv.Mat();
+                frame.copyTo(fg, fgMask);
+                cv.imshow(bgsubState.fgCanvas, fg);
+
+                fgMask.delete();
+                fg.delete();
+
+            } catch (err) {
+                console.error('BgSub frame error:', err);
+            }
+
+            frame.delete();
+
+            const fps = bgsubState.fpsCounter.update();
+            document.getElementById('bgsub-fps').textContent = fps;
+
+            demos.bgsub.animationId = requestAnimationFrame(processBgSubFrame);
+        }
+
+        // ========================================
+        // Demo 5: Motion Detection
+        // ========================================
+
+        const motionState = {
+            video: null,
+            canvas: null,
+            prevFrame: null,
+            fpsCounter: new FPSCounter(),
+            highlight: true
+        };
+
+        function initMotionDemo() {
+            motionState.video = document.getElementById('motion-video');
+            motionState.canvas = document.getElementById('motion-canvas');
+
+            const controlsContainer = document.getElementById('motion-webcam-controls');
+            const webcamControls = UIComponents.createWebcamControls({
+                onStart: startMotionWebcam,
+                onStop: stopMotionWebcam
+            });
+            controlsContainer.appendChild(webcamControls);
+
+            // Sliders
+            const thresholdSlider = document.getElementById('motion-threshold');
+            const thresholdValue = document.getElementById('motion-threshold-value');
+            thresholdSlider.addEventListener('input', () => {
+                thresholdValue.textContent = thresholdSlider.value;
+            });
+
+            const blurSlider = document.getElementById('motion-blur');
+            const blurValue = document.getElementById('motion-blur-value');
+            blurSlider.addEventListener('input', () => {
+                blurValue.textContent = blurSlider.value;
+            });
+
+            // Highlight toggle
+            const highlightToggle = document.getElementById('motion-highlight');
+            highlightToggle.addEventListener('click', () => {
+                motionState.highlight = highlightToggle.classList.toggle('active');
+            });
+        }
+
+        async function startMotionWebcam() {
+            try {
+                demos.motion.stream = await Utils.getWebcam();
+                motionState.video.srcObject = demos.motion.stream;
+
+                motionState.video.onloadedmetadata = () => {
+                    motionState.canvas.width = motionState.video.videoWidth;
+                    motionState.canvas.height = motionState.video.videoHeight;
+
+                    // Initialize previous frame
+                    const frame = captureVideoFrame(motionState.video);
+                    motionState.prevFrame = new cv.Mat();
+                    cv.cvtColor(frame, motionState.prevFrame, cv.COLOR_RGBA2GRAY);
+                    frame.delete();
+
+                    demos.motion.running = true;
+                    motionState.fpsCounter.reset();
+
+                    processMotionFrame();
+                };
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({ message: 'Webcam access denied', type: 'error' });
+            }
+        }
+
+        function stopMotionWebcam() {
+            demos.motion.running = false;
+            if (demos.motion.animationId) {
+                cancelAnimationFrame(demos.motion.animationId);
+                demos.motion.animationId = null;
+            }
+            if (demos.motion.stream) {
+                Utils.stopWebcam(demos.motion.stream);
+                demos.motion.stream = null;
+            }
+            motionState.video.srcObject = null;
+
+            if (motionState.prevFrame) {
+                motionState.prevFrame.delete();
+                motionState.prevFrame = null;
+            }
+
+            document.getElementById('motion-fps').textContent = '--';
+            document.getElementById('motion-percent').textContent = '--';
+            document.getElementById('motion-area').textContent = '--';
+        }
+
+        function processMotionFrame() {
+            if (!demos.motion.running) return;
+
+            const frame = captureVideoFrame(motionState.video);
+            const gray = new cv.Mat();
+            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+            try {
+                const blurSize = parseInt(document.getElementById('motion-blur').value);
+                const threshold = parseInt(document.getElementById('motion-threshold').value);
+
+                // Apply blur
+                const blurredCurrent = new cv.Mat();
+                const blurredPrev = new cv.Mat();
+                cv.GaussianBlur(gray, blurredCurrent, new cv.Size(blurSize, blurSize), 0);
+                cv.GaussianBlur(motionState.prevFrame, blurredPrev, new cv.Size(blurSize, blurSize), 0);
+
+                // Frame difference
+                const diff = new cv.Mat();
+                cv.absdiff(blurredCurrent, blurredPrev, diff);
+
+                // Threshold
+                const thresholded = new cv.Mat();
+                cv.threshold(diff, thresholded, threshold, 255, cv.THRESH_BINARY);
+
+                // Dilate to fill gaps
+                const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+                const dilated = new cv.Mat();
+                cv.dilate(thresholded, dilated, kernel);
+
+                // Calculate motion percentage and area
+                const nonZero = cv.countNonZero(dilated);
+                const total = dilated.rows * dilated.cols;
+                const motionPercent = ((nonZero / total) * 100).toFixed(1);
+                document.getElementById('motion-percent').textContent = motionPercent + '%';
+                document.getElementById('motion-area').textContent = nonZero + ' px';
+
+                // Create output
+                if (motionState.highlight) {
+                    // Create colored overlay for motion areas
+                    const motionMask = new cv.Mat();
+                    cv.cvtColor(dilated, motionMask, cv.COLOR_GRAY2RGBA);
+
+                    // Color the motion areas
+                    const motionColored = new cv.Mat(frame.rows, frame.cols, cv.CV_8UC4);
+                    const motionData = motionMask.data;
+                    const coloredData = motionColored.data;
+                    const frameData = frame.data;
+
+                    for (let i = 0; i < frame.rows * frame.cols; i++) {
+                        const idx = i * 4;
+                        if (motionData[idx] > 0) {
+                            // Highlight motion in green-yellow
+                            coloredData[idx] = Math.min(255, frameData[idx] + 100);
+                            coloredData[idx + 1] = Math.min(255, frameData[idx + 1] + 150);
+                            coloredData[idx + 2] = frameData[idx + 2];
+                            coloredData[idx + 3] = 255;
+                        } else {
+                            coloredData[idx] = frameData[idx];
+                            coloredData[idx + 1] = frameData[idx + 1];
+                            coloredData[idx + 2] = frameData[idx + 2];
+                            coloredData[idx + 3] = 255;
+                        }
+                    }
+
+                    cv.imshow(motionState.canvas, motionColored);
+
+                    motionMask.delete();
+                    motionColored.delete();
+                } else {
+                    cv.imshow(motionState.canvas, frame);
+                }
+
+                // Update previous frame
+                motionState.prevFrame.delete();
+                motionState.prevFrame = gray.clone();
+
+                // Cleanup
+                blurredCurrent.delete();
+                blurredPrev.delete();
+                diff.delete();
+                thresholded.delete();
+                kernel.delete();
+                dilated.delete();
+
+            } catch (err) {
+                console.error('Motion frame error:', err);
+            }
+
+            frame.delete();
+            gray.delete();
+
+            const fps = motionState.fpsCounter.update();
+            document.getElementById('motion-fps').textContent = fps;
+
+            demos.motion.animationId = requestAnimationFrame(processMotionFrame);
+        }
+
+        // ========================================
+        // Utility Functions
+        // ========================================
+
+        function captureVideoFrame(video) {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            return cv.imread(canvas);
+        }
+
+        // Cleanup on page unload
+        function cleanup() {
+            // Stop all demos
+            Object.keys(demos).forEach(key => {
+                if (demos[key].running) {
+                    demos[key].running = false;
+                }
+                if (demos[key].animationId) {
+                    cancelAnimationFrame(demos[key].animationId);
+                }
+                if (demos[key].stream) {
+                    Utils.stopWebcam(demos[key].stream);
+                }
+            });
+
+            // Cleanup OpenCV objects
+            if (trackingState.tracker) trackingState.tracker.delete();
+            if (trackingState.prevFrame) trackingState.prevFrame.delete();
+            if (lkState.prevGray) lkState.prevGray.delete();
+            if (lkState.prevPoints) lkState.prevPoints.delete();
+            if (farnebackState.prevGray) farnebackState.prevGray.delete();
+            if (bgsubState.subtractor) bgsubState.subtractor.delete();
+            if (motionState.prevFrame) motionState.prevFrame.delete();
+        }
+
+        window.addEventListener('beforeunload', cleanup);
+
+        // ========================================
+        // Initialize
+        // ========================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Show loading overlay
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            OpenCVLoader.load({
+                buildType: 'full',
+                onProgress: UIComponents.updateLoadingProgress,
+                statusElement: document.getElementById('loading-status')
+            }).then(() => {
+                UIComponents.hideLoadingOverlay();
+
+                // Check feature availability
+                checkTrackerAvailability();
+                checkBgSubAvailability();
+
+                // Initialize demos
+                initTrackingDemo();
+                initLKDemo();
+                initFarnebackDemo();
+                initBgSubDemo();
+                initMotionDemo();
+
+                console.log('All demos initialized');
+
+            }).catch(err => {
+                console.error('Failed to load OpenCV:', err);
+                UIComponents.updateLoadingStatus('Failed to load OpenCV.js');
+            });
+        });
+    </script>
+</body>
+</html>

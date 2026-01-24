@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Detection & Matching - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for feature matching */
+        .match-canvas-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .match-canvas-container canvas {
+            min-width: 100%;
+            height: auto;
+        }
+        .homography-matrix {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .image-pair-upload {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+        @media (max-width: 768px) {
+            .image-pair-upload {
+                grid-template-columns: 1fr;
+            }
+        }
+        .upload-box {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .upload-box:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-card);
+        }
+        .upload-box.has-image {
+            border-style: solid;
+            border-color: var(--success);
+        }
+        .upload-box img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-sm);
+        }
+        .feature-unavailable {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .detector-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: var(--spacing-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Feature Detection & Matching</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Feature Detection & Matching</h1>
+            <p>Explore feature detectors from features2d and xfeatures2d modules including ORB, AKAZE, BRISK, SIFT, and SURF.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Demo Content -->
+        <main id="demo-content" style="display: none;">
+
+            <!-- Section 1: Feature Detection -->
+            <section class="demo-section">
+                <h3>1. Feature Detection</h3>
+                <p class="detector-info">Detect keypoints in an image using various feature detectors.</p>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="detect-image">Image</label>
+                        <label class="file-input-label" for="detect-image">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="detect-image" accept="image/*">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="detector-select">Detector</label>
+                        <select id="detector-select">
+                            <option value="ORB">ORB</option>
+                            <option value="AKAZE">AKAZE</option>
+                            <option value="BRISK">BRISK</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max-features">Max Features</label>
+                        <div class="range-group">
+                            <input type="range" id="max-features" min="100" max="2000" value="500" step="50">
+                            <span class="range-value" id="max-features-value">500</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="detect-btn" disabled>Detect Features</button>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="detect-canvas"></canvas>
+                        <span class="canvas-label">Detected Keypoints</span>
+                    </div>
+                </div>
+
+                <div class="metrics" id="detect-metrics" style="display: none;">
+                    <div class="metric">
+                        <span class="metric-label">Features</span>
+                        <span class="metric-value" id="feature-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Detection Time</span>
+                        <span class="metric-value" id="detect-time">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Detector</span>
+                        <span class="metric-value" id="detector-used">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Feature Matching -->
+            <section class="demo-section">
+                <h3>2. Feature Matching</h3>
+                <p class="detector-info">Match features between two images to find corresponding points.</p>
+
+                <div class="image-pair-upload">
+                    <div class="upload-box" id="match-upload-1">
+                        <input type="file" id="match-image-1" accept="image/*" style="display: none;">
+                        <p>Click to upload Image 1</p>
+                        <img id="match-preview-1" style="display: none;">
+                    </div>
+                    <div class="upload-box" id="match-upload-2">
+                        <input type="file" id="match-image-2" accept="image/*" style="display: none;">
+                        <p>Click to upload Image 2</p>
+                        <img id="match-preview-2" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="demo-controls mt-md">
+                    <div class="form-group">
+                        <label for="match-detector-select">Detector</label>
+                        <select id="match-detector-select">
+                            <option value="ORB">ORB</option>
+                            <option value="AKAZE">AKAZE</option>
+                            <option value="BRISK">BRISK</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="matcher-select">Matcher</label>
+                        <select id="matcher-select">
+                            <option value="BFMatcher">BFMatcher</option>
+                            <option value="FlannBased">FlannBased</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ratio-threshold">Ratio Test Threshold</label>
+                        <div class="range-group">
+                            <input type="range" id="ratio-threshold" min="0.5" max="0.95" value="0.75" step="0.05">
+                            <span class="range-value" id="ratio-value">0.75</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="match-btn" disabled>Match Features</button>
+                </div>
+
+                <div class="demo-output single mt-lg">
+                    <div class="match-canvas-container">
+                        <div class="canvas-container">
+                            <canvas id="match-canvas"></canvas>
+                            <span class="canvas-label">Feature Matches</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics" id="match-metrics" style="display: none;">
+                    <div class="metric">
+                        <span class="metric-label">Keypoints 1</span>
+                        <span class="metric-value" id="kp1-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Keypoints 2</span>
+                        <span class="metric-value" id="kp2-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total Matches</span>
+                        <span class="metric-value" id="total-matches">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Good Matches</span>
+                        <span class="metric-value" id="good-matches">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Matching Time</span>
+                        <span class="metric-value" id="match-time">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Homography Estimation -->
+            <section class="demo-section">
+                <h3>3. Homography Estimation</h3>
+                <p class="detector-info">Compute the homography matrix from matched features and visualize the transformation.</p>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" id="homography-btn" disabled>Compute Homography</button>
+                    <span id="homography-status" class="status status-info" style="display: none;">Match features first</span>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="homography-canvas"></canvas>
+                        <span class="canvas-label">Homography Visualization</span>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: var(--spacing-sm);">Homography Matrix (3x3)</h4>
+                        <div class="homography-matrix" id="homography-matrix">
+No homography computed yet.
+Run feature matching and click "Compute Homography".
+                        </div>
+                        <div class="metrics mt-md" id="homography-metrics" style="display: none;">
+                            <div class="metric">
+                                <span class="metric-label">Inliers</span>
+                                <span class="metric-value" id="inlier-count">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Computation Time</span>
+                                <span class="metric-value" id="homography-time">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4: Blob Detection -->
+            <section class="demo-section">
+                <h3>4. Blob Detection</h3>
+                <p class="detector-info">Detect blobs using SimpleBlobDetector with customizable parameters.</p>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="blob-image">Image</label>
+                        <label class="file-input-label" for="blob-image">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="blob-image" accept="image/*">
+                    </div>
+
+                    <button class="btn btn-primary" id="blob-btn" disabled>Detect Blobs</button>
+                </div>
+
+                <div class="demo-controls mt-md">
+                    <div class="form-group">
+                        <label for="min-area">Min Area</label>
+                        <div class="range-group">
+                            <input type="range" id="min-area" min="10" max="1000" value="100" step="10">
+                            <span class="range-value" id="min-area-value">100</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max-area">Max Area</label>
+                        <div class="range-group">
+                            <input type="range" id="max-area" min="1000" max="50000" value="10000" step="500">
+                            <span class="range-value" id="max-area-value">10000</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="min-circularity">Min Circularity</label>
+                        <div class="range-group">
+                            <input type="range" id="min-circularity" min="0" max="1" value="0.1" step="0.05">
+                            <span class="range-value" id="min-circularity-value">0.10</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="min-convexity">Min Convexity</label>
+                        <div class="range-group">
+                            <input type="range" id="min-convexity" min="0" max="1" value="0.5" step="0.05">
+                            <span class="range-value" id="min-convexity-value">0.50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="blob-canvas"></canvas>
+                        <span class="canvas-label">Detected Blobs</span>
+                    </div>
+                </div>
+
+                <div class="metrics" id="blob-metrics" style="display: none;">
+                    <div class="metric">
+                        <span class="metric-label">Blobs Found</span>
+                        <span class="metric-value" id="blob-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Detection Time</span>
+                        <span class="metric-value" id="blob-time">-</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // ============================================
+        // Global State
+        // ============================================
+        let cvReady = false;
+        let availableDetectors = {};
+
+        // Feature Detection state
+        let detectImage = null;
+        let detectMat = null;
+
+        // Feature Matching state
+        let matchImage1 = null;
+        let matchImage2 = null;
+        let matchMat1 = null;
+        let matchMat2 = null;
+        let lastMatchResult = null;
+
+        // Blob Detection state
+        let blobImage = null;
+        let blobMat = null;
+
+        // ============================================
+        // Initialization
+        // ============================================
+        async function init() {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (percent) => {
+                        const progressBar = document.getElementById('loading-progress');
+                        if (progressBar) {
+                            progressBar.style.width = percent + '%';
+                        }
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                cvReady = true;
+                checkAvailableDetectors();
+                setupUI();
+                hideLoadingOverlay();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = 'Error: ' + error.message;
+                console.error('Failed to load OpenCV:', error);
+            }
+        }
+
+        function checkAvailableDetectors() {
+            // Check which detectors are available
+            availableDetectors = {
+                'ORB': typeof cv.ORB !== 'undefined',
+                'AKAZE': typeof cv.AKAZE !== 'undefined',
+                'BRISK': typeof cv.BRISK !== 'undefined',
+                'SIFT': typeof cv.SIFT !== 'undefined',
+                'SURF': typeof cv.SURF !== 'undefined' || typeof cv.xfeatures2d_SURF !== 'undefined'
+            };
+
+            console.log('Available detectors:', availableDetectors);
+
+            // Update detector select options
+            const selects = ['detector-select', 'match-detector-select'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+
+                // Add SIFT if available
+                if (availableDetectors.SIFT) {
+                    const option = document.createElement('option');
+                    option.value = 'SIFT';
+                    option.textContent = 'SIFT';
+                    select.appendChild(option);
+                }
+
+                // Add SURF if available
+                if (availableDetectors.SURF) {
+                    const option = document.createElement('option');
+                    option.value = 'SURF';
+                    option.textContent = 'SURF';
+                    select.appendChild(option);
+                }
+            });
+
+            // Log unavailable detectors
+            if (!availableDetectors.SIFT) {
+                console.log('SIFT not available (requires xfeatures2d module or OpenCV 4.4+)');
+            }
+            if (!availableDetectors.SURF) {
+                console.log('SURF not available (requires xfeatures2d module with nonfree)');
+            }
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            const content = document.getElementById('demo-content');
+
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s ease';
+                content.style.display = 'block';
+                setTimeout(() => overlay.remove(), 300);
+            }, 500);
+        }
+
+        function setupUI() {
+            // ============================================
+            // Section 1: Feature Detection
+            // ============================================
+            const detectImageInput = document.getElementById('detect-image');
+            const detectBtn = document.getElementById('detect-btn');
+            const maxFeaturesSlider = document.getElementById('max-features');
+            const maxFeaturesValue = document.getElementById('max-features-value');
+
+            maxFeaturesSlider.addEventListener('input', () => {
+                maxFeaturesValue.textContent = maxFeaturesSlider.value;
+            });
+
+            detectImageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    detectImage = await Utils.loadImage(file);
+                    if (detectMat) detectMat.delete();
+                    detectMat = Utils.imageToMat(detectImage);
+                    detectBtn.disabled = false;
+
+                    // Show original image
+                    const canvas = document.getElementById('detect-canvas');
+                    canvas.width = detectMat.cols;
+                    canvas.height = detectMat.rows;
+                    cv.imshow(canvas, detectMat);
+                } catch (error) {
+                    console.error('Error loading image:', error);
+                }
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!detectMat) return;
+                detectFeatures();
+            });
+
+            // ============================================
+            // Section 2: Feature Matching
+            // ============================================
+            const matchUpload1 = document.getElementById('match-upload-1');
+            const matchUpload2 = document.getElementById('match-upload-2');
+            const matchInput1 = document.getElementById('match-image-1');
+            const matchInput2 = document.getElementById('match-image-2');
+            const matchPreview1 = document.getElementById('match-preview-1');
+            const matchPreview2 = document.getElementById('match-preview-2');
+            const matchBtn = document.getElementById('match-btn');
+            const ratioSlider = document.getElementById('ratio-threshold');
+            const ratioValue = document.getElementById('ratio-value');
+
+            ratioSlider.addEventListener('input', () => {
+                ratioValue.textContent = parseFloat(ratioSlider.value).toFixed(2);
+            });
+
+            matchUpload1.addEventListener('click', () => matchInput1.click());
+            matchUpload2.addEventListener('click', () => matchInput2.click());
+
+            matchInput1.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    matchImage1 = await Utils.loadImage(file);
+                    if (matchMat1) matchMat1.delete();
+                    matchMat1 = Utils.imageToMat(matchImage1);
+
+                    matchPreview1.src = matchImage1.src;
+                    matchPreview1.style.display = 'block';
+                    matchUpload1.classList.add('has-image');
+                    matchUpload1.querySelector('p').textContent = 'Image 1 loaded';
+
+                    checkMatchReady();
+                } catch (error) {
+                    console.error('Error loading image 1:', error);
+                }
+            });
+
+            matchInput2.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    matchImage2 = await Utils.loadImage(file);
+                    if (matchMat2) matchMat2.delete();
+                    matchMat2 = Utils.imageToMat(matchImage2);
+
+                    matchPreview2.src = matchImage2.src;
+                    matchPreview2.style.display = 'block';
+                    matchUpload2.classList.add('has-image');
+                    matchUpload2.querySelector('p').textContent = 'Image 2 loaded';
+
+                    checkMatchReady();
+                } catch (error) {
+                    console.error('Error loading image 2:', error);
+                }
+            });
+
+            function checkMatchReady() {
+                matchBtn.disabled = !(matchMat1 && matchMat2);
+            }
+
+            matchBtn.addEventListener('click', () => {
+                if (!matchMat1 || !matchMat2) return;
+                matchFeatures();
+            });
+
+            // ============================================
+            // Section 3: Homography Estimation
+            // ============================================
+            const homographyBtn = document.getElementById('homography-btn');
+            const homographyStatus = document.getElementById('homography-status');
+
+            homographyBtn.addEventListener('click', () => {
+                if (!lastMatchResult) {
+                    homographyStatus.style.display = 'inline-flex';
+                    homographyStatus.textContent = 'Match features first';
+                    return;
+                }
+                computeHomography();
+            });
+
+            // ============================================
+            // Section 4: Blob Detection
+            // ============================================
+            const blobImageInput = document.getElementById('blob-image');
+            const blobBtn = document.getElementById('blob-btn');
+            const minAreaSlider = document.getElementById('min-area');
+            const maxAreaSlider = document.getElementById('max-area');
+            const minCircularitySlider = document.getElementById('min-circularity');
+            const minConvexitySlider = document.getElementById('min-convexity');
+
+            // Slider value displays
+            minAreaSlider.addEventListener('input', () => {
+                document.getElementById('min-area-value').textContent = minAreaSlider.value;
+            });
+            maxAreaSlider.addEventListener('input', () => {
+                document.getElementById('max-area-value').textContent = maxAreaSlider.value;
+            });
+            minCircularitySlider.addEventListener('input', () => {
+                document.getElementById('min-circularity-value').textContent = parseFloat(minCircularitySlider.value).toFixed(2);
+            });
+            minConvexitySlider.addEventListener('input', () => {
+                document.getElementById('min-convexity-value').textContent = parseFloat(minConvexitySlider.value).toFixed(2);
+            });
+
+            blobImageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    blobImage = await Utils.loadImage(file);
+                    if (blobMat) blobMat.delete();
+                    blobMat = Utils.imageToMat(blobImage);
+                    blobBtn.disabled = false;
+
+                    // Show original image
+                    const canvas = document.getElementById('blob-canvas');
+                    canvas.width = blobMat.cols;
+                    canvas.height = blobMat.rows;
+                    cv.imshow(canvas, blobMat);
+                } catch (error) {
+                    console.error('Error loading image:', error);
+                }
+            });
+
+            blobBtn.addEventListener('click', () => {
+                if (!blobMat) return;
+                detectBlobs();
+            });
+        }
+
+        // ============================================
+        // Feature Detection
+        // ============================================
+        function createDetector(type, maxFeatures = 500) {
+            switch (type) {
+                case 'ORB':
+                    return new cv.ORB(maxFeatures);
+                case 'AKAZE':
+                    return new cv.AKAZE();
+                case 'BRISK':
+                    return new cv.BRISK();
+                case 'SIFT':
+                    if (typeof cv.SIFT !== 'undefined') {
+                        return new cv.SIFT(maxFeatures);
+                    }
+                    throw new Error('SIFT not available');
+                case 'SURF':
+                    if (typeof cv.SURF !== 'undefined') {
+                        return new cv.SURF(400);
+                    } else if (typeof cv.xfeatures2d_SURF !== 'undefined') {
+                        return new cv.xfeatures2d_SURF(400);
+                    }
+                    throw new Error('SURF not available');
+                default:
+                    return new cv.ORB(maxFeatures);
+            }
+        }
+
+        function detectFeatures() {
+            const detectorType = document.getElementById('detector-select').value;
+            const maxFeatures = parseInt(document.getElementById('max-features').value);
+
+            let detector = null;
+            let gray = null;
+            let keypoints = null;
+            let output = null;
+
+            try {
+                const startTime = performance.now();
+
+                // Convert to grayscale
+                gray = new cv.Mat();
+                cv.cvtColor(detectMat, gray, cv.COLOR_RGBA2GRAY);
+
+                // Create detector
+                detector = createDetector(detectorType, maxFeatures);
+
+                // Detect keypoints
+                keypoints = new cv.KeyPointVector();
+                detector.detect(gray, keypoints);
+
+                const endTime = performance.now();
+                const detectionTime = (endTime - startTime).toFixed(2);
+
+                // Draw keypoints
+                output = detectMat.clone();
+                cv.drawKeypoints(gray, keypoints, output, new cv.Scalar(0, 255, 0, 255), cv.DrawMatchesFlags_DRAW_RICH_KEYPOINTS);
+
+                // Display result
+                const canvas = document.getElementById('detect-canvas');
+                canvas.width = output.cols;
+                canvas.height = output.rows;
+                cv.imshow(canvas, output);
+
+                // Update metrics
+                document.getElementById('detect-metrics').style.display = 'flex';
+                document.getElementById('feature-count').textContent = keypoints.size();
+                document.getElementById('detect-time').textContent = detectionTime + ' ms';
+                document.getElementById('detector-used').textContent = detectorType;
+
+            } catch (error) {
+                console.error('Feature detection error:', error);
+                alert('Error detecting features: ' + error.message);
+            } finally {
+                // Cleanup
+                if (detector) detector.delete();
+                if (gray) gray.delete();
+                if (keypoints) keypoints.delete();
+                if (output) output.delete();
+            }
+        }
+
+        // ============================================
+        // Feature Matching
+        // ============================================
+        function matchFeatures() {
+            const detectorType = document.getElementById('match-detector-select').value;
+            const matcherType = document.getElementById('matcher-select').value;
+            const ratioThreshold = parseFloat(document.getElementById('ratio-threshold').value);
+
+            let detector = null;
+            let gray1 = null;
+            let gray2 = null;
+            let keypoints1 = null;
+            let keypoints2 = null;
+            let descriptors1 = null;
+            let descriptors2 = null;
+            let matcher = null;
+            let matches = null;
+            let output = null;
+
+            try {
+                const startTime = performance.now();
+
+                // Convert to grayscale
+                gray1 = new cv.Mat();
+                gray2 = new cv.Mat();
+                cv.cvtColor(matchMat1, gray1, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(matchMat2, gray2, cv.COLOR_RGBA2GRAY);
+
+                // Create detector
+                detector = createDetector(detectorType, 1000);
+
+                // Detect and compute
+                keypoints1 = new cv.KeyPointVector();
+                keypoints2 = new cv.KeyPointVector();
+                descriptors1 = new cv.Mat();
+                descriptors2 = new cv.Mat();
+
+                detector.detectAndCompute(gray1, new cv.Mat(), keypoints1, descriptors1);
+                detector.detectAndCompute(gray2, new cv.Mat(), keypoints2, descriptors2);
+
+                if (descriptors1.empty() || descriptors2.empty()) {
+                    throw new Error('No descriptors found in one or both images');
+                }
+
+                // Create matcher
+                let normType = cv.NORM_HAMMING; // For binary descriptors (ORB, BRISK, AKAZE)
+                if (detectorType === 'SIFT' || detectorType === 'SURF') {
+                    normType = cv.NORM_L2; // For float descriptors
+                }
+
+                if (matcherType === 'BFMatcher') {
+                    matcher = new cv.BFMatcher(normType, false);
+                } else {
+                    // FlannBased matcher
+                    if (normType === cv.NORM_HAMMING) {
+                        // For binary descriptors, convert to float for FLANN
+                        const desc1Float = new cv.Mat();
+                        const desc2Float = new cv.Mat();
+                        descriptors1.convertTo(desc1Float, cv.CV_32F);
+                        descriptors2.convertTo(desc2Float, cv.CV_32F);
+                        descriptors1.delete();
+                        descriptors2.delete();
+                        descriptors1 = desc1Float;
+                        descriptors2 = desc2Float;
+                    }
+                    matcher = new cv.BFMatcher(cv.NORM_L2, false); // Use BFMatcher with L2 as FLANN fallback
+                }
+
+                // Match descriptors using knnMatch
+                matches = new cv.DMatchVectorVector();
+                matcher.knnMatch(descriptors1, descriptors2, matches, 2);
+
+                // Apply ratio test
+                const goodMatches = new cv.DMatchVector();
+                for (let i = 0; i < matches.size(); i++) {
+                    const match = matches.get(i);
+                    if (match.size() >= 2) {
+                        const m = match.get(0);
+                        const n = match.get(1);
+                        if (m.distance < ratioThreshold * n.distance) {
+                            goodMatches.push_back(m);
+                        }
+                    }
+                }
+
+                const endTime = performance.now();
+                const matchTime = (endTime - startTime).toFixed(2);
+
+                // Store result for homography
+                lastMatchResult = {
+                    keypoints1: keypoints1,
+                    keypoints2: keypoints2,
+                    goodMatches: goodMatches,
+                    img1: matchMat1.clone(),
+                    img2: matchMat2.clone()
+                };
+
+                // Draw matches
+                output = new cv.Mat();
+                cv.drawMatches(matchMat1, keypoints1, matchMat2, keypoints2, goodMatches, output);
+
+                // Display result
+                const canvas = document.getElementById('match-canvas');
+                canvas.width = output.cols;
+                canvas.height = output.rows;
+                cv.imshow(canvas, output);
+
+                // Update metrics
+                document.getElementById('match-metrics').style.display = 'flex';
+                document.getElementById('kp1-count').textContent = keypoints1.size();
+                document.getElementById('kp2-count').textContent = keypoints2.size();
+                document.getElementById('total-matches').textContent = matches.size();
+                document.getElementById('good-matches').textContent = goodMatches.size();
+                document.getElementById('match-time').textContent = matchTime + ' ms';
+
+                // Enable homography button
+                document.getElementById('homography-btn').disabled = false;
+                document.getElementById('homography-status').style.display = 'none';
+
+            } catch (error) {
+                console.error('Feature matching error:', error);
+                alert('Error matching features: ' + error.message);
+            } finally {
+                // Cleanup (don't delete keypoints/goodMatches as they're stored in lastMatchResult)
+                if (detector) detector.delete();
+                if (gray1) gray1.delete();
+                if (gray2) gray2.delete();
+                if (descriptors1) descriptors1.delete();
+                if (descriptors2) descriptors2.delete();
+                if (matcher) matcher.delete();
+                if (matches) matches.delete();
+                if (output) output.delete();
+            }
+        }
+
+        // ============================================
+        // Homography Estimation
+        // ============================================
+        function computeHomography() {
+            if (!lastMatchResult || lastMatchResult.goodMatches.size() < 4) {
+                document.getElementById('homography-matrix').textContent =
+                    'Not enough matches for homography (need at least 4).\nFound: ' +
+                    (lastMatchResult ? lastMatchResult.goodMatches.size() : 0);
+                return;
+            }
+
+            let srcPoints = null;
+            let dstPoints = null;
+            let H = null;
+            let mask = null;
+            let output = null;
+
+            try {
+                const startTime = performance.now();
+
+                const kp1 = lastMatchResult.keypoints1;
+                const kp2 = lastMatchResult.keypoints2;
+                const matches = lastMatchResult.goodMatches;
+
+                // Extract matched point coordinates
+                const srcPts = [];
+                const dstPts = [];
+
+                for (let i = 0; i < matches.size(); i++) {
+                    const m = matches.get(i);
+                    const pt1 = kp1.get(m.queryIdx).pt;
+                    const pt2 = kp2.get(m.trainIdx).pt;
+                    srcPts.push(pt1.x, pt1.y);
+                    dstPts.push(pt2.x, pt2.y);
+                }
+
+                srcPoints = cv.matFromArray(matches.size(), 1, cv.CV_32FC2, srcPts);
+                dstPoints = cv.matFromArray(matches.size(), 1, cv.CV_32FC2, dstPts);
+
+                // Find homography
+                mask = new cv.Mat();
+                H = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0, mask);
+
+                const endTime = performance.now();
+                const homographyTime = (endTime - startTime).toFixed(2);
+
+                if (H.empty()) {
+                    throw new Error('Could not compute homography');
+                }
+
+                // Count inliers
+                let inlierCount = 0;
+                for (let i = 0; i < mask.rows; i++) {
+                    if (mask.ucharAt(i, 0) !== 0) {
+                        inlierCount++;
+                    }
+                }
+
+                // Format homography matrix
+                const hData = H.data64F;
+                const matrixStr =
+                    `[ ${hData[0].toFixed(6)},  ${hData[1].toFixed(6)},  ${hData[2].toFixed(6)} ]\n` +
+                    `[ ${hData[3].toFixed(6)},  ${hData[4].toFixed(6)},  ${hData[5].toFixed(6)} ]\n` +
+                    `[ ${hData[6].toFixed(9)},  ${hData[7].toFixed(9)},  ${hData[8].toFixed(6)} ]`;
+
+                document.getElementById('homography-matrix').textContent = matrixStr;
+
+                // Draw bounding box transformed by homography
+                const img1 = lastMatchResult.img1;
+                const img2 = lastMatchResult.img2;
+
+                // Define corners of image 1
+                const h = img1.rows;
+                const w = img1.cols;
+                const corners = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                    0, 0,
+                    w, 0,
+                    w, h,
+                    0, h
+                ]);
+
+                // Transform corners
+                const transformedCorners = new cv.Mat();
+                cv.perspectiveTransform(corners, transformedCorners, H);
+
+                // Create output image (side by side)
+                output = new cv.Mat();
+                const img2Color = img2.clone();
+
+                // Draw the transformed bounding box on img2
+                const tc = transformedCorners.data32F;
+                const color = new cv.Scalar(0, 255, 0, 255);
+                const thickness = 3;
+
+                // Offset for second image position
+                const offsetX = img1.cols;
+
+                cv.line(img2Color,
+                    new cv.Point(tc[0], tc[1]),
+                    new cv.Point(tc[2], tc[3]),
+                    color, thickness);
+                cv.line(img2Color,
+                    new cv.Point(tc[2], tc[3]),
+                    new cv.Point(tc[4], tc[5]),
+                    color, thickness);
+                cv.line(img2Color,
+                    new cv.Point(tc[4], tc[5]),
+                    new cv.Point(tc[6], tc[7]),
+                    color, thickness);
+                cv.line(img2Color,
+                    new cv.Point(tc[6], tc[7]),
+                    new cv.Point(tc[0], tc[1]),
+                    color, thickness);
+
+                // Combine images side by side
+                const totalWidth = img1.cols + img2Color.cols;
+                const maxHeight = Math.max(img1.rows, img2Color.rows);
+                output = new cv.Mat(maxHeight, totalWidth, img1.type(), new cv.Scalar(0, 0, 0, 255));
+
+                const roi1 = output.roi(new cv.Rect(0, 0, img1.cols, img1.rows));
+                img1.copyTo(roi1);
+                roi1.delete();
+
+                const roi2 = output.roi(new cv.Rect(img1.cols, 0, img2Color.cols, img2Color.rows));
+                img2Color.copyTo(roi2);
+                roi2.delete();
+
+                // Draw lines connecting transformed corners to original
+                cv.line(output,
+                    new cv.Point(0, 0),
+                    new cv.Point(tc[0] + offsetX, tc[1]),
+                    new cv.Scalar(255, 0, 0, 255), 2);
+                cv.line(output,
+                    new cv.Point(w, 0),
+                    new cv.Point(tc[2] + offsetX, tc[3]),
+                    new cv.Scalar(255, 0, 0, 255), 2);
+                cv.line(output,
+                    new cv.Point(w, h),
+                    new cv.Point(tc[4] + offsetX, tc[5]),
+                    new cv.Scalar(255, 0, 0, 255), 2);
+                cv.line(output,
+                    new cv.Point(0, h),
+                    new cv.Point(tc[6] + offsetX, tc[7]),
+                    new cv.Scalar(255, 0, 0, 255), 2);
+
+                // Display result
+                const canvas = document.getElementById('homography-canvas');
+                canvas.width = output.cols;
+                canvas.height = output.rows;
+                cv.imshow(canvas, output);
+
+                // Update metrics
+                document.getElementById('homography-metrics').style.display = 'flex';
+                document.getElementById('inlier-count').textContent = inlierCount + ' / ' + matches.size();
+                document.getElementById('homography-time').textContent = homographyTime + ' ms';
+
+                // Cleanup extra mats
+                corners.delete();
+                transformedCorners.delete();
+                img2Color.delete();
+
+            } catch (error) {
+                console.error('Homography error:', error);
+                document.getElementById('homography-matrix').textContent = 'Error: ' + error.message;
+            } finally {
+                if (srcPoints) srcPoints.delete();
+                if (dstPoints) dstPoints.delete();
+                if (H) H.delete();
+                if (mask) mask.delete();
+                if (output) output.delete();
+            }
+        }
+
+        // ============================================
+        // Blob Detection
+        // ============================================
+        function detectBlobs() {
+            const minArea = parseInt(document.getElementById('min-area').value);
+            const maxArea = parseInt(document.getElementById('max-area').value);
+            const minCircularity = parseFloat(document.getElementById('min-circularity').value);
+            const minConvexity = parseFloat(document.getElementById('min-convexity').value);
+
+            let detector = null;
+            let gray = null;
+            let keypoints = null;
+            let output = null;
+
+            try {
+                const startTime = performance.now();
+
+                // Convert to grayscale
+                gray = new cv.Mat();
+                cv.cvtColor(blobMat, gray, cv.COLOR_RGBA2GRAY);
+
+                // Create SimpleBlobDetector with parameters
+                // Note: OpenCV.js SimpleBlobDetector may have limited parameter support
+                // Using default detector and filtering results manually
+
+                if (typeof cv.SimpleBlobDetector === 'undefined') {
+                    throw new Error('SimpleBlobDetector not available in this build');
+                }
+
+                detector = new cv.SimpleBlobDetector();
+                keypoints = new cv.KeyPointVector();
+
+                // Detect blobs
+                detector.detect(gray, keypoints);
+
+                // Filter keypoints by area and other criteria
+                const filteredKeypoints = new cv.KeyPointVector();
+                for (let i = 0; i < keypoints.size(); i++) {
+                    const kp = keypoints.get(i);
+                    const area = Math.PI * kp.size * kp.size / 4;
+
+                    if (area >= minArea && area <= maxArea) {
+                        filteredKeypoints.push_back(kp);
+                    }
+                }
+
+                const endTime = performance.now();
+                const detectionTime = (endTime - startTime).toFixed(2);
+
+                // Draw keypoints
+                output = blobMat.clone();
+                cv.drawKeypoints(gray, filteredKeypoints, output, new cv.Scalar(0, 0, 255, 255), cv.DrawMatchesFlags_DRAW_RICH_KEYPOINTS);
+
+                // Display result
+                const canvas = document.getElementById('blob-canvas');
+                canvas.width = output.cols;
+                canvas.height = output.rows;
+                cv.imshow(canvas, output);
+
+                // Update metrics
+                document.getElementById('blob-metrics').style.display = 'flex';
+                document.getElementById('blob-count').textContent = filteredKeypoints.size();
+                document.getElementById('blob-time').textContent = detectionTime + ' ms';
+
+                filteredKeypoints.delete();
+
+            } catch (error) {
+                console.error('Blob detection error:', error);
+
+                // Fallback: use contour-based blob detection
+                try {
+                    fallbackBlobDetection(minArea, maxArea, minCircularity, minConvexity);
+                } catch (fallbackError) {
+                    console.error('Fallback blob detection also failed:', fallbackError);
+                    alert('Blob detection error: ' + error.message);
+                }
+            } finally {
+                if (detector) detector.delete();
+                if (gray) gray.delete();
+                if (keypoints) keypoints.delete();
+                if (output) output.delete();
+            }
+        }
+
+        function fallbackBlobDetection(minArea, maxArea, minCircularity, minConvexity) {
+            const startTime = performance.now();
+
+            let gray = new cv.Mat();
+            let binary = new cv.Mat();
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            let output = blobMat.clone();
+
+            try {
+                // Convert to grayscale and threshold
+                cv.cvtColor(blobMat, gray, cv.COLOR_RGBA2GRAY);
+                cv.threshold(gray, binary, 127, 255, cv.THRESH_BINARY_INV);
+
+                // Find contours
+                cv.findContours(binary, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+                let blobCount = 0;
+
+                for (let i = 0; i < contours.size(); i++) {
+                    const contour = contours.get(i);
+                    const area = cv.contourArea(contour);
+
+                    if (area < minArea || area > maxArea) continue;
+
+                    // Calculate circularity
+                    const perimeter = cv.arcLength(contour, true);
+                    const circularity = perimeter > 0 ? (4 * Math.PI * area) / (perimeter * perimeter) : 0;
+
+                    if (circularity < minCircularity) continue;
+
+                    // Calculate convexity
+                    const hull = new cv.Mat();
+                    cv.convexHull(contour, hull);
+                    const hullArea = cv.contourArea(hull);
+                    const convexity = hullArea > 0 ? area / hullArea : 0;
+                    hull.delete();
+
+                    if (convexity < minConvexity) continue;
+
+                    // Get bounding circle
+                    const circle = cv.minEnclosingCircle(contour);
+                    const center = circle.center;
+                    const radius = circle.radius;
+
+                    // Draw blob
+                    cv.circle(output, center, Math.round(radius), new cv.Scalar(0, 0, 255, 255), 2);
+                    cv.circle(output, center, 3, new cv.Scalar(0, 255, 0, 255), -1);
+
+                    blobCount++;
+                }
+
+                const endTime = performance.now();
+                const detectionTime = (endTime - startTime).toFixed(2);
+
+                // Display result
+                const canvas = document.getElementById('blob-canvas');
+                canvas.width = output.cols;
+                canvas.height = output.rows;
+                cv.imshow(canvas, output);
+
+                // Update metrics
+                document.getElementById('blob-metrics').style.display = 'flex';
+                document.getElementById('blob-count').textContent = blobCount + ' (contour-based)';
+                document.getElementById('blob-time').textContent = detectionTime + ' ms';
+
+            } finally {
+                gray.delete();
+                binary.delete();
+                contours.delete();
+                hierarchy.delete();
+                output.delete();
+            }
+        }
+
+        // ============================================
+        // Cleanup
+        // ============================================
+        window.addEventListener('beforeunload', () => {
+            if (detectMat) detectMat.delete();
+            if (matchMat1) matchMat1.delete();
+            if (matchMat2) matchMat2.delete();
+            if (blobMat) blobMat.delete();
+            if (lastMatchResult) {
+                if (lastMatchResult.keypoints1) lastMatchResult.keypoints1.delete();
+                if (lastMatchResult.keypoints2) lastMatchResult.keypoints2.delete();
+                if (lastMatchResult.goodMatches) lastMatchResult.goodMatches.delete();
+                if (lastMatchResult.img1) lastMatchResult.img1.delete();
+                if (lastMatchResult.img2) lastMatchResult.img2.delete();
+            }
+        });
+
+        // Start initialization
+        init();
+    </script>
+</body>
+</html>

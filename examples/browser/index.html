@@ -3,346 +3,648 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenCV.js Image Processing Demo</title>
+    <title>OpenCV.js Full Demo - opencv-contrib-wasm</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-            color: #333;
-        }
-        h1 {
+        /* Page-specific styles */
+        .hero {
             text-align: center;
-            color: #1976d2;
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            max-width: 900px;
+            margin: 0 auto;
         }
-        .controls {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--spacing-md);
+            letter-spacing: -0.02em;
         }
-        .controls h3 {
-            margin-top: 0;
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.7;
         }
-        .control-row {
+
+        .hero-features {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
         }
-        .control-group {
+
+        .hero-feature {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .hero-feature svg {
+            color: var(--success);
+            flex-shrink: 0;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warning);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.loaded {
+            background: var(--success);
+            animation: none;
+        }
+
+        .status-dot.error {
+            background: var(--error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-header h2 {
+            font-size: 1.75rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--spacing-lg);
+            padding: 0 var(--spacing-lg);
+            max-width: 1400px;
+            margin: 0 auto var(--spacing-2xl);
+        }
+
+        .module-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all var(--transition-normal);
+            cursor: pointer;
+            text-decoration: none;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            position: relative;
+            overflow: hidden;
         }
-        .control-group label {
-            font-size: 12px;
-            color: #666;
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent-gradient);
+            opacity: 0;
+            transition: opacity var(--transition-normal);
+        }
+
+        .module-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .module-card:hover::before {
+            opacity: 1;
+        }
+
+        .module-icon {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-md);
+            filter: grayscale(0);
+        }
+
+        .module-card h3 {
+            font-size: 1.15rem;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+
+        .module-card p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+            flex-grow: 1;
+            line-height: 1.6;
+        }
+
+        .module-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .module-tag {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: var(--radius-sm);
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             font-weight: 500;
         }
-        select, input[type="range"], button {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+
+        .module-arrow {
+            position: absolute;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+            color: var(--text-muted);
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all var(--transition-normal);
         }
-        input[type="range"] {
-            width: 120px;
+
+        .module-card:hover .module-arrow {
+            opacity: 1;
+            transform: translateX(0);
         }
-        button {
-            background: #1976d2;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: background 0.2s;
+
+        .footer {
+            text-align: center;
+            padding: var(--spacing-xl);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
-        button:hover {
-            background: #1565c0;
+
+        .footer a {
+            color: var(--accent-secondary);
         }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-md);
         }
-        #status {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            background: #e3f2fd;
-            color: #1565c0;
-        }
-        #status.error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        #status.success {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        .canvas-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .canvas-box {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .canvas-box h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #666;
-        }
-        canvas {
-            max-width: 100%;
-            border: 1px solid #eee;
-            display: block;
-        }
-        .hidden {
-            display: none;
-        }
-        #fileInput {
-            margin-bottom: 10px;
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .module-grid {
+                grid-template-columns: 1fr;
+                padding: 0 var(--spacing-md);
+            }
+
+            .hero-features {
+                flex-direction: column;
+                align-items: center;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>OpenCV.js Image Processing Demo</h1>
-
-    <div id="status">Loading OpenCV.js... This may take a moment.</div>
-
-    <div class="controls">
-        <h3>Image Controls</h3>
-        <div class="control-row">
-            <input type="file" id="fileInput" accept="image/*" disabled>
-            <button id="processBtn" disabled>Process Image</button>
-            <button id="resetBtn" disabled>Reset</button>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-indicator">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Loading OpenCV.js...</span>
         </div>
-
-        <h3>Filters</h3>
-        <div class="control-row">
-            <div class="control-group">
-                <label>Filter Type</label>
-                <select id="filterSelect">
-                    <option value="none">None</option>
-                    <option value="grayscale">Grayscale</option>
-                    <option value="blur">Gaussian Blur</option>
-                    <option value="canny">Canny Edges</option>
-                    <option value="threshold">Threshold</option>
-                    <option value="invert">Invert</option>
-                    <option value="sepia">Sepia</option>
-                    <option value="sharpen">Sharpen</option>
-                    <option value="emboss">Emboss</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label>Blur Kernel Size: <span id="blurValue">5</span></label>
-                <input type="range" id="blurSlider" min="1" max="21" step="2" value="5">
-            </div>
-
-            <div class="control-group">
-                <label>Canny Low: <span id="cannyLowValue">50</span></label>
-                <input type="range" id="cannyLowSlider" min="0" max="255" value="50">
-            </div>
-
-            <div class="control-group">
-                <label>Canny High: <span id="cannyHighValue">150</span></label>
-                <input type="range" id="cannyHighSlider" min="0" max="255" value="150">
-            </div>
-
-            <div class="control-group">
-                <label>Threshold: <span id="threshValue">127</span></label>
-                <input type="range" id="threshSlider" min="0" max="255" value="127">
-            </div>
-        </div>
+        <div id="load-time" class="status status-info hidden"></div>
     </div>
 
-    <div class="canvas-grid">
-        <div class="canvas-box">
-            <h3>Original Image</h3>
-            <canvas id="canvasInput"></canvas>
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>OpenCV.js Full Demo</h1>
+        <p class="hero-subtitle">
+            Explore the full power of <strong>opencv-contrib-wasm</strong> - a comprehensive WebAssembly build
+            of OpenCV with contrib modules. This package brings advanced computer vision capabilities
+            directly to your browser, including feature detection, object tracking, face recognition,
+            ArUco markers, and much more.
+        </p>
+        <div class="hero-features">
+            <div class="hero-feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Full OpenCV 4.x Support
+            </div>
+            <div class="hero-feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Contrib Modules Included
+            </div>
+            <div class="hero-feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                WebAssembly Optimized
+            </div>
+            <div class="hero-feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Browser & Node.js
+            </div>
         </div>
-        <div class="canvas-box">
-            <h3>Processed Image</h3>
-            <canvas id="canvasOutput"></canvas>
+    </section>
+
+    <!-- Module Demos Section -->
+    <section>
+        <div class="section-header">
+            <h2>Module Demos</h2>
+            <p>Click on any module to explore interactive demos and learn how to use each feature.</p>
         </div>
-    </div>
 
-    <!-- Load OpenCV.js -->
-    <script src="../../dist/opencv.js"></script>
+        <div class="module-grid" id="module-grid">
+            <!-- Core Image Processing -->
+            <a href="modules/core.html" class="module-card">
+                <div class="module-icon">🎨</div>
+                <h3>Core Image Processing</h3>
+                <p>Fundamental image operations including grayscale conversion, blur filters, edge detection with Canny, and morphological transformations.</p>
+                <div class="module-tags">
+                    <span class="module-tag">core</span>
+                    <span class="module-tag">imgproc</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
 
+            <!-- Feature Detection -->
+            <a href="modules/features.html" class="module-card">
+                <div class="module-icon">🔍</div>
+                <h3>Feature Detection</h3>
+                <p>Detect and match keypoints using ORB, AKAZE, SIFT, and SURF algorithms. Perfect for image matching and recognition tasks.</p>
+                <div class="module-tags">
+                    <span class="module-tag">features2d</span>
+                    <span class="module-tag">xfeatures2d</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Object Detection -->
+            <a href="modules/detection.html" class="module-card">
+                <div class="module-icon">👁️</div>
+                <h3>Object Detection</h3>
+                <p>Detect faces with cascade classifiers, people with HOG descriptors, and decode QR codes in real-time.</p>
+                <div class="module-tags">
+                    <span class="module-tag">objdetect</span>
+                    <span class="module-tag">cascade</span>
+                    <span class="module-tag">hog</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Tracking & Motion -->
+            <a href="modules/tracking.html" class="module-card">
+                <div class="module-icon">🎯</div>
+                <h3>Tracking & Motion</h3>
+                <p>Track objects across video frames using KCF and CSRT trackers. Analyze motion with optical flow and background subtraction.</p>
+                <div class="module-tags">
+                    <span class="module-tag">tracking</span>
+                    <span class="module-tag">video</span>
+                    <span class="module-tag">optflow</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Photo Enhancement -->
+            <a href="modules/photo.html" class="module-card">
+                <div class="module-icon">📷</div>
+                <h3>Photo Enhancement</h3>
+                <p>Enhance photos with denoising algorithms, HDR tone mapping, automatic white balance, and color correction.</p>
+                <div class="module-tags">
+                    <span class="module-tag">photo</span>
+                    <span class="module-tag">xphoto</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Segmentation -->
+            <a href="modules/segmentation.html" class="module-card">
+                <div class="module-icon">🧩</div>
+                <h3>Segmentation</h3>
+                <p>Segment images using superpixels (SLIC, SEEDS), apply edge-preserving filters, and perform semantic region analysis.</p>
+                <div class="module-tags">
+                    <span class="module-tag">ximgproc</span>
+                    <span class="module-tag">superpixels</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Markers & Codes -->
+            <a href="modules/markers.html" class="module-card">
+                <div class="module-icon">📐</div>
+                <h3>Markers & Codes</h3>
+                <p>Detect and generate ArUco markers for augmented reality. Decode QR codes and barcodes from images and video.</p>
+                <div class="module-tags">
+                    <span class="module-tag">aruco</span>
+                    <span class="module-tag">qrcode</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Face Analysis -->
+            <a href="modules/face.html" class="module-card">
+                <div class="module-icon">😊</div>
+                <h3>Face Analysis</h3>
+                <p>Recognize faces using LBPH, Eigenfaces, and Fisherfaces algorithms. Detect facial landmarks for expression analysis.</p>
+                <div class="module-tags">
+                    <span class="module-tag">face</span>
+                    <span class="module-tag">facemark</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Image Analysis -->
+            <a href="modules/analysis.html" class="module-card">
+                <div class="module-icon">📊</div>
+                <h3>Image Analysis</h3>
+                <p>Compare images using perceptual hashing (pHash, average hash). Measure image quality with PSNR, SSIM, and more.</p>
+                <div class="module-tags">
+                    <span class="module-tag">img_hash</span>
+                    <span class="module-tag">quality</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Line Detection -->
+            <a href="modules/lines.html" class="module-card">
+                <div class="module-icon">📏</div>
+                <h3>Line Detection</h3>
+                <p>Detect lines using Line Segment Detector (LSD) and Fast Line Detector algorithms for document analysis and scene understanding.</p>
+                <div class="module-tags">
+                    <span class="module-tag">ximgproc</span>
+                    <span class="module-tag">lsd</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Saliency -->
+            <a href="modules/saliency.html" class="module-card">
+                <div class="module-icon">✨</div>
+                <h3>Saliency</h3>
+                <p>Detect visually salient regions using spectral residual and fine-grained saliency algorithms for attention modeling.</p>
+                <div class="module-tags">
+                    <span class="module-tag">saliency</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Machine Learning -->
+            <a href="modules/ml.html" class="module-card">
+                <div class="module-icon">🤖</div>
+                <h3>Machine Learning</h3>
+                <p>Train and use machine learning models including K-means clustering, K-Nearest Neighbors (KNN), and Support Vector Machines (SVM).</p>
+                <div class="module-tags">
+                    <span class="module-tag">ml</span>
+                    <span class="module-tag">knn</span>
+                    <span class="module-tag">svm</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- 3D & Calibration -->
+            <a href="modules/calibration.html" class="module-card">
+                <div class="module-icon">📐</div>
+                <h3>3D & Calibration</h3>
+                <p>Calibrate cameras using chessboard patterns. Work with structured light and 3D reconstruction techniques.</p>
+                <div class="module-tags">
+                    <span class="module-tag">calib3d</span>
+                    <span class="module-tag">structured_light</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Registration -->
+            <a href="modules/registration.html" class="module-card">
+                <div class="module-icon">🔗</div>
+                <h3>Registration</h3>
+                <p>Align and register images using feature-based and intensity-based methods for panorama creation and image fusion.</p>
+                <div class="module-tags">
+                    <span class="module-tag">reg</span>
+                    <span class="module-tag">warp</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Advanced Processing -->
+            <a href="modules/advanced.html" class="module-card">
+                <div class="module-icon">⚙️</div>
+                <h3>Advanced Processing</h3>
+                <p>Explore fuzzy image processing and signal processing techniques for specialized computer vision applications.</p>
+                <div class="module-tags">
+                    <span class="module-tag">fuzzy</span>
+                    <span class="module-tag">signal</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Alpha Matting -->
+            <a href="modules/alphamat.html" class="module-card">
+                <div class="module-icon">🖼️</div>
+                <h3>Alpha Matting</h3>
+                <p>Extract foreground objects using trimap-based alpha matting for professional-quality image compositing.</p>
+                <div class="module-tags">
+                    <span class="module-tag">alphamat</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- Super Resolution & Stitching -->
+            <a href="modules/superres.html" class="module-card">
+                <div class="module-icon">🔬</div>
+                <h3>Super Resolution & Stitching</h3>
+                <p>Upscale images with super resolution and create seamless panoramas with the stitching module.</p>
+                <div class="module-tags">
+                    <span class="module-tag">superres</span>
+                    <span class="module-tag">stitching</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+
+            <!-- 3D Tracking -->
+            <a href="modules/3d-tracking.html" class="module-card">
+                <div class="module-icon">🌐</div>
+                <h3>3D Tracking</h3>
+                <p>Match 3D surfaces and track objects in 3D space using extended detection algorithms for robotics and AR applications.</p>
+                <div class="module-tags">
+                    <span class="module-tag">surface_matching</span>
+                    <span class="module-tag">rgbd</span>
+                </div>
+                <svg class="module-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            <strong>opencv-contrib-wasm</strong> - OpenCV with contrib modules compiled to WebAssembly
+        </p>
+        <div class="footer-links">
+            <a href="https://github.com/nicholasgubbins/opencv-contrib-wasm" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://www.npmjs.com/package/opencv-contrib-wasm" target="_blank" rel="noopener">npm</a>
+            <a href="https://docs.opencv.org/" target="_blank" rel="noopener">OpenCV Docs</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/opencv-loader.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/ui-components.js"></script>
     <script>
-        // DOM Elements
-        const statusEl = document.getElementById('status');
-        const fileInput = document.getElementById('fileInput');
-        const processBtn = document.getElementById('processBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const filterSelect = document.getElementById('filterSelect');
-        const blurSlider = document.getElementById('blurSlider');
-        const cannyLowSlider = document.getElementById('cannyLowSlider');
-        const cannyHighSlider = document.getElementById('cannyHighSlider');
-        const threshSlider = document.getElementById('threshSlider');
-        const canvasInput = document.getElementById('canvasInput');
-        const canvasOutput = document.getElementById('canvasOutput');
+        // Status elements
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const loadTimeEl = document.getElementById('load-time');
 
-        let originalMat = null;
+        // Load OpenCV.js and update status
+        OpenCVLoader.load({
+            buildType: 'full',
+            onProgress: (progress) => {
+                statusText.textContent = `Loading OpenCV.js... ${Math.round(progress)}%`;
+            },
+            statusElement: statusText
+        }).then(() => {
+            // Update status to loaded
+            statusDot.classList.add('loaded');
+            statusText.textContent = 'OpenCV.js Ready';
 
-        // Update slider value displays
-        blurSlider.oninput = () => document.getElementById('blurValue').textContent = blurSlider.value;
-        cannyLowSlider.oninput = () => document.getElementById('cannyLowValue').textContent = cannyLowSlider.value;
-        cannyHighSlider.oninput = () => document.getElementById('cannyHighValue').textContent = cannyHighSlider.value;
-        threshSlider.oninput = () => document.getElementById('threshValue').textContent = threshSlider.value;
+            // Show load time
+            const loadTime = ((performance.now()) / 1000).toFixed(2);
+            loadTimeEl.textContent = `Loaded in ${loadTime}s`;
+            loadTimeEl.classList.remove('hidden');
 
-        // Wait for OpenCV to load
-        cv.onRuntimeInitialized = () => {
-            statusEl.textContent = 'OpenCV.js is ready! Select an image to begin.';
-            statusEl.className = 'success';
-            fileInput.disabled = false;
-            processBtn.disabled = false;
-            resetBtn.disabled = false;
-            console.log('OpenCV.js loaded');
-            console.log('Build info:', cv.getBuildInformation().substring(0, 500));
-        };
+            // Log available modules
+            console.log('OpenCV.js Full Build loaded successfully');
+            console.log('Available modules:', cv.getBuildInformation ?
+                cv.getBuildInformation().substring(0, 1000) + '...' : 'Build info not available');
 
-        // Handle file selection
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Draw original image
-                    canvasInput.width = img.width;
-                    canvasInput.height = img.height;
-                    canvasInput.getContext('2d').drawImage(img, 0, 0);
-
-                    // Store original as Mat
-                    if (originalMat) originalMat.delete();
-                    originalMat = cv.imread(canvasInput);
-
-                    // Set output canvas size
-                    canvasOutput.width = img.width;
-                    canvasOutput.height = img.height;
-
-                    statusEl.textContent = `Image loaded: ${img.width}x${img.height}. Click "Process Image" to apply filter.`;
-                    statusEl.className = 'success';
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+        }).catch((error) => {
+            // Update status to error
+            statusDot.classList.add('error');
+            statusText.textContent = 'Failed to load OpenCV.js';
+            console.error('OpenCV.js load error:', error);
         });
 
-        // Process image
-        processBtn.addEventListener('click', processImage);
-        filterSelect.addEventListener('change', processImage);
-
-        function processImage() {
-            if (!originalMat) {
-                statusEl.textContent = 'Please select an image first.';
-                statusEl.className = 'error';
-                return;
-            }
-
-            try {
-                const filter = filterSelect.value;
-                let result = originalMat.clone();
-
-                switch (filter) {
-                    case 'grayscale':
-                        cv.cvtColor(result, result, cv.COLOR_RGBA2GRAY);
-                        break;
-
-                    case 'blur':
-                        const ksize = parseInt(blurSlider.value);
-                        cv.GaussianBlur(result, result, new cv.Size(ksize, ksize), 0);
-                        break;
-
-                    case 'canny':
-                        const gray = new cv.Mat();
-                        cv.cvtColor(result, gray, cv.COLOR_RGBA2GRAY);
-                        cv.Canny(gray, result, parseInt(cannyLowSlider.value), parseInt(cannyHighSlider.value));
-                        gray.delete();
-                        break;
-
-                    case 'threshold':
-                        const grayThresh = new cv.Mat();
-                        cv.cvtColor(result, grayThresh, cv.COLOR_RGBA2GRAY);
-                        cv.threshold(grayThresh, result, parseInt(threshSlider.value), 255, cv.THRESH_BINARY);
-                        grayThresh.delete();
-                        break;
-
-                    case 'invert':
-                        cv.bitwise_not(result, result);
-                        break;
-
-                    case 'sepia':
-                        // Convert to float for precise calculation
-                        const rgb = new cv.Mat();
-                        cv.cvtColor(result, rgb, cv.COLOR_RGBA2RGB);
-                        const sepia = new cv.Mat(3, 3, cv.CV_32FC1);
-                        sepia.data32F.set([
-                            0.272, 0.534, 0.131,
-                            0.349, 0.686, 0.168,
-                            0.393, 0.769, 0.189
-                        ]);
-                        cv.transform(rgb, result, sepia);
-                        cv.cvtColor(result, result, cv.COLOR_RGB2RGBA);
-                        rgb.delete();
-                        sepia.delete();
-                        break;
-
-                    case 'sharpen':
-                        const kernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
-                            0, -1, 0,
-                            -1, 5, -1,
-                            0, -1, 0
-                        ]);
-                        cv.filter2D(result, result, -1, kernel);
-                        kernel.delete();
-                        break;
-
-                    case 'emboss':
-                        const embossKernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
-                            -2, -1, 0,
-                            -1, 1, 1,
-                            0, 1, 2
-                        ]);
-                        cv.filter2D(result, result, -1, embossKernel);
-                        embossKernel.delete();
-                        break;
+        // Add keyboard navigation for module cards
+        document.querySelectorAll('.module-card').forEach(card => {
+            card.setAttribute('tabindex', '0');
+            card.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
                 }
-
-                cv.imshow(canvasOutput, result);
-                result.delete();
-
-                statusEl.textContent = `Applied filter: ${filter}`;
-                statusEl.className = 'success';
-
-            } catch (err) {
-                statusEl.textContent = 'Error: ' + err.message;
-                statusEl.className = 'error';
-                console.error(err);
-            }
-        }
-
-        // Reset to original
-        resetBtn.addEventListener('click', () => {
-            if (originalMat) {
-                cv.imshow(canvasOutput, originalMat);
-                filterSelect.value = 'none';
-                statusEl.textContent = 'Image reset to original.';
-                statusEl.className = 'success';
-            }
+            });
         });
     </script>
 </body>

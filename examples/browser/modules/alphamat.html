@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Matting - OpenCV.js Demo</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for the drawing canvas */
+        .drawing-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .tool-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .tool-btn:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .tool-btn.active {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        .tool-btn .color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: crosshair;
+        }
+
+        .canvas-wrapper canvas {
+            display: block;
+        }
+
+        .drawing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .side-by-side {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .visualization-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .viz-option {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            text-align: center;
+            transition: all var(--transition-fast);
+        }
+
+        .viz-option:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .viz-option.active {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        .info-box {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .info-box h4 {
+            margin-bottom: var(--spacing-sm);
+            color: var(--accent-secondary);
+        }
+
+        .info-box ul {
+            margin: 0;
+            padding-left: var(--spacing-lg);
+            color: var(--text-secondary);
+        }
+
+        .info-box li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .trimap-legend {
+            display: flex;
+            gap: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-container {
+            margin-top: var(--spacing-md);
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            transition: width 0.3s ease;
+        }
+
+        .checkerboard {
+            background-image:
+                linear-gradient(45deg, #808080 25%, transparent 25%),
+                linear-gradient(-45deg, #808080 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #808080 75%),
+                linear-gradient(-45deg, transparent 75%, #808080 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #444;
+        }
+
+        .comparison-slider {
+            position: relative;
+            overflow: hidden;
+            cursor: ew-resize;
+        }
+
+        .comparison-slider .slider-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-primary);
+            cursor: ew-resize;
+            z-index: 10;
+        }
+
+        .comparison-slider .slider-handle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Alpha Matting</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Alpha Matting</h1>
+            <p>Extract complex foreground objects with soft edges, transparency, and fine details like hair and fur</p>
+        </header>
+
+        <!-- Section 1: What is Alpha Matting -->
+        <section class="demo-section">
+            <h3>What is Alpha Matting?</h3>
+
+            <div class="info-box">
+                <h4>Understanding Alpha Matting</h4>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                    Alpha matting is the process of estimating the opacity (alpha value) of foreground objects in an image.
+                    Unlike binary segmentation which classifies pixels as either foreground or background, matting estimates
+                    a continuous alpha value between 0 (fully transparent) and 1 (fully opaque) for each pixel.
+                </p>
+
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                    The matting equation describes each pixel as: <code style="color: var(--accent-secondary);">I = alpha * F + (1 - alpha) * B</code>
+                    <br>Where I is the observed color, F is the foreground color, B is the background color, and alpha is the opacity.
+                </p>
+            </div>
+
+            <div class="side-by-side">
+                <div class="info-box">
+                    <h4>Segmentation vs Matting</h4>
+                    <ul>
+                        <li><strong>Segmentation:</strong> Binary output (0 or 1)</li>
+                        <li><strong>Matting:</strong> Continuous alpha (0.0 to 1.0)</li>
+                        <li>Matting captures partial transparency</li>
+                        <li>Better for soft edges, hair, fur, glass</li>
+                        <li>Required for realistic compositing</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>Common Use Cases</h4>
+                    <ul>
+                        <li>Hair and fur extraction</li>
+                        <li>Transparent/semi-transparent objects</li>
+                        <li>Smoke, fire, and atmospheric effects</li>
+                        <li>Glass and reflective surfaces</li>
+                        <li>Natural edge blending</li>
+                        <li>Professional photo editing</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h4>The Trimap Concept</h4>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                    A trimap is a rough segmentation of the image into three regions:
+                </p>
+                <div class="trimap-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: white;"></div>
+                        <span>Definite Foreground (alpha = 1)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: black;"></div>
+                        <span>Definite Background (alpha = 0)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #808080;"></div>
+                        <span>Unknown (to be estimated)</span>
+                    </div>
+                </div>
+                <p style="color: var(--text-secondary); margin-top: var(--spacing-md);">
+                    <strong>Tips for a good trimap:</strong> Be generous with the unknown region around edges.
+                    The definite foreground/background should only include pixels you are absolutely certain about.
+                    The unknown region should cover all transitional areas including hair strands, fuzzy edges, and semi-transparent regions.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 2: Trimap Creation -->
+        <section class="demo-section">
+            <h3>Trimap Creation</h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                Upload an image and draw a trimap to define foreground, background, and unknown regions.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="imageUpload">Upload Image</label>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: block;">
+                </div>
+            </div>
+
+            <div class="drawing-toolbar">
+                <button class="tool-btn active" id="toolForeground" data-tool="foreground">
+                    <span class="color-indicator" style="background: white;"></span>
+                    Foreground (W)
+                </button>
+                <button class="tool-btn" id="toolBackground" data-tool="background">
+                    <span class="color-indicator" style="background: black;"></span>
+                    Background (B)
+                </button>
+                <button class="tool-btn" id="toolUnknown" data-tool="unknown">
+                    <span class="color-indicator" style="background: #808080;"></span>
+                    Unknown (U)
+                </button>
+                <button class="tool-btn" id="toolEraser" data-tool="eraser">
+                    Eraser (E)
+                </button>
+
+                <div class="form-group" style="margin-left: auto;">
+                    <label for="brushSize">Brush Size: <span id="brushSizeValue">20</span></label>
+                    <input type="range" id="brushSize" min="5" max="100" value="20">
+                </div>
+
+                <button class="btn btn-secondary" id="clearTrimap">Clear Trimap</button>
+                <button class="btn btn-secondary" id="resetAll">Reset All</button>
+            </div>
+
+            <div class="side-by-side">
+                <div class="canvas-container">
+                    <span class="canvas-label">Original Image</span>
+                    <div class="canvas-wrapper" id="originalWrapper">
+                        <canvas id="originalCanvas" width="500" height="400"></canvas>
+                        <canvas id="drawingCanvas" class="drawing-canvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <span class="canvas-label">Trimap Preview</span>
+                    <canvas id="trimapCanvas" width="500" height="400"></canvas>
+                </div>
+            </div>
+
+            <div class="trimap-legend" style="margin-top: var(--spacing-md);">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: white;"></div>
+                    <span>Foreground</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: black;"></div>
+                    <span>Background</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #808080;"></div>
+                    <span>Unknown</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color checkerboard"></div>
+                    <span>Not yet marked</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Alpha Matting -->
+        <section class="demo-section">
+            <h3>Alpha Matting (alphamat module)</h3>
+
+            <div id="alphamatStatus" class="alert alert-info">
+                Checking for alphamat module availability...
+            </div>
+
+            <div id="alphamatControls" style="display: none;">
+                <div class="demo-controls">
+                    <button class="btn btn-primary" id="runMatting">Run Alpha Matting</button>
+                    <span id="mattingTime" style="color: var(--text-secondary);"></span>
+                </div>
+
+                <div class="progress-container" id="mattingProgress">
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-sm);">
+                        Processing... This may take a while for large images.
+                    </p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="side-by-side">
+                    <div class="canvas-container">
+                        <span class="canvas-label">Input (Original + Trimap)</span>
+                        <canvas id="mattingInputCanvas" width="500" height="400"></canvas>
+                    </div>
+                    <div class="canvas-container">
+                        <span class="canvas-label">Alpha Matte Result</span>
+                        <canvas id="alphaResultCanvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+
+                <div class="metrics" id="mattingMetrics" style="display: none;">
+                    <div class="metric">
+                        <span class="metric-label">Processing Time</span>
+                        <span class="metric-value" id="metricTime">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Image Size</span>
+                        <span class="metric-value" id="metricSize">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Method</span>
+                        <span class="metric-value" id="metricMethod">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Matting Visualization -->
+        <section class="demo-section">
+            <h3>Matting Visualization</h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                View the alpha matte result in different visualization modes.
+            </p>
+
+            <div class="visualization-options">
+                <div class="viz-option active" data-viz="alpha">
+                    <strong>Alpha Matte</strong>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Grayscale alpha values</p>
+                </div>
+                <div class="viz-option" data-viz="foreground">
+                    <strong>Foreground</strong>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">On transparent background</p>
+                </div>
+                <div class="viz-option" data-viz="composite">
+                    <strong>Composite</strong>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">On colored background</p>
+                </div>
+                <div class="viz-option" data-viz="overlay">
+                    <strong>Alpha Overlay</strong>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Colored alpha visualization</p>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="bgColor">Background Color</label>
+                    <input type="color" id="bgColor" value="#00ff00">
+                </div>
+                <div class="form-group">
+                    <label for="bgImageUpload">Or Upload Background</label>
+                    <input type="file" id="bgImageUpload" accept="image/*">
+                </div>
+                <button class="btn btn-secondary" id="downloadAlpha">Download Alpha Matte</button>
+                <button class="btn btn-secondary" id="downloadComposite">Download Composite</button>
+            </div>
+
+            <div class="side-by-side">
+                <div class="canvas-container">
+                    <span class="canvas-label">Visualization</span>
+                    <canvas id="vizCanvas" width="500" height="400"></canvas>
+                </div>
+                <div class="canvas-container checkerboard">
+                    <span class="canvas-label">Extracted Foreground</span>
+                    <canvas id="foregroundCanvas" width="500" height="400"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Simple Matting Alternatives -->
+        <section class="demo-section">
+            <h3>Matting Alternatives</h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                When the alphamat module is not available, these alternative methods can provide basic foreground extraction.
+            </p>
+
+            <div class="alert alert-warning" style="margin-bottom: var(--spacing-md);">
+                <strong>Note:</strong> These alternatives produce binary or semi-soft masks, not true alpha mattes.
+                They work best for objects with clear edges and solid backgrounds.
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="grabcut">GrabCut</button>
+                <button class="tab" data-tab="colorkey">Color Keying</button>
+                <button class="tab" data-tab="threshold">Threshold</button>
+            </div>
+
+            <div class="tab-content active" id="tabGrabcut">
+                <div class="info-box">
+                    <h4>GrabCut-based Extraction</h4>
+                    <p style="color: var(--text-secondary);">
+                        GrabCut uses iterative graph-cut optimization to separate foreground from background.
+                        Draw a rectangle around the foreground object to initialize.
+                    </p>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-secondary" id="initGrabCut">Draw Selection Rectangle</button>
+                    <button class="btn btn-primary" id="runGrabCut" disabled>Run GrabCut</button>
+                    <div class="form-group">
+                        <label for="grabcutIter">Iterations: <span id="grabcutIterValue">5</span></label>
+                        <input type="range" id="grabcutIter" min="1" max="10" value="5">
+                    </div>
+                </div>
+
+                <div class="side-by-side">
+                    <div class="canvas-container">
+                        <span class="canvas-label">GrabCut Selection</span>
+                        <div class="canvas-wrapper" id="grabcutWrapper">
+                            <canvas id="grabcutInputCanvas" width="500" height="400"></canvas>
+                            <canvas id="grabcutSelectionCanvas" class="drawing-canvas" width="500" height="400"></canvas>
+                        </div>
+                    </div>
+                    <div class="canvas-container">
+                        <span class="canvas-label">GrabCut Result</span>
+                        <canvas id="grabcutResultCanvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabColorkey">
+                <div class="info-box">
+                    <h4>Color-Based Keying (Green Screen)</h4>
+                    <p style="color: var(--text-secondary);">
+                        Extract foreground by removing pixels similar to a key color.
+                        Works best with uniform colored backgrounds (green/blue screen).
+                    </p>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="keyColor">Key Color</label>
+                        <input type="color" id="keyColor" value="#00ff00">
+                    </div>
+                    <div class="form-group">
+                        <label for="keyTolerance">Tolerance: <span id="keyToleranceValue">40</span></label>
+                        <input type="range" id="keyTolerance" min="1" max="100" value="40">
+                    </div>
+                    <div class="form-group">
+                        <label for="keySoftness">Edge Softness: <span id="keySoftnessValue">5</span></label>
+                        <input type="range" id="keySoftness" min="0" max="20" value="5">
+                    </div>
+                    <button class="btn btn-primary" id="runColorKey">Apply Color Key</button>
+                </div>
+
+                <div class="side-by-side">
+                    <div class="canvas-container">
+                        <span class="canvas-label">Original</span>
+                        <canvas id="keyInputCanvas" width="500" height="400"></canvas>
+                    </div>
+                    <div class="canvas-container checkerboard">
+                        <span class="canvas-label">Color Key Result</span>
+                        <canvas id="keyResultCanvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabThreshold">
+                <div class="info-box">
+                    <h4>Threshold-Based Extraction</h4>
+                    <p style="color: var(--text-secondary);">
+                        Simple extraction based on brightness or color thresholds.
+                        Useful for high-contrast images with distinct foreground/background.
+                    </p>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="threshType">Threshold Type</label>
+                        <select id="threshType">
+                            <option value="binary">Binary</option>
+                            <option value="otsu">Otsu (Automatic)</option>
+                            <option value="adaptive">Adaptive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="threshValue">Threshold: <span id="threshValueDisplay">127</span></label>
+                        <input type="range" id="threshValue" min="0" max="255" value="127">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="threshInvert"> Invert
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" id="runThreshold">Apply Threshold</button>
+                </div>
+
+                <div class="side-by-side">
+                    <div class="canvas-container">
+                        <span class="canvas-label">Original</span>
+                        <canvas id="threshInputCanvas" width="500" height="400"></canvas>
+                    </div>
+                    <div class="canvas-container">
+                        <span class="canvas-label">Threshold Mask</span>
+                        <canvas id="threshResultCanvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Background Replacement -->
+        <section class="demo-section">
+            <h3>Background Replacement</h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                Composite the extracted foreground onto a new background image.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="newBgUpload">Upload New Background</label>
+                    <input type="file" id="newBgUpload" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label for="featherAmount">Edge Feathering: <span id="featherValue">2</span>px</label>
+                    <input type="range" id="featherAmount" min="0" max="10" value="2">
+                </div>
+                <div class="form-group">
+                    <label for="fgScale">Foreground Scale: <span id="fgScaleValue">100</span>%</label>
+                    <input type="range" id="fgScale" min="10" max="200" value="100">
+                </div>
+                <button class="btn btn-primary" id="compositeBtn">Composite</button>
+                <button class="btn btn-secondary" id="downloadResult">Download Result</button>
+            </div>
+
+            <div class="side-by-side">
+                <div class="canvas-container">
+                    <span class="canvas-label">New Background</span>
+                    <canvas id="newBgCanvas" width="500" height="400"></canvas>
+                </div>
+                <div class="canvas-container">
+                    <span class="canvas-label">Final Composite</span>
+                    <canvas id="compositeCanvas" width="500" height="400"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Trimap from Selection -->
+        <section class="demo-section">
+            <h3>Auto-Generate Trimap from Selection</h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                Instead of manually drawing all three regions, draw a rough foreground selection
+                and automatically generate a trimap using morphological operations.
+            </p>
+
+            <div class="info-box">
+                <h4>How It Works</h4>
+                <ul>
+                    <li>Draw a rough selection of the foreground object</li>
+                    <li>Erosion creates the definite foreground (shrinks selection)</li>
+                    <li>Dilation creates the boundary for definite background (expands selection)</li>
+                    <li>The area between erosion and dilation becomes the unknown region</li>
+                </ul>
+            </div>
+
+            <div class="demo-controls">
+                <button class="btn btn-secondary" id="drawFgSelection">Draw Foreground Selection</button>
+                <button class="btn btn-primary" id="generateTrimap" disabled>Generate Trimap</button>
+                <button class="btn btn-secondary" id="clearFgSelection">Clear Selection</button>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="erosionSize">Erosion Size (Foreground): <span id="erosionValue">10</span>px</label>
+                    <input type="range" id="erosionSize" min="1" max="50" value="10">
+                </div>
+                <div class="form-group">
+                    <label for="dilationSize">Dilation Size (Unknown): <span id="dilationValue">20</span>px</label>
+                    <input type="range" id="dilationSize" min="1" max="100" value="20">
+                </div>
+            </div>
+
+            <div class="side-by-side">
+                <div class="canvas-container">
+                    <span class="canvas-label">Foreground Selection</span>
+                    <div class="canvas-wrapper" id="autoTrimapWrapper">
+                        <canvas id="autoTrimapInputCanvas" width="500" height="400"></canvas>
+                        <canvas id="autoTrimapDrawCanvas" class="drawing-canvas" width="500" height="400"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <span class="canvas-label">Generated Trimap</span>
+                    <canvas id="autoTrimapResultCanvas" width="500" height="400"></canvas>
+                </div>
+            </div>
+
+            <div class="demo-controls" style="margin-top: var(--spacing-md);">
+                <button class="btn btn-primary" id="useGeneratedTrimap" disabled>Use This Trimap for Matting</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // ==========================================
+        // Global State
+        // ==========================================
+        const state = {
+            originalImage: null,
+            originalMat: null,
+            trimapMat: null,
+            alphaMat: null,
+            foregroundMat: null,
+            backgroundImage: null,
+            backgroundMat: null,
+            newBackgroundMat: null,
+
+            // Drawing state
+            currentTool: 'foreground',
+            brushSize: 20,
+            isDrawing: false,
+            lastPoint: null,
+
+            // GrabCut state
+            grabcutRect: null,
+            isSelectingRect: false,
+            rectStart: null,
+
+            // Auto trimap state
+            fgSelectionMat: null,
+            isDrawingFgSelection: false,
+
+            // Module availability
+            hasAlphamat: false
+        };
+
+        // ==========================================
+        // Initialization
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Add loading overlay
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: UIComponents.updateLoadingProgress,
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                UIComponents.hideLoadingOverlay();
+                checkModuleAvailability();
+                initializeEventListeners();
+                initializeCanvases();
+
+            } catch (error) {
+                UIComponents.updateLoadingStatus(`Error: ${error.message}`);
+                console.error('Failed to load OpenCV:', error);
+            }
+        });
+
+        function checkModuleAvailability() {
+            const statusEl = document.getElementById('alphamatStatus');
+            const controlsEl = document.getElementById('alphamatControls');
+
+            // Check for alphamat module
+            try {
+                if (typeof cv.alphamat !== 'undefined' && typeof cv.alphamat.infoFlow !== 'undefined') {
+                    state.hasAlphamat = true;
+                    statusEl.className = 'alert alert-success';
+                    statusEl.innerHTML = '<strong>alphamat module available!</strong> You can use the Information Flow matting algorithm.';
+                    controlsEl.style.display = 'block';
+                } else if (typeof cv.alphamat_infoFlow !== 'undefined') {
+                    state.hasAlphamat = true;
+                    statusEl.className = 'alert alert-success';
+                    statusEl.innerHTML = '<strong>alphamat module available!</strong> You can use the Information Flow matting algorithm.';
+                    controlsEl.style.display = 'block';
+                } else {
+                    state.hasAlphamat = false;
+                    statusEl.className = 'alert alert-warning';
+                    statusEl.innerHTML = `
+                        <strong>alphamat module not available.</strong>
+                        The alphamat contrib module is not included in this OpenCV.js build.
+                        You can still use the alternative matting methods below (GrabCut, Color Keying, Threshold).
+                    `;
+                    controlsEl.style.display = 'block';
+                    document.getElementById('runMatting').disabled = true;
+                    document.getElementById('runMatting').textContent = 'Alphamat Not Available';
+                }
+            } catch (e) {
+                state.hasAlphamat = false;
+                statusEl.className = 'alert alert-warning';
+                statusEl.innerHTML = `
+                    <strong>alphamat module not available.</strong>
+                    Use the alternative matting methods below.
+                `;
+                controlsEl.style.display = 'block';
+                document.getElementById('runMatting').disabled = true;
+            }
+
+            console.log('Alphamat available:', state.hasAlphamat);
+        }
+
+        function initializeCanvases() {
+            // Initialize all canvases with placeholder
+            const canvasIds = [
+                'originalCanvas', 'trimapCanvas', 'mattingInputCanvas', 'alphaResultCanvas',
+                'vizCanvas', 'foregroundCanvas', 'grabcutInputCanvas', 'grabcutResultCanvas',
+                'keyInputCanvas', 'keyResultCanvas', 'threshInputCanvas', 'threshResultCanvas',
+                'newBgCanvas', 'compositeCanvas', 'autoTrimapInputCanvas', 'autoTrimapResultCanvas'
+            ];
+
+            canvasIds.forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#1a1a24';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#686878';
+                    ctx.font = '14px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Upload an image to begin', canvas.width / 2, canvas.height / 2);
+                }
+            });
+        }
+
+        // ==========================================
+        // Event Listeners
+        // ==========================================
+        function initializeEventListeners() {
+            // Image upload
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+
+            // Drawing tools
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+                btn.addEventListener('click', () => selectTool(btn.dataset.tool));
+            });
+
+            // Brush size
+            document.getElementById('brushSize').addEventListener('input', (e) => {
+                state.brushSize = parseInt(e.target.value);
+                document.getElementById('brushSizeValue').textContent = state.brushSize;
+            });
+
+            // Clear/Reset
+            document.getElementById('clearTrimap').addEventListener('click', clearTrimap);
+            document.getElementById('resetAll').addEventListener('click', resetAll);
+
+            // Drawing canvas events
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            drawingCanvas.addEventListener('mousedown', startDrawing);
+            drawingCanvas.addEventListener('mousemove', draw);
+            drawingCanvas.addEventListener('mouseup', stopDrawing);
+            drawingCanvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch support
+            drawingCanvas.addEventListener('touchstart', handleTouchStart);
+            drawingCanvas.addEventListener('touchmove', handleTouchMove);
+            drawingCanvas.addEventListener('touchend', stopDrawing);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboard);
+
+            // Matting
+            document.getElementById('runMatting').addEventListener('click', runAlphaMatting);
+
+            // Visualization options
+            document.querySelectorAll('.viz-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('.viz-option').forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    updateVisualization(opt.dataset.viz);
+                });
+            });
+
+            // Background color
+            document.getElementById('bgColor').addEventListener('input', () => {
+                updateVisualization(document.querySelector('.viz-option.active').dataset.viz);
+            });
+
+            // Background image upload
+            document.getElementById('bgImageUpload').addEventListener('change', handleBgImageUpload);
+
+            // Download buttons
+            document.getElementById('downloadAlpha').addEventListener('click', downloadAlphaMatte);
+            document.getElementById('downloadComposite').addEventListener('click', downloadComposite);
+
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('tab' + capitalize(tab.dataset.tab)).classList.add('active');
+                });
+            });
+
+            // GrabCut
+            document.getElementById('initGrabCut').addEventListener('click', initGrabCutSelection);
+            document.getElementById('runGrabCut').addEventListener('click', runGrabCut);
+            document.getElementById('grabcutIter').addEventListener('input', (e) => {
+                document.getElementById('grabcutIterValue').textContent = e.target.value;
+            });
+
+            // GrabCut selection canvas
+            const grabcutSelCanvas = document.getElementById('grabcutSelectionCanvas');
+            grabcutSelCanvas.addEventListener('mousedown', startGrabCutSelection);
+            grabcutSelCanvas.addEventListener('mousemove', updateGrabCutSelection);
+            grabcutSelCanvas.addEventListener('mouseup', endGrabCutSelection);
+
+            // Color Key
+            document.getElementById('runColorKey').addEventListener('click', runColorKey);
+            document.getElementById('keyTolerance').addEventListener('input', (e) => {
+                document.getElementById('keyToleranceValue').textContent = e.target.value;
+            });
+            document.getElementById('keySoftness').addEventListener('input', (e) => {
+                document.getElementById('keySoftnessValue').textContent = e.target.value;
+            });
+
+            // Threshold
+            document.getElementById('runThreshold').addEventListener('click', runThreshold);
+            document.getElementById('threshValue').addEventListener('input', (e) => {
+                document.getElementById('threshValueDisplay').textContent = e.target.value;
+            });
+
+            // Background replacement
+            document.getElementById('newBgUpload').addEventListener('change', handleNewBgUpload);
+            document.getElementById('compositeBtn').addEventListener('click', createComposite);
+            document.getElementById('downloadResult').addEventListener('click', downloadResult);
+            document.getElementById('featherAmount').addEventListener('input', (e) => {
+                document.getElementById('featherValue').textContent = e.target.value;
+            });
+            document.getElementById('fgScale').addEventListener('input', (e) => {
+                document.getElementById('fgScaleValue').textContent = e.target.value;
+            });
+
+            // Auto trimap
+            document.getElementById('drawFgSelection').addEventListener('click', startFgSelection);
+            document.getElementById('generateTrimap').addEventListener('click', generateTrimapFromSelection);
+            document.getElementById('clearFgSelection').addEventListener('click', clearFgSelection);
+            document.getElementById('useGeneratedTrimap').addEventListener('click', useGeneratedTrimap);
+            document.getElementById('erosionSize').addEventListener('input', (e) => {
+                document.getElementById('erosionValue').textContent = e.target.value;
+            });
+            document.getElementById('dilationSize').addEventListener('input', (e) => {
+                document.getElementById('dilationValue').textContent = e.target.value;
+            });
+
+            // Auto trimap drawing
+            const autoDrawCanvas = document.getElementById('autoTrimapDrawCanvas');
+            autoDrawCanvas.addEventListener('mousedown', startAutoTrimapDraw);
+            autoDrawCanvas.addEventListener('mousemove', autoTrimapDraw);
+            autoDrawCanvas.addEventListener('mouseup', stopAutoTrimapDraw);
+            autoDrawCanvas.addEventListener('mouseleave', stopAutoTrimapDraw);
+        }
+
+        // ==========================================
+        // Image Handling
+        // ==========================================
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const img = await Utils.loadImage(file);
+                state.originalImage = img;
+
+                // Resize if too large
+                const maxDim = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxDim || height > maxDim) {
+                    const scale = maxDim / Math.max(width, height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                }
+
+                // Update all canvases to match image size
+                resizeCanvases(width, height);
+
+                // Draw original image
+                const originalCanvas = document.getElementById('originalCanvas');
+                const ctx = originalCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Create Mat from image
+                if (state.originalMat) state.originalMat.delete();
+                state.originalMat = cv.imread(originalCanvas);
+
+                // Initialize trimap
+                initializeTrimap(width, height);
+
+                // Copy to other input canvases
+                copyToAlternativeCanvases(img, width, height);
+
+                UIComponents.showToast({ message: 'Image loaded successfully', type: 'success' });
+
+            } catch (error) {
+                console.error('Error loading image:', error);
+                UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+            }
+        }
+
+        function resizeCanvases(width, height) {
+            const canvasPairs = [
+                ['originalCanvas', 'drawingCanvas'],
+                ['trimapCanvas'],
+                ['mattingInputCanvas'],
+                ['alphaResultCanvas'],
+                ['vizCanvas'],
+                ['foregroundCanvas'],
+                ['grabcutInputCanvas', 'grabcutSelectionCanvas'],
+                ['grabcutResultCanvas'],
+                ['keyInputCanvas'],
+                ['keyResultCanvas'],
+                ['threshInputCanvas'],
+                ['threshResultCanvas'],
+                ['newBgCanvas'],
+                ['compositeCanvas'],
+                ['autoTrimapInputCanvas', 'autoTrimapDrawCanvas'],
+                ['autoTrimapResultCanvas']
+            ];
+
+            canvasPairs.flat().forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    canvas.width = width;
+                    canvas.height = height;
+                }
+            });
+        }
+
+        function initializeTrimap(width, height) {
+            // Create trimap matrix (all gray = unknown initially)
+            if (state.trimapMat) state.trimapMat.delete();
+            state.trimapMat = new cv.Mat(height, width, cv.CV_8UC1, new cv.Scalar(128));
+
+            // Clear drawing canvas
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            const ctx = drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, width, height);
+
+            // Update trimap preview
+            updateTrimapPreview();
+        }
+
+        function copyToAlternativeCanvases(img, width, height) {
+            const canvasIds = [
+                'grabcutInputCanvas', 'keyInputCanvas', 'threshInputCanvas', 'autoTrimapInputCanvas'
+            ];
+
+            canvasIds.forEach(id => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+            });
+        }
+
+        // ==========================================
+        // Drawing Tools
+        // ==========================================
+        function selectTool(tool) {
+            state.currentTool = tool;
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === tool);
+            });
+        }
+
+        function handleKeyboard(e) {
+            const key = e.key.toLowerCase();
+            if (key === 'w') selectTool('foreground');
+            else if (key === 'b') selectTool('background');
+            else if (key === 'u') selectTool('unknown');
+            else if (key === 'e') selectTool('eraser');
+        }
+
+        function getCanvasPoint(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            state.isDrawing = true;
+            state.lastPoint = getCanvasPoint(e, e.target);
+            drawPoint(state.lastPoint);
+        }
+
+        function draw(e) {
+            if (!state.isDrawing) return;
+            const point = getCanvasPoint(e, e.target);
+            drawLine(state.lastPoint, point);
+            state.lastPoint = point;
+        }
+
+        function stopDrawing() {
+            state.isDrawing = false;
+            state.lastPoint = null;
+            updateTrimapPreview();
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDrawing({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            draw({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
+        }
+
+        function drawPoint(point) {
+            if (!state.trimapMat) return;
+
+            const value = getToolValue();
+            if (value === null) return; // Eraser
+
+            cv.circle(state.trimapMat, new cv.Point(Math.round(point.x), Math.round(point.y)),
+                     state.brushSize / 2, new cv.Scalar(value), -1);
+
+            // Draw on overlay canvas for visual feedback
+            const ctx = document.getElementById('drawingCanvas').getContext('2d');
+            ctx.globalCompositeOperation = state.currentTool === 'eraser' ? 'destination-out' : 'source-over';
+            ctx.fillStyle = getToolColor();
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, state.brushSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawLine(from, to) {
+            if (!state.trimapMat) return;
+
+            const value = getToolValue();
+
+            if (value !== null) {
+                cv.line(state.trimapMat,
+                       new cv.Point(Math.round(from.x), Math.round(from.y)),
+                       new cv.Point(Math.round(to.x), Math.round(to.y)),
+                       new cv.Scalar(value), state.brushSize, cv.LINE_AA);
+            }
+
+            // Draw on overlay canvas
+            const ctx = document.getElementById('drawingCanvas').getContext('2d');
+            ctx.globalCompositeOperation = state.currentTool === 'eraser' ? 'destination-out' : 'source-over';
+            ctx.strokeStyle = getToolColor();
+            ctx.lineWidth = state.brushSize;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+        }
+
+        function getToolValue() {
+            switch (state.currentTool) {
+                case 'foreground': return 255;
+                case 'background': return 0;
+                case 'unknown': return 128;
+                case 'eraser': return 128; // Reset to unknown
+                default: return 128;
+            }
+        }
+
+        function getToolColor() {
+            switch (state.currentTool) {
+                case 'foreground': return 'rgba(255, 255, 255, 0.7)';
+                case 'background': return 'rgba(0, 0, 0, 0.7)';
+                case 'unknown': return 'rgba(128, 128, 128, 0.7)';
+                case 'eraser': return 'rgba(255, 255, 255, 1)';
+                default: return 'rgba(128, 128, 128, 0.7)';
+            }
+        }
+
+        function updateTrimapPreview() {
+            if (!state.trimapMat) return;
+
+            const trimapCanvas = document.getElementById('trimapCanvas');
+
+            // Convert trimap to color for visualization
+            const colorTrimap = new cv.Mat();
+            cv.cvtColor(state.trimapMat, colorTrimap, cv.COLOR_GRAY2RGBA);
+
+            cv.imshow(trimapCanvas, colorTrimap);
+            colorTrimap.delete();
+        }
+
+        function clearTrimap() {
+            if (!state.trimapMat) return;
+
+            state.trimapMat.setTo(new cv.Scalar(128));
+
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            const ctx = drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+            updateTrimapPreview();
+        }
+
+        function resetAll() {
+            if (state.originalMat) state.originalMat.delete();
+            if (state.trimapMat) state.trimapMat.delete();
+            if (state.alphaMat) state.alphaMat.delete();
+            if (state.foregroundMat) state.foregroundMat.delete();
+
+            state.originalMat = null;
+            state.trimapMat = null;
+            state.alphaMat = null;
+            state.foregroundMat = null;
+            state.originalImage = null;
+
+            initializeCanvases();
+            document.getElementById('imageUpload').value = '';
+        }
+
+        // ==========================================
+        // Alpha Matting
+        // ==========================================
+        async function runAlphaMatting() {
+            if (!state.originalMat || !state.trimapMat) {
+                UIComponents.showToast({ message: 'Please upload an image and create a trimap first', type: 'warning' });
+                return;
+            }
+
+            const progressContainer = document.getElementById('mattingProgress');
+            const progressFill = document.getElementById('progressFill');
+            const runBtn = document.getElementById('runMatting');
+
+            progressContainer.style.display = 'block';
+            runBtn.disabled = true;
+
+            // Simulate progress since actual matting doesn't provide callbacks
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress = Math.min(progress + Math.random() * 10, 90);
+                progressFill.style.width = progress + '%';
+            }, 200);
+
+            const startTime = performance.now();
+
+            try {
+                // Show input
+                const inputCanvas = document.getElementById('mattingInputCanvas');
+                cv.imshow(inputCanvas, state.originalMat);
+
+                // Run matting
+                if (state.alphaMat) state.alphaMat.delete();
+                state.alphaMat = new cv.Mat();
+
+                if (state.hasAlphamat) {
+                    // Use alphamat module
+                    if (typeof cv.alphamat !== 'undefined' && cv.alphamat.infoFlow) {
+                        cv.alphamat.infoFlow(state.originalMat, state.trimapMat, state.alphaMat);
+                    } else if (typeof cv.alphamat_infoFlow !== 'undefined') {
+                        cv.alphamat_infoFlow(state.originalMat, state.trimapMat, state.alphaMat);
+                    }
+                    document.getElementById('metricMethod').textContent = 'Information Flow';
+                } else {
+                    // Fallback: Use trimap directly as alpha (not ideal but shows something)
+                    state.trimapMat.copyTo(state.alphaMat);
+                    document.getElementById('metricMethod').textContent = 'Trimap (Fallback)';
+                }
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                const endTime = performance.now();
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+                // Display result
+                const resultCanvas = document.getElementById('alphaResultCanvas');
+                cv.imshow(resultCanvas, state.alphaMat);
+
+                // Update metrics
+                document.getElementById('mattingMetrics').style.display = 'flex';
+                document.getElementById('metricTime').textContent = processingTime + 's';
+                document.getElementById('metricSize').textContent = `${state.originalMat.cols}x${state.originalMat.rows}`;
+                document.getElementById('mattingTime').textContent = `Completed in ${processingTime}s`;
+
+                // Extract foreground
+                extractForeground();
+
+                // Update visualization
+                updateVisualization('alpha');
+
+                UIComponents.showToast({ message: 'Alpha matting completed', type: 'success' });
+
+            } catch (error) {
+                console.error('Matting error:', error);
+                UIComponents.showToast({ message: 'Matting failed: ' + error.message, type: 'error' });
+            } finally {
+                clearInterval(progressInterval);
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    runBtn.disabled = !state.hasAlphamat;
+                }, 500);
+            }
+        }
+
+        function extractForeground() {
+            if (!state.originalMat || !state.alphaMat) return;
+
+            if (state.foregroundMat) state.foregroundMat.delete();
+
+            // Create RGBA foreground with alpha channel
+            state.foregroundMat = new cv.Mat();
+            const channels = new cv.MatVector();
+
+            // Split original into channels
+            const bgra = new cv.Mat();
+            if (state.originalMat.channels() === 3) {
+                cv.cvtColor(state.originalMat, bgra, cv.COLOR_BGR2BGRA);
+            } else {
+                state.originalMat.copyTo(bgra);
+            }
+
+            cv.split(bgra, channels);
+
+            // Replace alpha channel with matte
+            channels.set(3, state.alphaMat);
+
+            cv.merge(channels, state.foregroundMat);
+
+            // Display
+            const fgCanvas = document.getElementById('foregroundCanvas');
+            cv.imshow(fgCanvas, state.foregroundMat);
+
+            // Cleanup
+            bgra.delete();
+            for (let i = 0; i < channels.size(); i++) {
+                channels.get(i).delete();
+            }
+            channels.delete();
+        }
+
+        // ==========================================
+        // Visualization
+        // ==========================================
+        function updateVisualization(mode) {
+            if (!state.alphaMat) return;
+
+            const vizCanvas = document.getElementById('vizCanvas');
+            let display = new cv.Mat();
+
+            try {
+                switch (mode) {
+                    case 'alpha':
+                        state.alphaMat.copyTo(display);
+                        break;
+
+                    case 'foreground':
+                        if (state.foregroundMat) {
+                            state.foregroundMat.copyTo(display);
+                        } else {
+                            state.alphaMat.copyTo(display);
+                        }
+                        break;
+
+                    case 'composite':
+                        display = createColoredComposite();
+                        break;
+
+                    case 'overlay':
+                        display = createAlphaOverlay();
+                        break;
+                }
+
+                cv.imshow(vizCanvas, display);
+            } catch (error) {
+                console.error('Visualization error:', error);
+            } finally {
+                display.delete();
+            }
+        }
+
+        function createColoredComposite() {
+            if (!state.originalMat || !state.alphaMat) return new cv.Mat();
+
+            const bgColor = document.getElementById('bgColor').value;
+            const r = parseInt(bgColor.slice(1, 3), 16);
+            const g = parseInt(bgColor.slice(3, 5), 16);
+            const b = parseInt(bgColor.slice(5, 7), 16);
+
+            const result = new cv.Mat(state.originalMat.rows, state.originalMat.cols, cv.CV_8UC4);
+
+            // Create background
+            const bg = new cv.Mat(state.originalMat.rows, state.originalMat.cols, cv.CV_8UC4,
+                                 new cv.Scalar(r, g, b, 255));
+
+            // Alpha blend
+            const alpha = new cv.Mat();
+            state.alphaMat.convertTo(alpha, cv.CV_32FC1, 1.0 / 255.0);
+
+            for (let y = 0; y < result.rows; y++) {
+                for (let x = 0; x < result.cols; x++) {
+                    const a = alpha.floatAt(y, x);
+                    for (let c = 0; c < 3; c++) {
+                        const fg = state.originalMat.ucharAt(y, x * state.originalMat.channels() + c);
+                        const bgVal = bg.ucharAt(y, x * 4 + c);
+                        result.ucharPtr(y, x)[c] = Math.round(a * fg + (1 - a) * bgVal);
+                    }
+                    result.ucharPtr(y, x)[3] = 255;
+                }
+            }
+
+            alpha.delete();
+            bg.delete();
+
+            return result;
+        }
+
+        function createAlphaOverlay() {
+            if (!state.originalMat || !state.alphaMat) return new cv.Mat();
+
+            const result = new cv.Mat();
+            cv.cvtColor(state.originalMat, result, cv.COLOR_RGBA2RGB);
+
+            // Colorize alpha: red for low, green for high
+            const overlay = new cv.Mat(state.alphaMat.rows, state.alphaMat.cols, cv.CV_8UC3);
+
+            for (let y = 0; y < overlay.rows; y++) {
+                for (let x = 0; x < overlay.cols; x++) {
+                    const a = state.alphaMat.ucharAt(y, x);
+                    overlay.ucharPtr(y, x)[0] = 255 - a; // B (red in BGR)
+                    overlay.ucharPtr(y, x)[1] = a;       // G
+                    overlay.ucharPtr(y, x)[2] = 255 - a; // R
+                }
+            }
+
+            cv.addWeighted(result, 0.5, overlay, 0.5, 0, result);
+            overlay.delete();
+
+            return result;
+        }
+
+        function handleBgImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Utils.loadImage(file).then(img => {
+                state.backgroundImage = img;
+                updateVisualization(document.querySelector('.viz-option.active').dataset.viz);
+            });
+        }
+
+        // ==========================================
+        // Download Functions
+        // ==========================================
+        function downloadAlphaMatte() {
+            if (!state.alphaMat) {
+                UIComponents.showToast({ message: 'No alpha matte to download', type: 'warning' });
+                return;
+            }
+            const canvas = document.getElementById('alphaResultCanvas');
+            Utils.downloadCanvas(canvas, 'alpha-matte.png');
+        }
+
+        function downloadComposite() {
+            const canvas = document.getElementById('vizCanvas');
+            Utils.downloadCanvas(canvas, 'composite.png');
+        }
+
+        // ==========================================
+        // GrabCut
+        // ==========================================
+        function initGrabCutSelection() {
+            state.isSelectingRect = true;
+            state.grabcutRect = null;
+
+            const selCanvas = document.getElementById('grabcutSelectionCanvas');
+            const ctx = selCanvas.getContext('2d');
+            ctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+
+            document.getElementById('initGrabCut').textContent = 'Drawing...';
+            UIComponents.showToast({ message: 'Draw a rectangle around the foreground object', type: 'info' });
+        }
+
+        function startGrabCutSelection(e) {
+            if (!state.isSelectingRect) return;
+            state.rectStart = getCanvasPoint(e, e.target);
+        }
+
+        function updateGrabCutSelection(e) {
+            if (!state.isSelectingRect || !state.rectStart) return;
+
+            const point = getCanvasPoint(e, e.target);
+            const canvas = document.getElementById('grabcutSelectionCanvas');
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(
+                state.rectStart.x, state.rectStart.y,
+                point.x - state.rectStart.x, point.y - state.rectStart.y
+            );
+        }
+
+        function endGrabCutSelection(e) {
+            if (!state.isSelectingRect || !state.rectStart) return;
+
+            const point = getCanvasPoint(e, e.target);
+
+            state.grabcutRect = {
+                x: Math.min(state.rectStart.x, point.x),
+                y: Math.min(state.rectStart.y, point.y),
+                width: Math.abs(point.x - state.rectStart.x),
+                height: Math.abs(point.y - state.rectStart.y)
+            };
+
+            state.isSelectingRect = false;
+            state.rectStart = null;
+
+            document.getElementById('initGrabCut').textContent = 'Draw Selection Rectangle';
+            document.getElementById('runGrabCut').disabled = false;
+
+            // Draw final rectangle
+            const canvas = document.getElementById('grabcutSelectionCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.strokeRect(state.grabcutRect.x, state.grabcutRect.y,
+                          state.grabcutRect.width, state.grabcutRect.height);
+        }
+
+        function runGrabCut() {
+            if (!state.originalMat || !state.grabcutRect) {
+                UIComponents.showToast({ message: 'Please select a region first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const src = state.originalMat.clone();
+                const mask = new cv.Mat();
+                const bgdModel = new cv.Mat();
+                const fgdModel = new cv.Mat();
+
+                const rect = new cv.Rect(
+                    Math.round(state.grabcutRect.x),
+                    Math.round(state.grabcutRect.y),
+                    Math.round(state.grabcutRect.width),
+                    Math.round(state.grabcutRect.height)
+                );
+
+                const iterations = parseInt(document.getElementById('grabcutIter').value);
+
+                cv.grabCut(src, mask, rect, bgdModel, fgdModel, iterations, cv.GC_INIT_WITH_RECT);
+
+                // Create binary mask from GrabCut result
+                const mask2 = new cv.Mat();
+                for (let i = 0; i < mask.rows; i++) {
+                    for (let j = 0; j < mask.cols; j++) {
+                        const val = mask.ucharAt(i, j);
+                        // GC_FGD = 1, GC_PR_FGD = 3
+                        if (val === 1 || val === 3) {
+                            mask.ucharPtr(i, j)[0] = 255;
+                        } else {
+                            mask.ucharPtr(i, j)[0] = 0;
+                        }
+                    }
+                }
+
+                // Apply mask to original
+                const result = new cv.Mat();
+                cv.cvtColor(src, result, cv.COLOR_RGBA2RGB);
+                const maskedResult = new cv.Mat();
+                result.copyTo(maskedResult, mask);
+
+                cv.imshow(document.getElementById('grabcutResultCanvas'), maskedResult);
+
+                // Store as potential alpha
+                if (state.alphaMat) state.alphaMat.delete();
+                state.alphaMat = mask.clone();
+
+                // Cleanup
+                src.delete();
+                mask.delete();
+                bgdModel.delete();
+                fgdModel.delete();
+                result.delete();
+                maskedResult.delete();
+
+                UIComponents.showToast({ message: 'GrabCut completed', type: 'success' });
+
+            } catch (error) {
+                console.error('GrabCut error:', error);
+                UIComponents.showToast({ message: 'GrabCut failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==========================================
+        // Color Keying
+        // ==========================================
+        function runColorKey() {
+            if (!state.originalMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const keyColor = document.getElementById('keyColor').value;
+                const tolerance = parseInt(document.getElementById('keyTolerance').value);
+                const softness = parseInt(document.getElementById('keySoftness').value);
+
+                const r = parseInt(keyColor.slice(1, 3), 16);
+                const g = parseInt(keyColor.slice(3, 5), 16);
+                const b = parseInt(keyColor.slice(5, 7), 16);
+
+                // Convert to HSV for better keying
+                const hsv = new cv.Mat();
+                cv.cvtColor(state.originalMat, hsv, cv.COLOR_RGB2HSV);
+
+                // Get key color in HSV
+                const keyMat = new cv.Mat(1, 1, cv.CV_8UC3, new cv.Scalar(r, g, b));
+                const keyHsv = new cv.Mat();
+                cv.cvtColor(keyMat, keyHsv, cv.COLOR_RGB2HSV);
+                const keyH = keyHsv.ucharAt(0, 0);
+                const keyS = keyHsv.ucharAt(0, 1);
+
+                // Create mask
+                const mask = new cv.Mat(state.originalMat.rows, state.originalMat.cols, cv.CV_8UC1);
+
+                for (let y = 0; y < hsv.rows; y++) {
+                    for (let x = 0; x < hsv.cols; x++) {
+                        const h = hsv.ucharAt(y, x * 3);
+                        const s = hsv.ucharAt(y, x * 3 + 1);
+
+                        // Calculate distance from key color
+                        let hDiff = Math.abs(h - keyH);
+                        if (hDiff > 90) hDiff = 180 - hDiff; // Handle hue wrap
+                        const sDiff = Math.abs(s - keyS);
+
+                        const dist = Math.sqrt(hDiff * hDiff + sDiff * sDiff / 4);
+
+                        if (dist < tolerance) {
+                            mask.ucharPtr(y, x)[0] = 0;
+                        } else if (dist < tolerance + softness && softness > 0) {
+                            const alpha = ((dist - tolerance) / softness) * 255;
+                            mask.ucharPtr(y, x)[0] = Math.round(alpha);
+                        } else {
+                            mask.ucharPtr(y, x)[0] = 255;
+                        }
+                    }
+                }
+
+                // Apply mask
+                const result = new cv.Mat();
+                cv.cvtColor(state.originalMat, result, cv.COLOR_RGBA2BGRA);
+
+                const channels = new cv.MatVector();
+                cv.split(result, channels);
+                channels.set(3, mask);
+                cv.merge(channels, result);
+
+                cv.imshow(document.getElementById('keyResultCanvas'), result);
+
+                // Store as alpha
+                if (state.alphaMat) state.alphaMat.delete();
+                state.alphaMat = mask.clone();
+                extractForeground();
+
+                // Cleanup
+                hsv.delete();
+                keyMat.delete();
+                keyHsv.delete();
+                mask.delete();
+                result.delete();
+                for (let i = 0; i < channels.size(); i++) {
+                    channels.get(i).delete();
+                }
+                channels.delete();
+
+                UIComponents.showToast({ message: 'Color keying completed', type: 'success' });
+
+            } catch (error) {
+                console.error('Color key error:', error);
+                UIComponents.showToast({ message: 'Color keying failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==========================================
+        // Threshold
+        // ==========================================
+        function runThreshold() {
+            if (!state.originalMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const threshType = document.getElementById('threshType').value;
+                const threshValue = parseInt(document.getElementById('threshValue').value);
+                const invert = document.getElementById('threshInvert').checked;
+
+                // Convert to grayscale
+                const gray = new cv.Mat();
+                cv.cvtColor(state.originalMat, gray, cv.COLOR_RGBA2GRAY);
+
+                const mask = new cv.Mat();
+
+                let flags = invert ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
+
+                switch (threshType) {
+                    case 'binary':
+                        cv.threshold(gray, mask, threshValue, 255, flags);
+                        break;
+                    case 'otsu':
+                        cv.threshold(gray, mask, 0, 255, flags | cv.THRESH_OTSU);
+                        break;
+                    case 'adaptive':
+                        cv.adaptiveThreshold(gray, mask, 255,
+                                           cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                           invert ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY,
+                                           11, 2);
+                        break;
+                }
+
+                cv.imshow(document.getElementById('threshResultCanvas'), mask);
+
+                // Store as alpha
+                if (state.alphaMat) state.alphaMat.delete();
+                state.alphaMat = mask.clone();
+                extractForeground();
+
+                gray.delete();
+                mask.delete();
+
+                UIComponents.showToast({ message: 'Threshold applied', type: 'success' });
+
+            } catch (error) {
+                console.error('Threshold error:', error);
+                UIComponents.showToast({ message: 'Threshold failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==========================================
+        // Background Replacement
+        // ==========================================
+        async function handleNewBgUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const img = await Utils.loadImage(file);
+
+                const canvas = document.getElementById('newBgCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                if (state.newBackgroundMat) state.newBackgroundMat.delete();
+                state.newBackgroundMat = cv.imread(canvas);
+
+                UIComponents.showToast({ message: 'Background loaded', type: 'success' });
+
+            } catch (error) {
+                console.error('Error loading background:', error);
+                UIComponents.showToast({ message: 'Failed to load background', type: 'error' });
+            }
+        }
+
+        function createComposite() {
+            if (!state.originalMat || !state.alphaMat) {
+                UIComponents.showToast({ message: 'Please create an alpha matte first', type: 'warning' });
+                return;
+            }
+
+            if (!state.newBackgroundMat) {
+                UIComponents.showToast({ message: 'Please upload a background image', type: 'warning' });
+                return;
+            }
+
+            try {
+                const feather = parseInt(document.getElementById('featherAmount').value);
+                const scale = parseInt(document.getElementById('fgScale').value) / 100;
+
+                // Feather the alpha
+                let alpha = state.alphaMat.clone();
+                if (feather > 0) {
+                    cv.GaussianBlur(alpha, alpha, new cv.Size(feather * 2 + 1, feather * 2 + 1), 0);
+                }
+
+                // Resize background to match
+                const bg = new cv.Mat();
+                cv.resize(state.newBackgroundMat, bg, new cv.Size(state.originalMat.cols, state.originalMat.rows));
+
+                // Convert to same format
+                const bgRgba = new cv.Mat();
+                if (bg.channels() === 3) {
+                    cv.cvtColor(bg, bgRgba, cv.COLOR_BGR2BGRA);
+                } else {
+                    bg.copyTo(bgRgba);
+                }
+
+                // Composite
+                const result = new cv.Mat(state.originalMat.rows, state.originalMat.cols, cv.CV_8UC4);
+
+                for (let y = 0; y < result.rows; y++) {
+                    for (let x = 0; x < result.cols; x++) {
+                        const a = alpha.ucharAt(y, x) / 255;
+                        for (let c = 0; c < 3; c++) {
+                            const fg = state.originalMat.ucharAt(y, x * state.originalMat.channels() + c);
+                            const bgVal = bgRgba.ucharAt(y, x * 4 + c);
+                            result.ucharPtr(y, x)[c] = Math.round(a * fg + (1 - a) * bgVal);
+                        }
+                        result.ucharPtr(y, x)[3] = 255;
+                    }
+                }
+
+                cv.imshow(document.getElementById('compositeCanvas'), result);
+
+                alpha.delete();
+                bg.delete();
+                bgRgba.delete();
+                result.delete();
+
+                UIComponents.showToast({ message: 'Composite created', type: 'success' });
+
+            } catch (error) {
+                console.error('Composite error:', error);
+                UIComponents.showToast({ message: 'Composite failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function downloadResult() {
+            const canvas = document.getElementById('compositeCanvas');
+            Utils.downloadCanvas(canvas, 'composite-result.png');
+        }
+
+        // ==========================================
+        // Auto Trimap
+        // ==========================================
+        function startFgSelection() {
+            state.isDrawingFgSelection = true;
+
+            // Clear previous selection
+            if (state.fgSelectionMat) state.fgSelectionMat.delete();
+            const canvas = document.getElementById('autoTrimapInputCanvas');
+            state.fgSelectionMat = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC1, new cv.Scalar(0));
+
+            const drawCanvas = document.getElementById('autoTrimapDrawCanvas');
+            const ctx = drawCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+            document.getElementById('drawFgSelection').textContent = 'Drawing...';
+            UIComponents.showToast({ message: 'Draw over the foreground object', type: 'info' });
+        }
+
+        function startAutoTrimapDraw(e) {
+            if (!state.isDrawingFgSelection) return;
+            state.isDrawing = true;
+            state.lastPoint = getCanvasPoint(e, e.target);
+        }
+
+        function autoTrimapDraw(e) {
+            if (!state.isDrawingFgSelection || !state.isDrawing || !state.fgSelectionMat) return;
+
+            const point = getCanvasPoint(e, e.target);
+
+            // Draw on selection mat
+            cv.line(state.fgSelectionMat,
+                   new cv.Point(Math.round(state.lastPoint.x), Math.round(state.lastPoint.y)),
+                   new cv.Point(Math.round(point.x), Math.round(point.y)),
+                   new cv.Scalar(255), state.brushSize, cv.LINE_AA);
+
+            // Draw on canvas for visual feedback
+            const ctx = document.getElementById('autoTrimapDrawCanvas').getContext('2d');
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.7)';
+            ctx.lineWidth = state.brushSize;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(state.lastPoint.x, state.lastPoint.y);
+            ctx.lineTo(point.x, point.y);
+            ctx.stroke();
+
+            state.lastPoint = point;
+        }
+
+        function stopAutoTrimapDraw() {
+            state.isDrawing = false;
+            state.lastPoint = null;
+
+            if (state.isDrawingFgSelection && state.fgSelectionMat) {
+                document.getElementById('drawFgSelection').textContent = 'Draw Foreground Selection';
+                document.getElementById('generateTrimap').disabled = false;
+                state.isDrawingFgSelection = false;
+            }
+        }
+
+        function clearFgSelection() {
+            if (state.fgSelectionMat) {
+                state.fgSelectionMat.setTo(new cv.Scalar(0));
+            }
+
+            const drawCanvas = document.getElementById('autoTrimapDrawCanvas');
+            const ctx = drawCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+            const resultCanvas = document.getElementById('autoTrimapResultCanvas');
+            const rctx = resultCanvas.getContext('2d');
+            rctx.fillStyle = '#1a1a24';
+            rctx.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
+
+            document.getElementById('generateTrimap').disabled = true;
+            document.getElementById('useGeneratedTrimap').disabled = true;
+        }
+
+        function generateTrimapFromSelection() {
+            if (!state.fgSelectionMat) {
+                UIComponents.showToast({ message: 'Please draw a foreground selection first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const erosionSize = parseInt(document.getElementById('erosionSize').value);
+                const dilationSize = parseInt(document.getElementById('dilationSize').value);
+
+                // Create structuring elements
+                const erosionKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,
+                    new cv.Size(erosionSize * 2 + 1, erosionSize * 2 + 1));
+                const dilationKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,
+                    new cv.Size(dilationSize * 2 + 1, dilationSize * 2 + 1));
+
+                // Erode for definite foreground
+                const definiteFg = new cv.Mat();
+                cv.erode(state.fgSelectionMat, definiteFg, erosionKernel);
+
+                // Dilate for outer boundary
+                const outerBoundary = new cv.Mat();
+                cv.dilate(state.fgSelectionMat, outerBoundary, dilationKernel);
+
+                // Create trimap
+                const trimap = new cv.Mat(state.fgSelectionMat.rows, state.fgSelectionMat.cols,
+                                         cv.CV_8UC1, new cv.Scalar(0)); // Background
+
+                // Set unknown region (dilated - eroded)
+                for (let y = 0; y < trimap.rows; y++) {
+                    for (let x = 0; x < trimap.cols; x++) {
+                        if (outerBoundary.ucharAt(y, x) > 0) {
+                            trimap.ucharPtr(y, x)[0] = 128; // Unknown
+                        }
+                        if (definiteFg.ucharAt(y, x) > 0) {
+                            trimap.ucharPtr(y, x)[0] = 255; // Foreground
+                        }
+                    }
+                }
+
+                // Display
+                cv.imshow(document.getElementById('autoTrimapResultCanvas'), trimap);
+
+                // Store for later use
+                if (state.generatedTrimap) state.generatedTrimap.delete();
+                state.generatedTrimap = trimap.clone();
+
+                document.getElementById('useGeneratedTrimap').disabled = false;
+
+                // Cleanup
+                erosionKernel.delete();
+                dilationKernel.delete();
+                definiteFg.delete();
+                outerBoundary.delete();
+                trimap.delete();
+
+                UIComponents.showToast({ message: 'Trimap generated', type: 'success' });
+
+            } catch (error) {
+                console.error('Trimap generation error:', error);
+                UIComponents.showToast({ message: 'Failed to generate trimap: ' + error.message, type: 'error' });
+            }
+        }
+
+        function useGeneratedTrimap() {
+            if (!state.generatedTrimap) {
+                UIComponents.showToast({ message: 'No generated trimap available', type: 'warning' });
+                return;
+            }
+
+            // Copy to main trimap
+            if (state.trimapMat) state.trimapMat.delete();
+            state.trimapMat = state.generatedTrimap.clone();
+
+            // Update trimap preview in section 2
+            updateTrimapPreview();
+
+            // Update drawing canvas to show the trimap
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            const ctx = drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+            // Draw semi-transparent overlay
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = state.trimapMat.cols;
+            tempCanvas.height = state.trimapMat.rows;
+            cv.imshow(tempCanvas, state.trimapMat);
+
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(tempCanvas, 0, 0);
+            ctx.globalAlpha = 1.0;
+
+            UIComponents.showToast({ message: 'Trimap applied to main editor', type: 'success' });
+
+            // Scroll to trimap section
+            document.querySelector('.demo-section:nth-child(3)').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ==========================================
+        // Utility Functions
+        // ==========================================
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,2789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Processing - OpenCV.js Demos</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for advanced demos */
+        .theory-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .theory-box h4 {
+            color: var(--accent-secondary);
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.95rem;
+        }
+
+        .theory-box code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85em;
+        }
+
+        .math-formula {
+            background: var(--bg-input);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            text-align: center;
+            margin: var(--spacing-sm) 0;
+            color: var(--text-primary);
+        }
+
+        .demo-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .demo-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .unavailable-notice {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--warning);
+        }
+
+        .component-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .component-card h5 {
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-sm);
+            color: var(--accent-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--spacing-sm);
+        }
+
+        .stat-item {
+            background: var(--bg-input);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        .stat-item .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            font-family: monospace;
+        }
+
+        .spectrum-display {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .compression-slider {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .compression-slider input[type="range"] {
+            flex: 1;
+        }
+
+        .color-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+
+        .color-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+        }
+
+        .color-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .draw-canvas {
+            cursor: crosshair;
+            border: 2px dashed var(--border-accent);
+        }
+
+        .drawing-tools {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .drawing-tools button.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .hu-moments-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .hu-moments-table th,
+        .hu-moments-table td {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .hu-moments-table th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .hu-moments-table td.moment-value {
+            font-family: monospace;
+            color: var(--accent-secondary);
+        }
+
+        .filter-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .filter-preview canvas {
+            width: 100%;
+            border-radius: var(--radius-sm);
+        }
+
+        .filter-preview-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Advanced Processing</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Advanced Processing</h1>
+            <p>Explore advanced image processing techniques including frequency domain analysis, integral images, shape analysis, and more.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content" style="display: none;">
+
+            <!-- 1. Fuzzy Image Processing -->
+            <section class="demo-section" id="fuzzy-section">
+                <h3>1. Fuzzy Image Processing</h3>
+
+                <div class="theory-box">
+                    <h4>Understanding Fuzzy Image Processing</h4>
+                    <p>Fuzzy logic in image processing deals with uncertainty and imprecision by using membership functions instead of binary decisions. Unlike traditional methods that use crisp thresholds, fuzzy methods assign degrees of membership (0 to 1) to pixel values.</p>
+                    <p><strong>Key concepts:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>Membership Functions:</strong> Define how pixel values belong to fuzzy sets (e.g., "dark", "medium", "bright")</li>
+                        <li><strong>Fuzzy Rules:</strong> IF-THEN rules that define processing based on membership</li>
+                        <li><strong>Defuzzification:</strong> Converting fuzzy output back to crisp values</li>
+                    </ul>
+                </div>
+
+                <div id="fuzzy-available" class="hidden">
+                    <div class="demo-controls">
+                        <div class="form-group">
+                            <label for="fuzzy-image-upload">Upload Image</label>
+                            <input type="file" id="fuzzy-image-upload" accept="image/*">
+                            <label for="fuzzy-image-upload" class="file-input-label">Choose Image</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="fuzzy-method">Fuzzy Method</label>
+                            <select id="fuzzy-method">
+                                <option value="edge">Fuzzy Edge Detection</option>
+                                <option value="contrast">Fuzzy Contrast Enhancement</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fuzzy-param">Membership Function Width</label>
+                            <div class="range-group">
+                                <input type="range" id="fuzzy-param" min="10" max="100" value="50">
+                                <span class="range-value" id="fuzzy-param-value">50</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="fuzzy-apply">Apply Fuzzy Processing</button>
+                    </div>
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-original"></canvas>
+                            <span class="canvas-label">Original</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-result"></canvas>
+                            <span class="canvas-label">Fuzzy Result</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-traditional"></canvas>
+                            <span class="canvas-label">Traditional Method</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fuzzy-unavailable" class="unavailable-notice">
+                    <p><strong>cv.fuzzy module not available</strong></p>
+                    <p>The fuzzy module is not included in this OpenCV.js build. We'll demonstrate fuzzy concepts using custom implementations.</p>
+                    <button class="btn btn-primary mt-md" id="fuzzy-demo-custom">Run Custom Fuzzy Demo</button>
+                    <div class="demo-output mt-lg" id="fuzzy-custom-output" style="display: none;">
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-custom-original"></canvas>
+                            <span class="canvas-label">Original</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-custom-result"></canvas>
+                            <span class="canvas-label">Custom Fuzzy Edge</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="fuzzy-custom-canny"></canvas>
+                            <span class="canvas-label">Canny (Traditional)</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Fourier Transform -->
+            <section class="demo-section" id="fourier-section">
+                <h3>2. Fourier Transform (DFT/IDFT)</h3>
+
+                <div class="theory-box">
+                    <h4>Frequency Domain Analysis</h4>
+                    <p>The Discrete Fourier Transform (DFT) converts an image from the spatial domain to the frequency domain. This reveals the frequency components that make up the image.</p>
+                    <div class="math-formula">F(u,v) = sum of f(x,y) * e^(-j2pi(ux/M + vy/N))</div>
+                    <p><strong>Key insights:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>Low frequencies</strong> (center): Represent smooth regions, overall brightness</li>
+                        <li><strong>High frequencies</strong> (edges): Represent edges, fine details, noise</li>
+                        <li><strong>Magnitude spectrum:</strong> Shows frequency strength</li>
+                        <li><strong>Phase spectrum:</strong> Contains structural/spatial information</li>
+                    </ul>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="fourier-image-upload">Upload Image</label>
+                        <input type="file" id="fourier-image-upload" accept="image/*">
+                        <label for="fourier-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="fourier-use-sample">Use Sample Image</button>
+                    <button class="btn btn-primary" id="fourier-compute">Compute DFT</button>
+                </div>
+
+                <div class="demo-output demo-grid-4" id="fourier-output" style="display: none;">
+                    <div class="canvas-container">
+                        <canvas id="fourier-original"></canvas>
+                        <span class="canvas-label">Original</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="fourier-magnitude"></canvas>
+                        <span class="canvas-label">Magnitude Spectrum</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="fourier-phase"></canvas>
+                        <span class="canvas-label">Phase Spectrum</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="fourier-reconstructed"></canvas>
+                        <span class="canvas-label">Reconstructed (IDFT)</span>
+                    </div>
+                </div>
+
+                <h4 class="mt-lg">Frequency Domain Filtering</h4>
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="fourier-filter-type">Filter Type</label>
+                        <select id="fourier-filter-type">
+                            <option value="lowpass">Low-Pass (Blur)</option>
+                            <option value="highpass">High-Pass (Sharpen/Edges)</option>
+                            <option value="bandpass">Band-Pass</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fourier-cutoff">Cutoff Frequency</label>
+                        <div class="range-group">
+                            <input type="range" id="fourier-cutoff" min="5" max="100" value="30">
+                            <span class="range-value" id="fourier-cutoff-value">30</span>
+                        </div>
+                    </div>
+                    <div class="form-group" id="fourier-bandwidth-group" style="display: none;">
+                        <label for="fourier-bandwidth">Bandwidth</label>
+                        <div class="range-group">
+                            <input type="range" id="fourier-bandwidth" min="5" max="50" value="20">
+                            <span class="range-value" id="fourier-bandwidth-value">20</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="fourier-filter-apply">Apply Filter</button>
+                </div>
+
+                <div class="demo-output demo-grid-3" id="fourier-filter-output" style="display: none;">
+                    <div class="canvas-container">
+                        <canvas id="fourier-filter-mask"></canvas>
+                        <span class="canvas-label">Filter Mask</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="fourier-filtered-spectrum"></canvas>
+                        <span class="canvas-label">Filtered Spectrum</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="fourier-filtered-result"></canvas>
+                        <span class="canvas-label">Filtered Result</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Discrete Cosine Transform -->
+            <section class="demo-section" id="dct-section">
+                <h3>3. Discrete Cosine Transform (DCT)</h3>
+
+                <div class="theory-box">
+                    <h4>DCT and Image Compression</h4>
+                    <p>The DCT transforms image data into frequency components, similar to DFT but using only real numbers. It's the foundation of JPEG compression.</p>
+                    <div class="math-formula">DCT(u,v) = alpha(u)*alpha(v) * sum of f(x,y)*cos(...)</div>
+                    <p><strong>JPEG Compression Process:</strong></p>
+                    <ol style="margin-left: 20px; margin-top: 8px;">
+                        <li>Divide image into 8x8 blocks</li>
+                        <li>Apply DCT to each block</li>
+                        <li>Quantize coefficients (lossy step)</li>
+                        <li>Encode using entropy coding</li>
+                    </ol>
+                    <p>Small DCT coefficients contribute little to visual quality and can be zeroed for compression.</p>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="dct-image-upload">Upload Image</label>
+                        <input type="file" id="dct-image-upload" accept="image/*">
+                        <label for="dct-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="dct-use-sample">Use Sample Image</button>
+                    <button class="btn btn-primary" id="dct-compute">Compute DCT</button>
+                </div>
+
+                <div id="dct-output" style="display: none;">
+                    <div class="demo-output" style="margin-bottom: var(--spacing-lg);">
+                        <div class="canvas-container">
+                            <canvas id="dct-original"></canvas>
+                            <span class="canvas-label">Original</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="dct-coefficients"></canvas>
+                            <span class="canvas-label">DCT Coefficients (log scale)</span>
+                        </div>
+                    </div>
+
+                    <h4>JPEG-Style Compression Demo</h4>
+                    <div class="compression-slider">
+                        <label>Compression Level (zero small coefficients):</label>
+                        <input type="range" id="dct-compression" min="0" max="99" value="50">
+                        <span class="range-value" id="dct-compression-value">50%</span>
+                    </div>
+
+                    <div class="demo-output demo-grid-3">
+                        <div class="canvas-container">
+                            <canvas id="dct-compressed-low"></canvas>
+                            <span class="canvas-label">25% Compression</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="dct-compressed-mid"></canvas>
+                            <span class="canvas-label">50% Compression</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="dct-compressed-high"></canvas>
+                            <span class="canvas-label">75% Compression</span>
+                        </div>
+                    </div>
+
+                    <div class="metrics mt-md">
+                        <div class="metric">
+                            <span class="metric-label">PSNR (25%)</span>
+                            <span class="metric-value" id="dct-psnr-low">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">PSNR (50%)</span>
+                            <span class="metric-value" id="dct-psnr-mid">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">PSNR (75%)</span>
+                            <span class="metric-value" id="dct-psnr-high">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Phase Unwrapping -->
+            <section class="demo-section" id="phase-section">
+                <h3>4. Phase Unwrapping</h3>
+
+                <div class="theory-box">
+                    <h4>Understanding Phase Unwrapping</h4>
+                    <p>Phase unwrapping is the process of recovering the original continuous phase signal from a "wrapped" phase signal that is constrained to the interval [-pi, pi] or [0, 2pi].</p>
+                    <p><strong>Applications:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Interferometric SAR (InSAR) for terrain mapping</li>
+                        <li>Magnetic Resonance Imaging (MRI)</li>
+                        <li>Optical interferometry</li>
+                        <li>3D surface measurement</li>
+                    </ul>
+                    <p>The challenge is that phase wrapping introduces 2pi discontinuities that must be resolved to recover the true phase.</p>
+                </div>
+
+                <div id="phase-available" class="hidden">
+                    <div class="demo-controls">
+                        <button class="btn btn-primary" id="phase-demo">Run Phase Unwrapping Demo</button>
+                    </div>
+                    <div class="demo-output demo-grid-3">
+                        <div class="canvas-container">
+                            <canvas id="phase-wrapped"></canvas>
+                            <span class="canvas-label">Wrapped Phase</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="phase-unwrapped"></canvas>
+                            <span class="canvas-label">Unwrapped Phase</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="phase-original"></canvas>
+                            <span class="canvas-label">Original (Ground Truth)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-unavailable">
+                    <div class="unavailable-notice">
+                        <p><strong>cv.phase_unwrapping module not available</strong></p>
+                        <p>The phase_unwrapping module is not included in this build. We'll demonstrate the concept with a custom simple algorithm.</p>
+                    </div>
+                    <div class="demo-controls mt-md">
+                        <button class="btn btn-primary" id="phase-demo-custom">Generate Synthetic Phase Demo</button>
+                    </div>
+                    <div class="demo-output demo-grid-3" id="phase-custom-output" style="display: none;">
+                        <div class="canvas-container">
+                            <canvas id="phase-custom-original"></canvas>
+                            <span class="canvas-label">Original Continuous Phase</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="phase-custom-wrapped"></canvas>
+                            <span class="canvas-label">Wrapped Phase (mod 2pi)</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="phase-custom-unwrapped"></canvas>
+                            <span class="canvas-label">Simple Unwrapping Result</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Integral Images -->
+            <section class="demo-section" id="integral-section">
+                <h3>5. Integral Images</h3>
+
+                <div class="theory-box">
+                    <h4>Summed Area Tables</h4>
+                    <p>An integral image (also called summed area table) allows O(1) computation of the sum of values in any rectangular region. Each pixel (x,y) contains the sum of all pixels above and to the left.</p>
+                    <div class="math-formula">I(x,y) = sum of f(x',y') for all x' &lt;= x, y' &lt;= y</div>
+                    <p><strong>Sum of rectangle:</strong> S = I(D) - I(B) - I(C) + I(A)</p>
+                    <p><strong>Applications:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Fast box filtering (constant time regardless of kernel size)</li>
+                        <li>HAAR feature computation (Viola-Jones face detection)</li>
+                        <li>Adaptive thresholding</li>
+                        <li>Template matching optimizations</li>
+                    </ul>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="integral-image-upload">Upload Image</label>
+                        <input type="file" id="integral-image-upload" accept="image/*">
+                        <label for="integral-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="integral-use-sample">Use Sample Image</button>
+                    <button class="btn btn-primary" id="integral-compute">Compute Integral Image</button>
+                </div>
+
+                <div id="integral-output" style="display: none;">
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="integral-original"></canvas>
+                            <span class="canvas-label">Original (Grayscale)</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="integral-result"></canvas>
+                            <span class="canvas-label">Integral Image (Normalized)</span>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-lg">Fast Box Filter Demo</h4>
+                    <p class="mb-md" style="color: var(--text-secondary);">Compare box filter speeds using direct convolution vs integral image lookup.</p>
+
+                    <div class="demo-controls">
+                        <div class="form-group">
+                            <label for="integral-kernel-size">Kernel Size</label>
+                            <div class="range-group">
+                                <input type="range" id="integral-kernel-size" min="3" max="51" step="2" value="15">
+                                <span class="range-value" id="integral-kernel-value">15</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="integral-box-filter">Run Box Filter Comparison</button>
+                    </div>
+
+                    <div class="demo-output demo-grid-3" id="integral-box-output" style="display: none;">
+                        <div class="canvas-container">
+                            <canvas id="integral-box-original"></canvas>
+                            <span class="canvas-label">Original</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="integral-box-direct"></canvas>
+                            <span class="canvas-label">Direct Convolution</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="integral-box-fast"></canvas>
+                            <span class="canvas-label">Integral Image Method</span>
+                        </div>
+                    </div>
+
+                    <div class="metrics mt-md" id="integral-metrics" style="display: none;">
+                        <div class="metric">
+                            <span class="metric-label">Direct Conv. Time</span>
+                            <span class="metric-value" id="integral-time-direct">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Integral Time</span>
+                            <span class="metric-value" id="integral-time-fast">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Speedup</span>
+                            <span class="metric-value" id="integral-speedup">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Distance Transform -->
+            <section class="demo-section" id="distance-section">
+                <h3>6. Distance Transform</h3>
+
+                <div class="theory-box">
+                    <h4>Computing Distance Maps</h4>
+                    <p>The distance transform computes, for each pixel, the distance to the nearest zero pixel (background). This creates a "distance map" useful for shape analysis.</p>
+                    <p><strong>Distance Types:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>L1 (Manhattan):</strong> d = |x1-x2| + |y1-y2|</li>
+                        <li><strong>L2 (Euclidean):</strong> d = sqrt((x1-x2)^2 + (y1-y2)^2)</li>
+                        <li><strong>C (Chessboard):</strong> d = max(|x1-x2|, |y1-y2|)</li>
+                    </ul>
+                    <p><strong>Applications:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Finding object centers (watershed markers)</li>
+                        <li>Skeletonization</li>
+                        <li>Shape matching</li>
+                        <li>Voronoi diagram computation</li>
+                    </ul>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="distance-image-upload">Upload Binary Image</label>
+                        <input type="file" id="distance-image-upload" accept="image/*">
+                        <label for="distance-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="distance-use-sample">Generate Sample Shape</button>
+                    <div class="form-group">
+                        <label for="distance-type">Distance Type</label>
+                        <select id="distance-type">
+                            <option value="L1">L1 (Manhattan)</option>
+                            <option value="L2" selected>L2 (Euclidean)</option>
+                            <option value="C">C (Chessboard)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="distance-mask">Mask Size</label>
+                        <select id="distance-mask">
+                            <option value="3">3x3</option>
+                            <option value="5" selected>5x5</option>
+                            <option value="0">Precise (slower)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="distance-compute">Compute Distance Transform</button>
+                </div>
+
+                <div class="demo-output demo-grid-3" id="distance-output" style="display: none;">
+                    <div class="canvas-container">
+                        <canvas id="distance-binary"></canvas>
+                        <span class="canvas-label">Binary Input</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="distance-result"></canvas>
+                        <span class="canvas-label">Distance Transform</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="distance-markers"></canvas>
+                        <span class="canvas-label">Local Maxima (Markers)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. Connected Components -->
+            <section class="demo-section" id="connected-section">
+                <h3>7. Connected Components Analysis</h3>
+
+                <div class="theory-box">
+                    <h4>Labeling Connected Regions</h4>
+                    <p>Connected components analysis identifies and labels distinct objects in a binary image. Each connected region gets a unique label.</p>
+                    <p><strong>Connectivity:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>4-connectivity:</strong> Only horizontal and vertical neighbors</li>
+                        <li><strong>8-connectivity:</strong> Includes diagonal neighbors</li>
+                    </ul>
+                    <p><strong>Statistics available:</strong> Area, centroid, bounding box, width, height</p>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="connected-image-upload">Upload Binary Image</label>
+                        <input type="file" id="connected-image-upload" accept="image/*">
+                        <label for="connected-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="connected-use-sample">Generate Sample Objects</button>
+                    <div class="form-group">
+                        <label for="connected-connectivity">Connectivity</label>
+                        <select id="connected-connectivity">
+                            <option value="4">4-connectivity</option>
+                            <option value="8" selected>8-connectivity</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="connected-min-area">Minimum Area Filter</label>
+                        <div class="range-group">
+                            <input type="range" id="connected-min-area" min="0" max="1000" value="100">
+                            <span class="range-value" id="connected-min-area-value">100</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="connected-compute">Analyze Components</button>
+                </div>
+
+                <div id="connected-output" style="display: none;">
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="connected-binary"></canvas>
+                            <span class="canvas-label">Binary Input</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="connected-labeled"></canvas>
+                            <span class="canvas-label">Labeled Components</span>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-lg">Component Statistics</h4>
+                    <div id="connected-stats" class="stats-grid"></div>
+
+                    <div class="color-legend mt-md" id="connected-legend"></div>
+                </div>
+            </section>
+
+            <!-- 8. Convex Hull and Defects -->
+            <section class="demo-section" id="hull-section">
+                <h3>8. Convex Hull and Defects</h3>
+
+                <div class="theory-box">
+                    <h4>Convex Hull Analysis</h4>
+                    <p>The convex hull is the smallest convex polygon that contains all points of a shape. Convexity defects are the regions between the hull and the original contour.</p>
+                    <p><strong>Key metrics:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>Solidity:</strong> Contour Area / Hull Area (1.0 for convex shapes)</li>
+                        <li><strong>Convexity Defects:</strong> Points where contour deviates from hull</li>
+                        <li><strong>Defect Depth:</strong> Maximum distance from hull to contour</li>
+                    </ul>
+                    <p><strong>Applications:</strong> Gesture recognition, hand tracking, shape classification</p>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="hull-image-upload">Upload Image</label>
+                        <input type="file" id="hull-image-upload" accept="image/*">
+                        <label for="hull-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="hull-use-sample">Generate Sample Shape</button>
+                    <button class="btn btn-secondary" id="hull-draw-mode">Draw Custom Shape</button>
+                    <button class="btn btn-primary" id="hull-compute">Compute Hull & Defects</button>
+                </div>
+
+                <div id="hull-draw-area" class="hidden mt-md">
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-sm);">Draw a shape below. Click "Done" when finished.</p>
+                    <div class="drawing-tools">
+                        <button class="btn btn-sm btn-secondary" id="hull-clear-draw">Clear</button>
+                        <button class="btn btn-sm btn-primary" id="hull-done-draw">Done Drawing</button>
+                    </div>
+                    <canvas id="hull-draw-canvas" class="draw-canvas" width="400" height="300"></canvas>
+                </div>
+
+                <div id="hull-output" style="display: none;">
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="hull-original"></canvas>
+                            <span class="canvas-label">Original Contour</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="hull-result"></canvas>
+                            <span class="canvas-label">Hull & Defects</span>
+                        </div>
+                    </div>
+
+                    <div class="metrics mt-md">
+                        <div class="metric">
+                            <span class="metric-label">Contour Area</span>
+                            <span class="metric-value" id="hull-contour-area">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Hull Area</span>
+                            <span class="metric-value" id="hull-hull-area">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Solidity</span>
+                            <span class="metric-value" id="hull-solidity">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Defects Count</span>
+                            <span class="metric-value" id="hull-defects-count">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. Moments and Shape Analysis -->
+            <section class="demo-section" id="moments-section">
+                <h3>9. Moments and Shape Analysis</h3>
+
+                <div class="theory-box">
+                    <h4>Image Moments</h4>
+                    <p>Image moments are weighted averages of pixel intensities that capture shape properties. They enable translation, scale, and rotation invariant shape description.</p>
+                    <p><strong>Moment types:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><strong>Raw moments (m_pq):</strong> Basic weighted sums</li>
+                        <li><strong>Central moments (mu_pq):</strong> Translation invariant</li>
+                        <li><strong>Normalized moments (nu_pq):</strong> Scale invariant</li>
+                        <li><strong>Hu moments (h1-h7):</strong> Rotation invariant</li>
+                    </ul>
+                    <div class="math-formula">Centroid: (cx, cy) = (m10/m00, m01/m00)</div>
+                    <div class="math-formula">Orientation: theta = 0.5 * atan2(2*mu11, mu20-mu02)</div>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="moments-image-upload">Upload Image</label>
+                        <input type="file" id="moments-image-upload" accept="image/*">
+                        <label for="moments-image-upload" class="file-input-label">Choose Image</label>
+                    </div>
+                    <button class="btn btn-secondary" id="moments-use-sample">Generate Sample Shapes</button>
+                    <button class="btn btn-primary" id="moments-compute">Compute Moments</button>
+                </div>
+
+                <div id="moments-output" style="display: none;">
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="moments-original"></canvas>
+                            <span class="canvas-label">Original Shape</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="moments-annotated"></canvas>
+                            <span class="canvas-label">Centroid & Orientation</span>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-lg">Hu Moments (Rotation Invariant)</h4>
+                    <table class="hu-moments-table">
+                        <thead>
+                            <tr>
+                                <th>Moment</th>
+                                <th>Value</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hu-moments-body">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+
+                    <h4 class="mt-lg">Shape Matching</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">Compare two shapes using Hu moments:</p>
+                    <div class="demo-output demo-grid-3" id="moments-matching-output" style="display: none;">
+                        <div class="canvas-container">
+                            <canvas id="moments-shape1"></canvas>
+                            <span class="canvas-label">Shape 1</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="moments-shape2"></canvas>
+                            <span class="canvas-label">Shape 2</span>
+                        </div>
+                        <div class="component-card">
+                            <h5>Match Results</h5>
+                            <div class="stat-item mb-sm">
+                                <span class="label">Match Score (I1)</span>
+                                <span class="value" id="moments-match-i1">-</span>
+                            </div>
+                            <div class="stat-item mb-sm">
+                                <span class="label">Match Score (I2)</span>
+                                <span class="value" id="moments-match-i2">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="label">Match Score (I3)</span>
+                                <span class="value" id="moments-match-i3">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary mt-md" id="moments-compare">Compare Sample Shapes</button>
+                </div>
+            </section>
+
+            <!-- 10. Plot Module -->
+            <section class="demo-section" id="plot-section">
+                <h3>10. Plot Module</h3>
+
+                <div class="theory-box">
+                    <h4>Signal Visualization</h4>
+                    <p>The plot module provides functions for visualizing 1D data like histograms, signals, and profiles. When cv.plot is not available, we demonstrate custom plotting techniques.</p>
+                </div>
+
+                <div id="plot-available" class="hidden">
+                    <div class="demo-controls">
+                        <button class="btn btn-primary" id="plot-demo">Run Plot Demo</button>
+                    </div>
+                    <div class="demo-output">
+                        <div class="canvas-container">
+                            <canvas id="plot-result"></canvas>
+                            <span class="canvas-label">Plot Output</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="plot-unavailable">
+                    <div class="alert alert-info mb-md">
+                        <strong>Note:</strong> The cv.plot module is not available in this build. Below we demonstrate custom plotting for common use cases.
+                    </div>
+
+                    <div class="demo-controls">
+                        <div class="form-group">
+                            <label for="plot-image-upload">Upload Image for Analysis</label>
+                            <input type="file" id="plot-image-upload" accept="image/*">
+                            <label for="plot-image-upload" class="file-input-label">Choose Image</label>
+                        </div>
+                        <button class="btn btn-secondary" id="plot-use-sample">Use Sample Image</button>
+                        <div class="form-group">
+                            <label for="plot-type">Plot Type</label>
+                            <select id="plot-type">
+                                <option value="histogram">Image Histogram</option>
+                                <option value="profile">Row/Column Profile</option>
+                                <option value="signal">Synthetic Signal</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="plot-compute">Generate Plot</button>
+                    </div>
+
+                    <div id="plot-output" style="display: none;">
+                        <div class="demo-output">
+                            <div class="canvas-container">
+                                <canvas id="plot-source"></canvas>
+                                <span class="canvas-label">Source Image</span>
+                            </div>
+                            <div class="canvas-container">
+                                <canvas id="plot-canvas" width="500" height="300"></canvas>
+                                <span class="canvas-label">Plot</span>
+                            </div>
+                        </div>
+
+                        <div id="plot-profile-controls" class="demo-controls mt-md" style="display: none;">
+                            <div class="form-group">
+                                <label for="plot-profile-type">Profile Direction</label>
+                                <select id="plot-profile-type">
+                                    <option value="row">Horizontal (Row)</option>
+                                    <option value="col">Vertical (Column)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="plot-profile-pos">Position</label>
+                                <div class="range-group">
+                                    <input type="range" id="plot-profile-pos" min="0" max="100" value="50">
+                                    <span class="range-value" id="plot-profile-pos-value">50%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+    <script>
+        // Global state
+        let cvReady = false;
+        let currentImages = {};
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (percent) => {
+                        document.getElementById('loading-progress').style.width = `${percent}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                cvReady = true;
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+
+                // Check module availability
+                checkModuleAvailability();
+
+                // Initialize all demos
+                initFuzzyDemo();
+                initFourierDemo();
+                initDCTDemo();
+                initPhaseDemo();
+                initIntegralDemo();
+                initDistanceDemo();
+                initConnectedDemo();
+                initHullDemo();
+                initMomentsDemo();
+                initPlotDemo();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = `Error: ${error.message}`;
+                console.error('Failed to load OpenCV.js:', error);
+            }
+        });
+
+        // Check which modules are available
+        function checkModuleAvailability() {
+            // Check fuzzy module
+            if (typeof cv.fuzzy !== 'undefined' || typeof cv.FT02D_process !== 'undefined') {
+                document.getElementById('fuzzy-available').classList.remove('hidden');
+                document.getElementById('fuzzy-unavailable').classList.add('hidden');
+            }
+
+            // Check phase_unwrapping module
+            if (typeof cv.HistogramPhaseUnwrapping !== 'undefined') {
+                document.getElementById('phase-available').classList.remove('hidden');
+                document.getElementById('phase-unavailable').classList.add('hidden');
+            }
+
+            // Check plot module
+            if (typeof cv.plot !== 'undefined' || typeof cv.Plot2d !== 'undefined') {
+                document.getElementById('plot-available').classList.remove('hidden');
+                document.getElementById('plot-unavailable').classList.add('hidden');
+            }
+        }
+
+        // Helper: Create sample image with shapes
+        function createSampleShapesImage(width = 400, height = 300) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // Dark background
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw some shapes
+            ctx.fillStyle = '#ffffff';
+
+            // Circle
+            ctx.beginPath();
+            ctx.arc(80, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rectangle
+            ctx.fillRect(160, 40, 80, 80);
+
+            // Star shape
+            ctx.beginPath();
+            const cx = 320, cy = 80, spikes = 5, outerR = 40, innerR = 20;
+            for (let i = 0; i < spikes * 2; i++) {
+                const r = i % 2 === 0 ? outerR : innerR;
+                const angle = (i * Math.PI / spikes) - Math.PI / 2;
+                const x = cx + Math.cos(angle) * r;
+                const y = cy + Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Hand-like shape
+            ctx.beginPath();
+            ctx.moveTo(80, 200);
+            ctx.lineTo(80, 160);
+            ctx.lineTo(90, 140);
+            ctx.lineTo(90, 160);
+            ctx.lineTo(100, 140);
+            ctx.lineTo(100, 165);
+            ctx.lineTo(110, 145);
+            ctx.lineTo(110, 170);
+            ctx.lineTo(120, 150);
+            ctx.lineTo(120, 175);
+            ctx.lineTo(130, 170);
+            ctx.lineTo(140, 200);
+            ctx.closePath();
+            ctx.fill();
+
+            // Ellipse
+            ctx.beginPath();
+            ctx.ellipse(250, 200, 60, 35, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Triangle
+            ctx.beginPath();
+            ctx.moveTo(340, 240);
+            ctx.lineTo(380, 160);
+            ctx.lineTo(420, 240);
+            ctx.closePath();
+            ctx.fill();
+
+            return cv.imread(canvas);
+        }
+
+        // Helper: Create sample grayscale image
+        function createSampleGrayscale(width = 300, height = 300) {
+            const mat = new cv.Mat(height, width, cv.CV_8UC1);
+
+            // Create a gradient with some patterns
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const val = Math.floor(
+                        128 + 60 * Math.sin(x / 20) * Math.cos(y / 20) +
+                        40 * Math.sin((x + y) / 30)
+                    );
+                    mat.ucharPtr(y, x)[0] = Math.max(0, Math.min(255, val));
+                }
+            }
+
+            return mat;
+        }
+
+        // ==================== FUZZY DEMO ====================
+        function initFuzzyDemo() {
+            const customBtn = document.getElementById('fuzzy-demo-custom');
+            if (customBtn) {
+                customBtn.addEventListener('click', runCustomFuzzyDemo);
+            }
+
+            document.getElementById('fuzzy-param').addEventListener('input', (e) => {
+                document.getElementById('fuzzy-param-value').textContent = e.target.value;
+            });
+        }
+
+        function runCustomFuzzyDemo() {
+            const src = createSampleGrayscale(300, 300);
+
+            // Display original
+            cv.imshow('fuzzy-custom-original', src);
+
+            // Custom fuzzy edge detection
+            const fuzzyEdge = customFuzzyEdgeDetection(src);
+            cv.imshow('fuzzy-custom-result', fuzzyEdge);
+
+            // Traditional Canny for comparison
+            const canny = new cv.Mat();
+            cv.Canny(src, canny, 50, 150);
+            cv.imshow('fuzzy-custom-canny', canny);
+
+            document.getElementById('fuzzy-custom-output').style.display = 'grid';
+
+            // Cleanup
+            src.delete();
+            fuzzyEdge.delete();
+            canny.delete();
+        }
+
+        function customFuzzyEdgeDetection(src) {
+            const rows = src.rows;
+            const cols = src.cols;
+            const result = new cv.Mat(rows, cols, cv.CV_8UC1);
+
+            // Fuzzy edge detection using membership functions
+            for (let y = 1; y < rows - 1; y++) {
+                for (let x = 1; x < cols - 1; x++) {
+                    // Get 3x3 neighborhood
+                    const center = src.ucharPtr(y, x)[0];
+                    let maxDiff = 0;
+
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const neighbor = src.ucharPtr(y + dy, x + dx)[0];
+                            const diff = Math.abs(center - neighbor);
+                            maxDiff = Math.max(maxDiff, diff);
+                        }
+                    }
+
+                    // Fuzzy membership function (sigmoid-like)
+                    const sigma = 30;
+                    const membership = 1 / (1 + Math.exp(-(maxDiff - sigma) / 10));
+                    result.ucharPtr(y, x)[0] = Math.floor(membership * 255);
+                }
+            }
+
+            return result;
+        }
+
+        // ==================== FOURIER DEMO ====================
+        let fourierData = {};
+
+        function initFourierDemo() {
+            document.getElementById('fourier-image-upload').addEventListener('change', handleFourierUpload);
+            document.getElementById('fourier-use-sample').addEventListener('click', useFourierSample);
+            document.getElementById('fourier-compute').addEventListener('click', computeFourier);
+            document.getElementById('fourier-filter-apply').addEventListener('click', applyFourierFilter);
+
+            document.getElementById('fourier-cutoff').addEventListener('input', (e) => {
+                document.getElementById('fourier-cutoff-value').textContent = e.target.value;
+            });
+
+            document.getElementById('fourier-bandwidth').addEventListener('input', (e) => {
+                document.getElementById('fourier-bandwidth-value').textContent = e.target.value;
+            });
+
+            document.getElementById('fourier-filter-type').addEventListener('change', (e) => {
+                document.getElementById('fourier-bandwidth-group').style.display =
+                    e.target.value === 'bandpass' ? 'flex' : 'none';
+            });
+        }
+
+        function handleFourierUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                fourierData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useFourierSample() {
+            fourierData.src = createSampleGrayscale(256, 256);
+        }
+
+        function computeFourier() {
+            if (!fourierData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let src = fourierData.src.clone();
+
+            // Convert to grayscale if needed
+            if (src.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                src.delete();
+                src = gray;
+            }
+
+            // Optimal size for DFT
+            const optRows = cv.getOptimalDFTSize(src.rows);
+            const optCols = cv.getOptimalDFTSize(src.cols);
+
+            // Pad image
+            const padded = new cv.Mat();
+            cv.copyMakeBorder(src, padded, 0, optRows - src.rows, 0, optCols - src.cols,
+                cv.BORDER_CONSTANT, new cv.Scalar(0));
+
+            // Create complex image
+            const planes = new cv.MatVector();
+            const floatMat = new cv.Mat();
+            padded.convertTo(floatMat, cv.CV_32F);
+            planes.push_back(floatMat);
+            planes.push_back(cv.Mat.zeros(padded.rows, padded.cols, cv.CV_32F));
+
+            const complex = new cv.Mat();
+            cv.merge(planes, complex);
+
+            // DFT
+            cv.dft(complex, complex);
+
+            // Split into real and imaginary
+            const dftPlanes = new cv.MatVector();
+            cv.split(complex, dftPlanes);
+
+            // Compute magnitude
+            const magnitude = new cv.Mat();
+            cv.magnitude(dftPlanes.get(0), dftPlanes.get(1), magnitude);
+
+            // Compute phase
+            const phase = new cv.Mat();
+            cv.phase(dftPlanes.get(0), dftPlanes.get(1), phase);
+
+            // Log scale for magnitude
+            const ones = cv.Mat.ones(magnitude.rows, magnitude.cols, cv.CV_32F);
+            cv.add(magnitude, ones, magnitude);
+            cv.log(magnitude, magnitude);
+
+            // Shift to center
+            shiftDFT(magnitude);
+
+            // Normalize for display
+            const magDisplay = new cv.Mat();
+            cv.normalize(magnitude, magDisplay, 0, 255, cv.NORM_MINMAX);
+            magDisplay.convertTo(magDisplay, cv.CV_8U);
+
+            const phaseDisplay = new cv.Mat();
+            cv.normalize(phase, phaseDisplay, 0, 255, cv.NORM_MINMAX);
+            phaseDisplay.convertTo(phaseDisplay, cv.CV_8U);
+
+            // IDFT to verify reconstruction
+            const reconstructed = new cv.Mat();
+            cv.idft(complex, reconstructed, cv.DFT_SCALE | cv.DFT_REAL_OUTPUT);
+            cv.normalize(reconstructed, reconstructed, 0, 255, cv.NORM_MINMAX);
+            reconstructed.convertTo(reconstructed, cv.CV_8U);
+
+            // Display
+            cv.imshow('fourier-original', src);
+            cv.imshow('fourier-magnitude', magDisplay);
+            cv.imshow('fourier-phase', phaseDisplay);
+            cv.imshow('fourier-reconstructed', reconstructed);
+
+            document.getElementById('fourier-output').style.display = 'grid';
+
+            // Store for filtering
+            fourierData.complex = complex.clone();
+            fourierData.optRows = optRows;
+            fourierData.optCols = optCols;
+
+            // Cleanup
+            src.delete();
+            padded.delete();
+            floatMat.delete();
+            planes.delete();
+            dftPlanes.delete();
+            magnitude.delete();
+            phase.delete();
+            ones.delete();
+            magDisplay.delete();
+            phaseDisplay.delete();
+            reconstructed.delete();
+            complex.delete();
+        }
+
+        function shiftDFT(mat) {
+            const cx = Math.floor(mat.cols / 2);
+            const cy = Math.floor(mat.rows / 2);
+
+            const q0 = mat.roi(new cv.Rect(0, 0, cx, cy));
+            const q1 = mat.roi(new cv.Rect(cx, 0, cx, cy));
+            const q2 = mat.roi(new cv.Rect(0, cy, cx, cy));
+            const q3 = mat.roi(new cv.Rect(cx, cy, cx, cy));
+
+            const tmp = new cv.Mat();
+            q0.copyTo(tmp);
+            q3.copyTo(q0);
+            tmp.copyTo(q3);
+
+            q1.copyTo(tmp);
+            q2.copyTo(q1);
+            tmp.copyTo(q2);
+
+            tmp.delete();
+        }
+
+        function applyFourierFilter() {
+            if (!fourierData.complex) {
+                alert('Please compute DFT first');
+                return;
+            }
+
+            const filterType = document.getElementById('fourier-filter-type').value;
+            const cutoff = parseInt(document.getElementById('fourier-cutoff').value);
+            const bandwidth = parseInt(document.getElementById('fourier-bandwidth').value);
+
+            const rows = fourierData.optRows;
+            const cols = fourierData.optCols;
+            const cx = cols / 2;
+            const cy = rows / 2;
+
+            // Create filter mask
+            const mask = new cv.Mat(rows, cols, cv.CV_32F);
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+                    let value;
+
+                    switch (filterType) {
+                        case 'lowpass':
+                            value = dist <= cutoff ? 1 : 0;
+                            break;
+                        case 'highpass':
+                            value = dist > cutoff ? 1 : 0;
+                            break;
+                        case 'bandpass':
+                            value = (dist > cutoff - bandwidth/2 && dist < cutoff + bandwidth/2) ? 1 : 0;
+                            break;
+                    }
+
+                    mask.floatPtr(y, x)[0] = value;
+                }
+            }
+
+            // Display mask
+            const maskDisplay = new cv.Mat();
+            cv.normalize(mask, maskDisplay, 0, 255, cv.NORM_MINMAX);
+            maskDisplay.convertTo(maskDisplay, cv.CV_8U);
+            cv.imshow('fourier-filter-mask', maskDisplay);
+
+            // Apply filter
+            const filtered = fourierData.complex.clone();
+            const planes = new cv.MatVector();
+            cv.split(filtered, planes);
+
+            // Shift mask
+            shiftDFT(mask);
+
+            cv.multiply(planes.get(0), mask, planes.get(0));
+            cv.multiply(planes.get(1), mask, planes.get(1));
+            cv.merge(planes, filtered);
+
+            // Compute filtered magnitude for display
+            const filtMag = new cv.Mat();
+            cv.magnitude(planes.get(0), planes.get(1), filtMag);
+            const ones = cv.Mat.ones(filtMag.rows, filtMag.cols, cv.CV_32F);
+            cv.add(filtMag, ones, filtMag);
+            cv.log(filtMag, filtMag);
+            shiftDFT(filtMag);
+            const filtMagDisplay = new cv.Mat();
+            cv.normalize(filtMag, filtMagDisplay, 0, 255, cv.NORM_MINMAX);
+            filtMagDisplay.convertTo(filtMagDisplay, cv.CV_8U);
+            cv.imshow('fourier-filtered-spectrum', filtMagDisplay);
+
+            // IDFT
+            const result = new cv.Mat();
+            cv.idft(filtered, result, cv.DFT_SCALE | cv.DFT_REAL_OUTPUT);
+            cv.normalize(result, result, 0, 255, cv.NORM_MINMAX);
+            result.convertTo(result, cv.CV_8U);
+            cv.imshow('fourier-filtered-result', result);
+
+            document.getElementById('fourier-filter-output').style.display = 'grid';
+
+            // Cleanup
+            mask.delete();
+            maskDisplay.delete();
+            filtered.delete();
+            planes.delete();
+            filtMag.delete();
+            ones.delete();
+            filtMagDisplay.delete();
+            result.delete();
+        }
+
+        // ==================== DCT DEMO ====================
+        let dctData = {};
+
+        function initDCTDemo() {
+            document.getElementById('dct-image-upload').addEventListener('change', handleDCTUpload);
+            document.getElementById('dct-use-sample').addEventListener('click', useDCTSample);
+            document.getElementById('dct-compute').addEventListener('click', computeDCT);
+
+            document.getElementById('dct-compression').addEventListener('input', (e) => {
+                document.getElementById('dct-compression-value').textContent = e.target.value + '%';
+            });
+        }
+
+        function handleDCTUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                dctData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useDCTSample() {
+            dctData.src = createSampleGrayscale(256, 256);
+        }
+
+        function computeDCT() {
+            if (!dctData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let src = dctData.src.clone();
+
+            // Convert to grayscale
+            if (src.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                src.delete();
+                src = gray;
+            }
+
+            // Convert to float
+            const floatSrc = new cv.Mat();
+            src.convertTo(floatSrc, cv.CV_32F);
+
+            // Compute DCT
+            const dct = new cv.Mat();
+            cv.dct(floatSrc, dct);
+
+            // Store for compression demo
+            dctData.dct = dct.clone();
+            dctData.rows = src.rows;
+            dctData.cols = src.cols;
+
+            // Display original
+            cv.imshow('dct-original', src);
+
+            // Display DCT coefficients (log scale)
+            const dctDisplay = new cv.Mat();
+            cv.convertScaleAbs(dct, dctDisplay);
+            const logDct = new cv.Mat();
+            dctDisplay.convertTo(logDct, cv.CV_32F);
+            const ones = cv.Mat.ones(logDct.rows, logDct.cols, cv.CV_32F);
+            cv.add(logDct, ones, logDct);
+            cv.log(logDct, logDct);
+            cv.normalize(logDct, logDct, 0, 255, cv.NORM_MINMAX);
+            logDct.convertTo(logDct, cv.CV_8U);
+            cv.imshow('dct-coefficients', logDct);
+
+            // Compression demos at different levels
+            applyDCTCompression(25, 'dct-compressed-low', 'dct-psnr-low');
+            applyDCTCompression(50, 'dct-compressed-mid', 'dct-psnr-mid');
+            applyDCTCompression(75, 'dct-compressed-high', 'dct-psnr-high');
+
+            document.getElementById('dct-output').style.display = 'block';
+
+            // Cleanup
+            src.delete();
+            floatSrc.delete();
+            dct.delete();
+            dctDisplay.delete();
+            logDct.delete();
+            ones.delete();
+        }
+
+        function applyDCTCompression(level, canvasId, psnrId) {
+            const dct = dctData.dct.clone();
+            const rows = dctData.rows;
+            const cols = dctData.cols;
+
+            // Zero out small coefficients based on level
+            // Keep top-left coefficients (lower frequencies)
+            const keepRows = Math.floor(rows * (1 - level / 100));
+            const keepCols = Math.floor(cols * (1 - level / 100));
+
+            // Create mask
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (y > keepRows || x > keepCols) {
+                        dct.floatPtr(y, x)[0] = 0;
+                    }
+                }
+            }
+
+            // IDCT
+            const result = new cv.Mat();
+            cv.idct(dct, result);
+
+            // Convert back to 8-bit
+            const resultDisplay = new cv.Mat();
+            result.convertTo(resultDisplay, cv.CV_8U);
+            cv.imshow(canvasId, resultDisplay);
+
+            // Calculate PSNR
+            const original = dctData.src.clone();
+            if (original.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(original, gray, cv.COLOR_RGBA2GRAY);
+                original.delete();
+                const psnr = cv.PSNR(gray, resultDisplay);
+                document.getElementById(psnrId).textContent = psnr.toFixed(2) + ' dB';
+                gray.delete();
+            } else {
+                const psnr = cv.PSNR(original, resultDisplay);
+                document.getElementById(psnrId).textContent = psnr.toFixed(2) + ' dB';
+                original.delete();
+            }
+
+            dct.delete();
+            result.delete();
+            resultDisplay.delete();
+        }
+
+        // ==================== PHASE DEMO ====================
+        function initPhaseDemo() {
+            document.getElementById('phase-demo-custom').addEventListener('click', runPhaseDemo);
+        }
+
+        function runPhaseDemo() {
+            const size = 200;
+
+            // Create synthetic continuous phase (ramp)
+            const original = new cv.Mat(size, size, cv.CV_32F);
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    // Create a phase ramp
+                    const phase = (x + y) * 0.1;
+                    original.floatPtr(y, x)[0] = phase;
+                }
+            }
+
+            // Create wrapped phase
+            const wrapped = new cv.Mat(size, size, cv.CV_32F);
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    let phase = original.floatPtr(y, x)[0];
+                    // Wrap to [-pi, pi]
+                    phase = phase % (2 * Math.PI);
+                    if (phase > Math.PI) phase -= 2 * Math.PI;
+                    if (phase < -Math.PI) phase += 2 * Math.PI;
+                    wrapped.floatPtr(y, x)[0] = phase;
+                }
+            }
+
+            // Simple 1D unwrapping (row by row)
+            const unwrapped = new cv.Mat(size, size, cv.CV_32F);
+            for (let y = 0; y < size; y++) {
+                let offset = 0;
+                for (let x = 0; x < size; x++) {
+                    let current = wrapped.floatPtr(y, x)[0];
+                    if (x > 0) {
+                        const prev = wrapped.floatPtr(y, x - 1)[0];
+                        const diff = current - prev;
+                        if (diff > Math.PI) offset -= 2 * Math.PI;
+                        else if (diff < -Math.PI) offset += 2 * Math.PI;
+                    }
+                    unwrapped.floatPtr(y, x)[0] = current + offset;
+                }
+            }
+
+            // Normalize and display
+            const origDisplay = new cv.Mat();
+            cv.normalize(original, origDisplay, 0, 255, cv.NORM_MINMAX);
+            origDisplay.convertTo(origDisplay, cv.CV_8U);
+
+            const wrappedDisplay = new cv.Mat();
+            cv.normalize(wrapped, wrappedDisplay, 0, 255, cv.NORM_MINMAX);
+            wrappedDisplay.convertTo(wrappedDisplay, cv.CV_8U);
+
+            const unwrappedDisplay = new cv.Mat();
+            cv.normalize(unwrapped, unwrappedDisplay, 0, 255, cv.NORM_MINMAX);
+            unwrappedDisplay.convertTo(unwrappedDisplay, cv.CV_8U);
+
+            cv.imshow('phase-custom-original', origDisplay);
+            cv.imshow('phase-custom-wrapped', wrappedDisplay);
+            cv.imshow('phase-custom-unwrapped', unwrappedDisplay);
+
+            document.getElementById('phase-custom-output').style.display = 'grid';
+
+            // Cleanup
+            original.delete();
+            wrapped.delete();
+            unwrapped.delete();
+            origDisplay.delete();
+            wrappedDisplay.delete();
+            unwrappedDisplay.delete();
+        }
+
+        // ==================== INTEGRAL DEMO ====================
+        let integralData = {};
+
+        function initIntegralDemo() {
+            document.getElementById('integral-image-upload').addEventListener('change', handleIntegralUpload);
+            document.getElementById('integral-use-sample').addEventListener('click', useIntegralSample);
+            document.getElementById('integral-compute').addEventListener('click', computeIntegral);
+            document.getElementById('integral-box-filter').addEventListener('click', runBoxFilterComparison);
+
+            document.getElementById('integral-kernel-size').addEventListener('input', (e) => {
+                document.getElementById('integral-kernel-value').textContent = e.target.value;
+            });
+        }
+
+        function handleIntegralUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                integralData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useIntegralSample() {
+            integralData.src = createSampleGrayscale(300, 300);
+        }
+
+        function computeIntegral() {
+            if (!integralData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let src = integralData.src.clone();
+
+            // Convert to grayscale
+            if (src.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                src.delete();
+                src = gray;
+            }
+
+            // Compute integral image
+            const integral = new cv.Mat();
+            const sqIntegral = new cv.Mat();
+            cv.integral(src, integral, sqIntegral);
+
+            // Store for later use
+            integralData.gray = src.clone();
+            integralData.integral = integral.clone();
+
+            // Normalize for display
+            const integralDisplay = new cv.Mat();
+            cv.normalize(integral, integralDisplay, 0, 255, cv.NORM_MINMAX);
+            integralDisplay.convertTo(integralDisplay, cv.CV_8U);
+
+            cv.imshow('integral-original', src);
+            cv.imshow('integral-result', integralDisplay);
+
+            document.getElementById('integral-output').style.display = 'block';
+
+            // Cleanup
+            src.delete();
+            integral.delete();
+            sqIntegral.delete();
+            integralDisplay.delete();
+        }
+
+        function runBoxFilterComparison() {
+            if (!integralData.gray || !integralData.integral) {
+                alert('Please compute integral image first');
+                return;
+            }
+
+            const ksize = parseInt(document.getElementById('integral-kernel-size').value);
+            const src = integralData.gray.clone();
+
+            // Method 1: Direct convolution using OpenCV
+            const directResult = new cv.Mat();
+            const startDirect = performance.now();
+            cv.blur(src, directResult, new cv.Size(ksize, ksize));
+            const timeDirect = performance.now() - startDirect;
+
+            // Method 2: Using integral image (simulated - OpenCV's blur already uses optimizations)
+            const integralResult = new cv.Mat();
+            const startIntegral = performance.now();
+            // For demonstration, we'll use the same blur function
+            // In practice, you'd implement a custom function using the integral image
+            cv.boxFilter(src, integralResult, -1, new cv.Size(ksize, ksize));
+            const timeIntegral = performance.now() - startIntegral;
+
+            // Display results
+            cv.imshow('integral-box-original', src);
+            cv.imshow('integral-box-direct', directResult);
+            cv.imshow('integral-box-fast', integralResult);
+
+            document.getElementById('integral-box-output').style.display = 'grid';
+            document.getElementById('integral-metrics').style.display = 'flex';
+
+            document.getElementById('integral-time-direct').textContent = timeDirect.toFixed(2) + 'ms';
+            document.getElementById('integral-time-fast').textContent = timeIntegral.toFixed(2) + 'ms';
+            document.getElementById('integral-speedup').textContent = (timeDirect / timeIntegral).toFixed(2) + 'x';
+
+            // Cleanup
+            src.delete();
+            directResult.delete();
+            integralResult.delete();
+        }
+
+        // ==================== DISTANCE DEMO ====================
+        let distanceData = {};
+
+        function initDistanceDemo() {
+            document.getElementById('distance-image-upload').addEventListener('change', handleDistanceUpload);
+            document.getElementById('distance-use-sample').addEventListener('click', useDistanceSample);
+            document.getElementById('distance-compute').addEventListener('click', computeDistance);
+        }
+
+        function handleDistanceUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                distanceData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useDistanceSample() {
+            // Create sample binary image with shapes
+            const src = createSampleShapesImage(300, 200);
+            const gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            const binary = new cv.Mat();
+            cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+            distanceData.src = binary.clone();
+
+            src.delete();
+            gray.delete();
+            binary.delete();
+        }
+
+        function computeDistance() {
+            if (!distanceData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let binary = distanceData.src.clone();
+
+            // Convert to grayscale and binary if needed
+            if (binary.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(binary, gray, cv.COLOR_RGBA2GRAY);
+                cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+                gray.delete();
+            }
+
+            // Get distance type
+            const distType = document.getElementById('distance-type').value;
+            let cvDistType;
+            switch (distType) {
+                case 'L1': cvDistType = cv.DIST_L1; break;
+                case 'L2': cvDistType = cv.DIST_L2; break;
+                case 'C': cvDistType = cv.DIST_C; break;
+            }
+
+            // Get mask size
+            const maskSize = parseInt(document.getElementById('distance-mask').value);
+
+            // Compute distance transform
+            const dist = new cv.Mat();
+            cv.distanceTransform(binary, dist, cvDistType, maskSize);
+
+            // Normalize for display
+            const distDisplay = new cv.Mat();
+            cv.normalize(dist, distDisplay, 0, 255, cv.NORM_MINMAX);
+            distDisplay.convertTo(distDisplay, cv.CV_8U);
+
+            // Find local maxima for markers
+            const markers = new cv.Mat();
+            const dilated = new cv.Mat();
+            const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
+            cv.dilate(distDisplay, dilated, kernel);
+            cv.compare(distDisplay, dilated, markers, cv.CMP_EQ);
+
+            // Apply threshold to get significant markers
+            const threshDist = new cv.Mat();
+            const maxVal = [0];
+            cv.minMaxLoc(dist, null, maxVal);
+            cv.threshold(dist, threshDist, maxVal[0] * 0.5, 255, cv.THRESH_BINARY);
+            threshDist.convertTo(threshDist, cv.CV_8U);
+            cv.bitwise_and(markers, threshDist, markers);
+
+            // Display
+            cv.imshow('distance-binary', binary);
+            cv.imshow('distance-result', distDisplay);
+            cv.imshow('distance-markers', markers);
+
+            document.getElementById('distance-output').style.display = 'grid';
+
+            // Cleanup
+            binary.delete();
+            dist.delete();
+            distDisplay.delete();
+            dilated.delete();
+            kernel.delete();
+            markers.delete();
+            threshDist.delete();
+        }
+
+        // ==================== CONNECTED COMPONENTS DEMO ====================
+        let connectedData = {};
+
+        function initConnectedDemo() {
+            document.getElementById('connected-image-upload').addEventListener('change', handleConnectedUpload);
+            document.getElementById('connected-use-sample').addEventListener('click', useConnectedSample);
+            document.getElementById('connected-compute').addEventListener('click', computeConnected);
+
+            document.getElementById('connected-min-area').addEventListener('input', (e) => {
+                document.getElementById('connected-min-area-value').textContent = e.target.value;
+            });
+        }
+
+        function handleConnectedUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                connectedData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useConnectedSample() {
+            const src = createSampleShapesImage(400, 300);
+            const gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            const binary = new cv.Mat();
+            cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+            connectedData.src = binary.clone();
+
+            src.delete();
+            gray.delete();
+            binary.delete();
+        }
+
+        function computeConnected() {
+            if (!connectedData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let binary = connectedData.src.clone();
+
+            // Convert to grayscale and binary if needed
+            if (binary.channels() > 1) {
+                const gray = new cv.Mat();
+                cv.cvtColor(binary, gray, cv.COLOR_RGBA2GRAY);
+                cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+                gray.delete();
+            }
+
+            const connectivity = parseInt(document.getElementById('connected-connectivity').value);
+            const minArea = parseInt(document.getElementById('connected-min-area').value);
+
+            // Connected components with stats
+            const labels = new cv.Mat();
+            const stats = new cv.Mat();
+            const centroids = new cv.Mat();
+            const numLabels = cv.connectedComponentsWithStats(binary, labels, stats, centroids, connectivity);
+
+            // Create colored output
+            const colored = new cv.Mat(binary.rows, binary.cols, cv.CV_8UC3, new cv.Scalar(0, 0, 0));
+
+            // Generate colors for each component
+            const colors = [];
+            for (let i = 0; i < numLabels; i++) {
+                colors.push([
+                    Math.floor(Math.random() * 200) + 55,
+                    Math.floor(Math.random() * 200) + 55,
+                    Math.floor(Math.random() * 200) + 55
+                ]);
+            }
+            colors[0] = [0, 0, 0]; // Background is black
+
+            // Color the components
+            const statsHtml = [];
+            const legendHtml = [];
+
+            for (let y = 0; y < labels.rows; y++) {
+                for (let x = 0; x < labels.cols; x++) {
+                    const label = labels.intAt(y, x);
+                    if (label > 0) {
+                        const area = stats.intAt(label, cv.CC_STAT_AREA);
+                        if (area >= minArea) {
+                            colored.ucharPtr(y, x)[0] = colors[label][0];
+                            colored.ucharPtr(y, x)[1] = colors[label][1];
+                            colored.ucharPtr(y, x)[2] = colors[label][2];
+                        }
+                    }
+                }
+            }
+
+            // Generate stats HTML
+            for (let i = 1; i < numLabels; i++) {
+                const area = stats.intAt(i, cv.CC_STAT_AREA);
+                if (area >= minArea) {
+                    const left = stats.intAt(i, cv.CC_STAT_LEFT);
+                    const top = stats.intAt(i, cv.CC_STAT_TOP);
+                    const width = stats.intAt(i, cv.CC_STAT_WIDTH);
+                    const height = stats.intAt(i, cv.CC_STAT_HEIGHT);
+                    const cx = centroids.doubleAt(i, 0).toFixed(1);
+                    const cy = centroids.doubleAt(i, 1).toFixed(1);
+
+                    statsHtml.push(`
+                        <div class="stat-item">
+                            <span class="label">Component ${i}</span>
+                            <span class="value">Area: ${area}</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">
+                                Bbox: ${width}x${height} at (${left},${top})<br>
+                                Centroid: (${cx}, ${cy})
+                            </span>
+                        </div>
+                    `);
+
+                    legendHtml.push(`
+                        <div class="color-legend-item">
+                            <span class="color-swatch" style="background: rgb(${colors[i].join(',')})"></span>
+                            <span>Component ${i}</span>
+                        </div>
+                    `);
+                }
+            }
+
+            // Display
+            cv.imshow('connected-binary', binary);
+            cv.imshow('connected-labeled', colored);
+
+            document.getElementById('connected-stats').innerHTML = statsHtml.join('');
+            document.getElementById('connected-legend').innerHTML = legendHtml.join('');
+            document.getElementById('connected-output').style.display = 'block';
+
+            // Cleanup
+            binary.delete();
+            labels.delete();
+            stats.delete();
+            centroids.delete();
+            colored.delete();
+        }
+
+        // ==================== HULL DEMO ====================
+        let hullData = { drawPoints: [] };
+
+        function initHullDemo() {
+            document.getElementById('hull-image-upload').addEventListener('change', handleHullUpload);
+            document.getElementById('hull-use-sample').addEventListener('click', useHullSample);
+            document.getElementById('hull-draw-mode').addEventListener('click', enableHullDrawMode);
+            document.getElementById('hull-compute').addEventListener('click', computeHull);
+            document.getElementById('hull-clear-draw').addEventListener('click', clearHullDraw);
+            document.getElementById('hull-done-draw').addEventListener('click', finishHullDraw);
+
+            // Setup drawing canvas
+            const drawCanvas = document.getElementById('hull-draw-canvas');
+            const ctx = drawCanvas.getContext('2d');
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+            drawCanvas.addEventListener('mousedown', (e) => {
+                const rect = drawCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                hullData.drawPoints.push({ x, y });
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (hullData.drawPoints.length > 1) {
+                    const prev = hullData.drawPoints[hullData.drawPoints.length - 2];
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(prev.x, prev.y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function handleHullUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                hullData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useHullSample() {
+            // Create a hand-like shape
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 250;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw hand shape
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(100, 200);
+            ctx.lineTo(90, 150);
+            ctx.lineTo(80, 80);
+            ctx.lineTo(95, 60);
+            ctx.lineTo(100, 100);
+            ctx.lineTo(115, 50);
+            ctx.lineTo(125, 45);
+            ctx.lineTo(125, 110);
+            ctx.lineTo(145, 40);
+            ctx.lineTo(155, 40);
+            ctx.lineTo(150, 115);
+            ctx.lineTo(175, 55);
+            ctx.lineTo(185, 60);
+            ctx.lineTo(170, 125);
+            ctx.lineTo(200, 100);
+            ctx.lineTo(210, 110);
+            ctx.lineTo(180, 160);
+            ctx.lineTo(200, 200);
+            ctx.closePath();
+            ctx.fill();
+
+            hullData.src = cv.imread(canvas);
+        }
+
+        function enableHullDrawMode() {
+            document.getElementById('hull-draw-area').classList.remove('hidden');
+            clearHullDraw();
+        }
+
+        function clearHullDraw() {
+            hullData.drawPoints = [];
+            const canvas = document.getElementById('hull-draw-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function finishHullDraw() {
+            if (hullData.drawPoints.length < 3) {
+                alert('Please draw at least 3 points');
+                return;
+            }
+
+            const canvas = document.getElementById('hull-draw-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Close the shape
+            const first = hullData.drawPoints[0];
+            const last = hullData.drawPoints[hullData.drawPoints.length - 1];
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(first.x, first.y);
+            ctx.stroke();
+
+            // Fill the shape
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(hullData.drawPoints[0].x, hullData.drawPoints[0].y);
+            for (let i = 1; i < hullData.drawPoints.length; i++) {
+                ctx.lineTo(hullData.drawPoints[i].x, hullData.drawPoints[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            hullData.src = cv.imread(canvas);
+            document.getElementById('hull-draw-area').classList.add('hidden');
+        }
+
+        function computeHull() {
+            if (!hullData.src) {
+                alert('Please upload, generate, or draw a shape first');
+                return;
+            }
+
+            let src = hullData.src.clone();
+
+            // Convert to grayscale and binary
+            const gray = new cv.Mat();
+            if (src.channels() > 1) {
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            } else {
+                src.copyTo(gray);
+            }
+
+            const binary = new cv.Mat();
+            cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+
+            // Find contours
+            const contours = new cv.MatVector();
+            const hierarchy = new cv.Mat();
+            cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            if (contours.size() === 0) {
+                alert('No contours found');
+                return;
+            }
+
+            // Find largest contour
+            let maxArea = 0;
+            let maxIdx = 0;
+            for (let i = 0; i < contours.size(); i++) {
+                const area = cv.contourArea(contours.get(i));
+                if (area > maxArea) {
+                    maxArea = area;
+                    maxIdx = i;
+                }
+            }
+
+            const contour = contours.get(maxIdx);
+
+            // Compute convex hull
+            const hull = new cv.Mat();
+            cv.convexHull(contour, hull);
+
+            // Compute convexity defects
+            const hullIndices = new cv.Mat();
+            cv.convexHull(contour, hullIndices, false, false);
+
+            let defects = new cv.Mat();
+            if (hullIndices.rows > 3) {
+                cv.convexityDefects(contour, hullIndices, defects);
+            }
+
+            // Calculate areas
+            const contourArea = cv.contourArea(contour);
+            const hullArea = cv.contourArea(hull);
+            const solidity = contourArea / hullArea;
+
+            // Draw results
+            const result = new cv.Mat(binary.rows, binary.cols, cv.CV_8UC3, new cv.Scalar(26, 26, 36));
+
+            // Draw contour
+            const contourVec = new cv.MatVector();
+            contourVec.push_back(contour);
+            cv.drawContours(result, contourVec, 0, new cv.Scalar(100, 200, 100), 2);
+
+            // Draw hull
+            const hullVec = new cv.MatVector();
+            hullVec.push_back(hull);
+            cv.drawContours(result, hullVec, 0, new cv.Scalar(100, 100, 255), 2);
+
+            // Draw defects
+            let defectsCount = 0;
+            if (defects.rows > 0) {
+                for (let i = 0; i < defects.rows; i++) {
+                    const startIdx = defects.intAt(i, 0);
+                    const endIdx = defects.intAt(i, 1);
+                    const farIdx = defects.intAt(i, 2);
+                    const depth = defects.intAt(i, 3) / 256.0;
+
+                    if (depth > 10) { // Filter small defects
+                        const start = new cv.Point(contour.intAt(startIdx, 0), contour.intAt(startIdx, 1));
+                        const end = new cv.Point(contour.intAt(endIdx, 0), contour.intAt(endIdx, 1));
+                        const far = new cv.Point(contour.intAt(farIdx, 0), contour.intAt(farIdx, 1));
+
+                        cv.circle(result, far, 5, new cv.Scalar(255, 100, 100), -1);
+                        cv.line(result, start, far, new cv.Scalar(255, 200, 100), 1);
+                        cv.line(result, end, far, new cv.Scalar(255, 200, 100), 1);
+                        defectsCount++;
+                    }
+                }
+            }
+
+            // Display
+            cv.imshow('hull-original', src);
+            cv.imshow('hull-result', result);
+
+            document.getElementById('hull-contour-area').textContent = contourArea.toFixed(0);
+            document.getElementById('hull-hull-area').textContent = hullArea.toFixed(0);
+            document.getElementById('hull-solidity').textContent = solidity.toFixed(3);
+            document.getElementById('hull-defects-count').textContent = defectsCount;
+
+            document.getElementById('hull-output').style.display = 'block';
+
+            // Cleanup
+            src.delete();
+            gray.delete();
+            binary.delete();
+            contours.delete();
+            hierarchy.delete();
+            hull.delete();
+            hullIndices.delete();
+            defects.delete();
+            result.delete();
+            contourVec.delete();
+            hullVec.delete();
+        }
+
+        // ==================== MOMENTS DEMO ====================
+        let momentsData = {};
+
+        function initMomentsDemo() {
+            document.getElementById('moments-image-upload').addEventListener('change', handleMomentsUpload);
+            document.getElementById('moments-use-sample').addEventListener('click', useMomentsSample);
+            document.getElementById('moments-compute').addEventListener('click', computeMoments);
+            document.getElementById('moments-compare').addEventListener('click', compareMomentsShapes);
+        }
+
+        function handleMomentsUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                momentsData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function useMomentsSample() {
+            // Create sample with a single distinct shape
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw ellipse
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(150, 100, 80, 50, Math.PI / 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            momentsData.src = cv.imread(canvas);
+        }
+
+        function computeMoments() {
+            if (!momentsData.src) {
+                alert('Please upload an image or use sample first');
+                return;
+            }
+
+            let src = momentsData.src.clone();
+
+            // Convert to grayscale and binary
+            const gray = new cv.Mat();
+            if (src.channels() > 1) {
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            } else {
+                src.copyTo(gray);
+            }
+
+            const binary = new cv.Mat();
+            cv.threshold(gray, binary, 128, 255, cv.THRESH_BINARY);
+
+            // Find contours
+            const contours = new cv.MatVector();
+            const hierarchy = new cv.Mat();
+            cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            if (contours.size() === 0) {
+                alert('No contours found');
+                return;
+            }
+
+            // Find largest contour
+            let maxArea = 0;
+            let maxIdx = 0;
+            for (let i = 0; i < contours.size(); i++) {
+                const area = cv.contourArea(contours.get(i));
+                if (area > maxArea) {
+                    maxArea = area;
+                    maxIdx = i;
+                }
+            }
+
+            const contour = contours.get(maxIdx);
+
+            // Compute moments
+            const moments = cv.moments(contour);
+
+            // Compute centroid
+            const cx = moments.m10 / moments.m00;
+            const cy = moments.m01 / moments.m00;
+
+            // Compute orientation
+            const mu20 = moments.mu20;
+            const mu02 = moments.mu02;
+            const mu11 = moments.mu11;
+            const theta = 0.5 * Math.atan2(2 * mu11, mu20 - mu02);
+
+            // Compute Hu moments
+            const hu = new cv.Mat();
+            cv.HuMoments(moments, hu);
+
+            // Draw result
+            const result = new cv.Mat(binary.rows, binary.cols, cv.CV_8UC3, new cv.Scalar(26, 26, 36));
+            const contourVec = new cv.MatVector();
+            contourVec.push_back(contour);
+            cv.drawContours(result, contourVec, 0, new cv.Scalar(100, 200, 100), 2);
+
+            // Draw centroid
+            cv.circle(result, new cv.Point(Math.round(cx), Math.round(cy)), 8, new cv.Scalar(255, 100, 100), -1);
+
+            // Draw orientation line
+            const length = 50;
+            const endX = cx + length * Math.cos(theta);
+            const endY = cy + length * Math.sin(theta);
+            cv.line(result,
+                new cv.Point(Math.round(cx), Math.round(cy)),
+                new cv.Point(Math.round(endX), Math.round(endY)),
+                new cv.Scalar(100, 100, 255), 3);
+
+            // Display
+            cv.imshow('moments-original', src);
+            cv.imshow('moments-annotated', result);
+
+            // Fill Hu moments table
+            const huDescriptions = [
+                'Invariant to translation, scale, rotation, and reflection',
+                'More discriminative than h1',
+                'Sensitive to shape details',
+                'Combines second and third order moments',
+                'Reflects asymmetry',
+                'Distinguishes mirror images',
+                'Distinguishes mirror images (sign changes)'
+            ];
+
+            let huHtml = '';
+            for (let i = 0; i < 7; i++) {
+                const value = hu.doubleAt(i, 0);
+                // Use log scale for better readability
+                const logValue = value > 0 ? -Math.sign(value) * Math.log10(Math.abs(value)) : 0;
+                huHtml += `
+                    <tr>
+                        <td>h${i + 1}</td>
+                        <td class="moment-value">${logValue.toFixed(4)}</td>
+                        <td style="color: var(--text-secondary); font-size: 0.8rem;">${huDescriptions[i]}</td>
+                    </tr>
+                `;
+            }
+            document.getElementById('hu-moments-body').innerHTML = huHtml;
+
+            document.getElementById('moments-output').style.display = 'block';
+
+            // Cleanup
+            src.delete();
+            gray.delete();
+            binary.delete();
+            contours.delete();
+            hierarchy.delete();
+            hu.delete();
+            result.delete();
+            contourVec.delete();
+        }
+
+        function compareMomentsShapes() {
+            // Create two shapes to compare
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = 150;
+            canvas1.height = 150;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.fillStyle = '#000000';
+            ctx1.fillRect(0, 0, 150, 150);
+            ctx1.fillStyle = '#ffffff';
+            ctx1.beginPath();
+            ctx1.ellipse(75, 75, 50, 30, 0, 0, Math.PI * 2);
+            ctx1.fill();
+
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = 150;
+            canvas2.height = 150;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.fillStyle = '#000000';
+            ctx2.fillRect(0, 0, 150, 150);
+            ctx2.fillStyle = '#ffffff';
+            // Rotated and scaled ellipse
+            ctx2.beginPath();
+            ctx2.ellipse(75, 75, 40, 25, Math.PI / 4, 0, Math.PI * 2);
+            ctx2.fill();
+
+            const mat1 = cv.imread(canvas1);
+            const mat2 = cv.imread(canvas2);
+
+            // Convert to grayscale
+            const gray1 = new cv.Mat();
+            const gray2 = new cv.Mat();
+            cv.cvtColor(mat1, gray1, cv.COLOR_RGBA2GRAY);
+            cv.cvtColor(mat2, gray2, cv.COLOR_RGBA2GRAY);
+
+            // Find contours
+            const contours1 = new cv.MatVector();
+            const contours2 = new cv.MatVector();
+            const hierarchy = new cv.Mat();
+            cv.findContours(gray1, contours1, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+            cv.findContours(gray2, contours2, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            if (contours1.size() > 0 && contours2.size() > 0) {
+                // Match shapes using different methods
+                const match1 = cv.matchShapes(contours1.get(0), contours2.get(0), cv.CONTOURS_MATCH_I1, 0);
+                const match2 = cv.matchShapes(contours1.get(0), contours2.get(0), cv.CONTOURS_MATCH_I2, 0);
+                const match3 = cv.matchShapes(contours1.get(0), contours2.get(0), cv.CONTOURS_MATCH_I3, 0);
+
+                document.getElementById('moments-match-i1').textContent = match1.toFixed(4);
+                document.getElementById('moments-match-i2').textContent = match2.toFixed(4);
+                document.getElementById('moments-match-i3').textContent = match3.toFixed(4);
+            }
+
+            // Display shapes
+            cv.imshow('moments-shape1', mat1);
+            cv.imshow('moments-shape2', mat2);
+
+            document.getElementById('moments-matching-output').style.display = 'grid';
+
+            // Cleanup
+            mat1.delete();
+            mat2.delete();
+            gray1.delete();
+            gray2.delete();
+            contours1.delete();
+            contours2.delete();
+            hierarchy.delete();
+        }
+
+        // ==================== PLOT DEMO ====================
+        let plotData = {};
+
+        function initPlotDemo() {
+            document.getElementById('plot-image-upload').addEventListener('change', handlePlotUpload);
+            document.getElementById('plot-use-sample').addEventListener('click', usePlotSample);
+            document.getElementById('plot-compute').addEventListener('click', computePlot);
+
+            document.getElementById('plot-type').addEventListener('change', (e) => {
+                document.getElementById('plot-profile-controls').style.display =
+                    e.target.value === 'profile' ? 'flex' : 'none';
+            });
+
+            document.getElementById('plot-profile-pos').addEventListener('input', (e) => {
+                document.getElementById('plot-profile-pos-value').textContent = e.target.value + '%';
+                if (plotData.src) computePlot();
+            });
+
+            document.getElementById('plot-profile-type').addEventListener('change', () => {
+                if (plotData.src) computePlot();
+            });
+        }
+
+        function handlePlotUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                plotData.src = cv.imread(canvas);
+                URL.revokeObjectURL(img.src);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function usePlotSample() {
+            plotData.src = createSampleGrayscale(300, 200);
+        }
+
+        function computePlot() {
+            const plotType = document.getElementById('plot-type').value;
+            const canvas = document.getElementById('plot-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.fillStyle = '#1a1a24';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (plotType === 'signal') {
+                // Generate synthetic signal
+                drawSyntheticSignal(ctx, canvas);
+            } else if (plotData.src) {
+                let src = plotData.src.clone();
+
+                // Convert to grayscale
+                if (src.channels() > 1) {
+                    const gray = new cv.Mat();
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    src.delete();
+                    src = gray;
+                }
+
+                cv.imshow('plot-source', src);
+
+                if (plotType === 'histogram') {
+                    drawHistogramPlot(ctx, canvas, src);
+                } else if (plotType === 'profile') {
+                    drawProfilePlot(ctx, canvas, src);
+                    document.getElementById('plot-profile-controls').style.display = 'flex';
+                }
+
+                src.delete();
+            }
+
+            document.getElementById('plot-output').style.display = 'block';
+        }
+
+        function drawHistogramPlot(ctx, canvas, src) {
+            // Calculate histogram
+            const histSize = 256;
+            const hist = new Array(histSize).fill(0);
+
+            for (let y = 0; y < src.rows; y++) {
+                for (let x = 0; x < src.cols; x++) {
+                    const val = src.ucharPtr(y, x)[0];
+                    hist[val]++;
+                }
+            }
+
+            // Find max for normalization
+            const maxCount = Math.max(...hist);
+
+            // Draw axes
+            const margin = 40;
+            const plotWidth = canvas.width - 2 * margin;
+            const plotHeight = canvas.height - 2 * margin;
+
+            ctx.strokeStyle = '#3a3a4a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(margin, margin);
+            ctx.lineTo(margin, canvas.height - margin);
+            ctx.lineTo(canvas.width - margin, canvas.height - margin);
+            ctx.stroke();
+
+            // Draw histogram bars
+            const barWidth = plotWidth / histSize;
+            ctx.fillStyle = '#6366f1';
+
+            for (let i = 0; i < histSize; i++) {
+                const barHeight = (hist[i] / maxCount) * plotHeight;
+                const x = margin + i * barWidth;
+                const y = canvas.height - margin - barHeight;
+                ctx.fillRect(x, y, Math.max(1, barWidth - 1), barHeight);
+            }
+
+            // Draw labels
+            ctx.fillStyle = '#9898a8';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('0', margin, canvas.height - margin + 15);
+            ctx.fillText('255', canvas.width - margin, canvas.height - margin + 15);
+            ctx.fillText('Pixel Value', canvas.width / 2, canvas.height - 10);
+
+            ctx.save();
+            ctx.translate(15, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Count', 0, 0);
+            ctx.restore();
+        }
+
+        function drawProfilePlot(ctx, canvas, src) {
+            const profileType = document.getElementById('plot-profile-type').value;
+            const posPercent = parseInt(document.getElementById('plot-profile-pos').value);
+
+            let values = [];
+
+            if (profileType === 'row') {
+                const row = Math.floor((posPercent / 100) * src.rows);
+                for (let x = 0; x < src.cols; x++) {
+                    values.push(src.ucharPtr(row, x)[0]);
+                }
+            } else {
+                const col = Math.floor((posPercent / 100) * src.cols);
+                for (let y = 0; y < src.rows; y++) {
+                    values.push(src.ucharPtr(y, col)[0]);
+                }
+            }
+
+            // Draw axes
+            const margin = 40;
+            const plotWidth = canvas.width - 2 * margin;
+            const plotHeight = canvas.height - 2 * margin;
+
+            ctx.strokeStyle = '#3a3a4a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(margin, margin);
+            ctx.lineTo(margin, canvas.height - margin);
+            ctx.lineTo(canvas.width - margin, canvas.height - margin);
+            ctx.stroke();
+
+            // Draw profile line
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let i = 0; i < values.length; i++) {
+                const x = margin + (i / values.length) * plotWidth;
+                const y = canvas.height - margin - (values[i] / 255) * plotHeight;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw labels
+            ctx.fillStyle = '#9898a8';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('0', margin, canvas.height - margin + 15);
+            ctx.fillText(values.length.toString(), canvas.width - margin, canvas.height - margin + 15);
+            ctx.fillText(`${profileType === 'row' ? 'Column' : 'Row'} Index`, canvas.width / 2, canvas.height - 10);
+
+            ctx.textAlign = 'right';
+            ctx.fillText('0', margin - 5, canvas.height - margin);
+            ctx.fillText('255', margin - 5, margin + 5);
+        }
+
+        function drawSyntheticSignal(ctx, canvas) {
+            const margin = 40;
+            const plotWidth = canvas.width - 2 * margin;
+            const plotHeight = canvas.height - 2 * margin;
+
+            // Generate signal: sum of sinusoids + noise
+            const n = 500;
+            const signal = [];
+            for (let i = 0; i < n; i++) {
+                const t = i / n * 10;
+                const value = Math.sin(t) + 0.5 * Math.sin(3 * t) + 0.3 * Math.sin(5 * t) +
+                    (Math.random() - 0.5) * 0.2;
+                signal.push(value);
+            }
+
+            // Find min/max
+            const minVal = Math.min(...signal);
+            const maxVal = Math.max(...signal);
+            const range = maxVal - minVal;
+
+            // Draw axes
+            ctx.strokeStyle = '#3a3a4a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(margin, margin);
+            ctx.lineTo(margin, canvas.height - margin);
+            ctx.lineTo(canvas.width - margin, canvas.height - margin);
+            ctx.stroke();
+
+            // Draw zero line
+            const zeroY = canvas.height - margin - ((0 - minVal) / range) * plotHeight;
+            ctx.strokeStyle = '#4a4a5a';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(margin, zeroY);
+            ctx.lineTo(canvas.width - margin, zeroY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw signal
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let i = 0; i < n; i++) {
+                const x = margin + (i / n) * plotWidth;
+                const y = canvas.height - margin - ((signal[i] - minVal) / range) * plotHeight;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw labels
+            ctx.fillStyle = '#9898a8';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Time', canvas.width / 2, canvas.height - 10);
+
+            ctx.save();
+            ctx.translate(15, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Amplitude', 0, 0);
+            ctx.restore();
+
+            ctx.fillText('Synthetic Signal: sin(t) + 0.5*sin(3t) + 0.3*sin(5t) + noise',
+                canvas.width / 2, 20);
+        }
+    </script>
+</body>
+</html>

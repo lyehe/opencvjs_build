@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Detection - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for detection demo */
+        .detection-result {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .decoded-text {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            font-family: 'Fira Code', monospace;
+            word-break: break-all;
+            color: var(--success);
+        }
+
+        .hsv-preview {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+        }
+
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+        }
+
+        .slider-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-lg);
+        }
+
+        .slider-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .slider-group h5 {
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-secondary);
+        }
+
+        .cascade-notice {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .cascade-notice h5 {
+            color: var(--warning);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .cascade-notice p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .cascade-notice code {
+            background: var(--bg-input);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .cascade-notice a {
+            color: var(--accent-secondary);
+        }
+
+        .webcam-container {
+            position: relative;
+        }
+
+        .webcam-container video {
+            width: 100%;
+            border-radius: var(--radius-md);
+            background: var(--bg-input);
+        }
+
+        .webcam-container .overlay-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .mode-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .mode-tab:hover {
+            background: var(--bg-card);
+            border-color: var(--border-accent);
+        }
+
+        .mode-tab.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .proposals-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm);
+        }
+
+        .proposal-item {
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: var(--spacing-xs);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .proposal-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Object Detection</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Object Detection</h1>
+            <p>Explore object detection capabilities using OpenCV.js objdetect and dnn modules including face detection, person detection, QR code reading, and color-based segmentation.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Section 1: Face Detection (Haar Cascades) -->
+        <section class="demo-section" id="face-detection-section">
+            <h3>Face Detection (Haar Cascades)</h3>
+            <p class="mb-md">Detect faces using the classic Haar cascade classifier approach.</p>
+
+            <div class="cascade-notice">
+                <h5>Cascade File Required</h5>
+                <p>Face detection requires the Haar cascade XML file. You can:</p>
+                <ul style="margin: var(--spacing-sm) 0; padding-left: var(--spacing-lg);">
+                    <li>Download <code>haarcascade_frontalface_default.xml</code> from <a href="https://github.com/opencv/opencv/tree/master/data/haarcascades" target="_blank">OpenCV GitHub</a></li>
+                    <li>Or load it from OpenCV.js built-in path (if available)</li>
+                </ul>
+                <div style="margin-top: var(--spacing-sm);">
+                    <input type="file" id="cascade-file" accept=".xml" style="display: none;">
+                    <label for="cascade-file" class="btn btn-secondary btn-sm">Load Cascade XML</label>
+                    <span id="cascade-status" class="status status-warning" style="margin-left: var(--spacing-sm);">Not loaded</span>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="image" data-section="face">Upload Image</button>
+                    <button class="mode-tab" data-mode="webcam" data-section="face">Use Webcam</button>
+                </div>
+
+                <div id="face-image-controls">
+                    <input type="file" id="face-image-input" accept="image/*" style="display: none;">
+                    <label for="face-image-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                    <button class="btn btn-primary" id="face-detect-btn" disabled>Detect Faces</button>
+                </div>
+
+                <div id="face-webcam-controls" class="hidden">
+                    <button class="btn btn-success" id="face-webcam-start">Start Camera</button>
+                    <button class="btn btn-danger hidden" id="face-webcam-stop">Stop Camera</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Scale Factor</label>
+                    <div class="range-group">
+                        <input type="range" id="face-scale" min="1.1" max="1.5" step="0.05" value="1.1">
+                        <span class="range-value" id="face-scale-value">1.1</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Min Neighbors</label>
+                    <div class="range-group">
+                        <input type="range" id="face-neighbors" min="3" max="10" step="1" value="5">
+                        <span class="range-value" id="face-neighbors-value">5</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container" id="face-input-container">
+                    <canvas id="face-input-canvas"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container" id="face-output-container">
+                    <canvas id="face-output-canvas"></canvas>
+                    <span class="canvas-label">Detection Result</span>
+                </div>
+            </div>
+
+            <div id="face-webcam-view" class="hidden mt-md">
+                <div class="webcam-container">
+                    <video id="face-video" autoplay playsinline muted></video>
+                    <canvas id="face-overlay-canvas" class="overlay-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Faces Detected</span>
+                    <span class="metric-value" id="face-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Detection Time</span>
+                    <span class="metric-value" id="face-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: HOG Person Detection -->
+        <section class="demo-section" id="hog-detection-section">
+            <h3>HOG Person Detection</h3>
+            <p class="mb-md">Detect people in images using the Histogram of Oriented Gradients (HOG) descriptor with the default people detector.</p>
+
+            <div class="demo-controls">
+                <input type="file" id="hog-image-input" accept="image/*" style="display: none;">
+                <label for="hog-image-input" class="file-input-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload Image
+                </label>
+                <button class="btn btn-primary" id="hog-detect-btn" disabled>Detect People</button>
+
+                <div class="form-group">
+                    <label>Hit Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="hog-threshold" min="0" max="1" step="0.05" value="0">
+                        <span class="range-value" id="hog-threshold-value">0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Win Stride</label>
+                    <div class="range-group">
+                        <input type="range" id="hog-stride" min="4" max="16" step="4" value="8">
+                        <span class="range-value" id="hog-stride-value">8</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Padding</label>
+                    <div class="range-group">
+                        <input type="range" id="hog-padding" min="0" max="32" step="8" value="8">
+                        <span class="range-value" id="hog-padding-value">8</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="hog-input-canvas"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="hog-output-canvas"></canvas>
+                    <span class="canvas-label">Detection Result</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">People Detected</span>
+                    <span class="metric-value" id="hog-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Detection Time</span>
+                    <span class="metric-value" id="hog-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: QR Code Detection -->
+        <section class="demo-section" id="qr-detection-section">
+            <h3>QR Code Detection</h3>
+            <p class="mb-md">Detect and decode QR codes from images using the built-in QRCodeDetector.</p>
+
+            <div class="demo-controls">
+                <input type="file" id="qr-image-input" accept="image/*" style="display: none;">
+                <label for="qr-image-input" class="file-input-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload QR Code Image
+                </label>
+                <button class="btn btn-primary" id="qr-detect-btn" disabled>Detect QR Code</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="qr-input-canvas"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="detection-result">
+                    <div class="canvas-container">
+                        <canvas id="qr-output-canvas"></canvas>
+                        <span class="canvas-label">Detection Result</span>
+                    </div>
+                    <div>
+                        <h5 style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">Decoded Text:</h5>
+                        <div class="decoded-text" id="qr-decoded-text">No QR code detected</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">QR Found</span>
+                    <span class="metric-value" id="qr-found">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Detection Time</span>
+                    <span class="metric-value" id="qr-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Edge Boxes (Object Proposals) -->
+        <section class="demo-section" id="edge-boxes-section">
+            <h3>Object Proposals (Edge Boxes)</h3>
+            <p class="mb-md">Generate object proposal regions using edge detection based methods. Note: Full Edge Boxes may not be available; this demo uses an alternative approach with contour-based proposals.</p>
+
+            <div class="demo-controls">
+                <input type="file" id="proposals-image-input" accept="image/*" style="display: none;">
+                <label for="proposals-image-input" class="file-input-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload Image
+                </label>
+                <button class="btn btn-primary" id="proposals-detect-btn" disabled>Generate Proposals</button>
+
+                <div class="form-group">
+                    <label>Max Proposals</label>
+                    <div class="range-group">
+                        <input type="range" id="proposals-count" min="5" max="50" step="5" value="20">
+                        <span class="range-value" id="proposals-count-value">20</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Min Area</label>
+                    <div class="range-group">
+                        <input type="range" id="proposals-min-area" min="100" max="5000" step="100" value="500">
+                        <span class="range-value" id="proposals-min-area-value">500</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="proposals-input-canvas"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="proposals-output-canvas"></canvas>
+                    <span class="canvas-label">Object Proposals</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Proposals Generated</span>
+                    <span class="metric-value" id="proposals-generated">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="proposals-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Color-based Detection -->
+        <section class="demo-section" id="color-detection-section">
+            <h3>Color-based Detection</h3>
+            <p class="mb-md">Detect objects by color using HSV color space segmentation. Adjust the HSV range to isolate specific colors.</p>
+
+            <div class="demo-controls">
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="image" data-section="color">Upload Image</button>
+                    <button class="mode-tab" data-mode="webcam" data-section="color">Use Webcam</button>
+                </div>
+
+                <div id="color-image-controls">
+                    <input type="file" id="color-image-input" accept="image/*" style="display: none;">
+                    <label for="color-image-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                    <button class="btn btn-primary" id="color-detect-btn" disabled>Detect Colors</button>
+                </div>
+
+                <div id="color-webcam-controls" class="hidden">
+                    <button class="btn btn-success" id="color-webcam-start">Start Camera</button>
+                    <button class="btn btn-danger hidden" id="color-webcam-stop">Stop Camera</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Preset Colors</label>
+                    <select id="color-preset">
+                        <option value="custom">Custom</option>
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="blue">Blue</option>
+                        <option value="yellow">Yellow</option>
+                        <option value="orange">Orange</option>
+                        <option value="skin">Skin Tone</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="slider-row mt-md">
+                <div class="slider-group">
+                    <h5>Hue (H) Range</h5>
+                    <div class="form-group">
+                        <label>Min H</label>
+                        <div class="range-group">
+                            <input type="range" id="h-min" min="0" max="179" value="0">
+                            <span class="range-value" id="h-min-value">0</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max H</label>
+                        <div class="range-group">
+                            <input type="range" id="h-max" min="0" max="179" value="179">
+                            <span class="range-value" id="h-max-value">179</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slider-group">
+                    <h5>Saturation (S) Range</h5>
+                    <div class="form-group">
+                        <label>Min S</label>
+                        <div class="range-group">
+                            <input type="range" id="s-min" min="0" max="255" value="50">
+                            <span class="range-value" id="s-min-value">50</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max S</label>
+                        <div class="range-group">
+                            <input type="range" id="s-max" min="0" max="255" value="255">
+                            <span class="range-value" id="s-max-value">255</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slider-group">
+                    <h5>Value (V) Range</h5>
+                    <div class="form-group">
+                        <label>Min V</label>
+                        <div class="range-group">
+                            <input type="range" id="v-min" min="0" max="255" value="50">
+                            <span class="range-value" id="v-min-value">50</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max V</label>
+                        <div class="range-group">
+                            <input type="range" id="v-max" min="0" max="255" value="255">
+                            <span class="range-value" id="v-max-value">255</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hsv-preview mt-md mb-md">
+                <div class="color-swatch" id="color-min-swatch" style="background: hsl(0, 20%, 10%)"></div>
+                <span style="color: var(--text-muted);">to</span>
+                <div class="color-swatch" id="color-max-swatch" style="background: hsl(360, 100%, 50%)"></div>
+            </div>
+
+            <div class="demo-output" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="canvas-container">
+                    <canvas id="color-input-canvas"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="color-mask-canvas"></canvas>
+                    <span class="canvas-label">Color Mask</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="color-output-canvas"></canvas>
+                    <span class="canvas-label">Detected Regions</span>
+                </div>
+            </div>
+
+            <div id="color-webcam-view" class="hidden mt-md">
+                <div class="webcam-container">
+                    <video id="color-video" autoplay playsinline muted></video>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Components Found</span>
+                    <span class="metric-value" id="color-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="color-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Coverage</span>
+                    <span class="metric-value" id="color-coverage">-</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Global state
+        let cascadeClassifier = null;
+        let hogDescriptor = null;
+        let qrDetector = null;
+        let cascadeLoaded = false;
+
+        // Face detection state
+        let faceWebcamStream = null;
+        let faceAnimationId = null;
+        let faceMode = 'image';
+        let faceImageMat = null;
+
+        // Color detection state
+        let colorWebcamStream = null;
+        let colorAnimationId = null;
+        let colorMode = 'image';
+        let colorImageMat = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (progress) => {
+                        document.getElementById('loading-progress').style.width = `${progress}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    const overlay = document.getElementById('loading-overlay');
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.remove(), 300);
+                }, 500);
+
+                // Initialize detectors
+                initializeDetectors();
+
+                // Setup event listeners
+                setupFaceDetection();
+                setupHOGDetection();
+                setupQRDetection();
+                setupProposalsDetection();
+                setupColorDetection();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = `Error: ${error.message}`;
+                console.error('Failed to load OpenCV:', error);
+            }
+        });
+
+        // Initialize detectors
+        function initializeDetectors() {
+            try {
+                // HOG Descriptor with default people detector
+                if (typeof cv.HOGDescriptor !== 'undefined') {
+                    hogDescriptor = new cv.HOGDescriptor();
+                    hogDescriptor.setSVMDetector(cv.HOGDescriptor.getDefaultPeopleDetector());
+                    console.log('HOG Descriptor initialized');
+                }
+
+                // QR Code Detector
+                if (typeof cv.QRCodeDetector !== 'undefined') {
+                    qrDetector = new cv.QRCodeDetector();
+                    console.log('QR Code Detector initialized');
+                }
+            } catch (error) {
+                console.error('Error initializing detectors:', error);
+            }
+        }
+
+        // =====================
+        // FACE DETECTION SETUP
+        // =====================
+        function setupFaceDetection() {
+            const cascadeInput = document.getElementById('cascade-file');
+            const cascadeStatus = document.getElementById('cascade-status');
+            const imageInput = document.getElementById('face-image-input');
+            const detectBtn = document.getElementById('face-detect-btn');
+            const scaleSlider = document.getElementById('face-scale');
+            const neighborsSlider = document.getElementById('face-neighbors');
+            const webcamStartBtn = document.getElementById('face-webcam-start');
+            const webcamStopBtn = document.getElementById('face-webcam-stop');
+
+            // Mode tabs
+            document.querySelectorAll('.mode-tab[data-section="face"]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-tab[data-section="face"]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    faceMode = tab.dataset.mode;
+
+                    document.getElementById('face-image-controls').classList.toggle('hidden', faceMode === 'webcam');
+                    document.getElementById('face-webcam-controls').classList.toggle('hidden', faceMode === 'image');
+                    document.getElementById('face-webcam-view').classList.toggle('hidden', faceMode === 'image');
+                    document.getElementById('face-input-container').classList.toggle('hidden', faceMode === 'webcam');
+                    document.getElementById('face-output-container').classList.toggle('hidden', faceMode === 'webcam');
+
+                    if (faceMode === 'image' && faceWebcamStream) {
+                        stopFaceWebcam();
+                    }
+                });
+            });
+
+            // Load cascade file
+            cascadeInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const text = await file.text();
+                    const data = new TextEncoder().encode(text);
+                    cv.FS_createDataFile('/', 'haarcascade_frontalface_default.xml', data, true, false, false);
+
+                    cascadeClassifier = new cv.CascadeClassifier();
+                    cascadeClassifier.load('haarcascade_frontalface_default.xml');
+                    cascadeLoaded = true;
+
+                    cascadeStatus.className = 'status status-success';
+                    cascadeStatus.textContent = 'Loaded';
+                    detectBtn.disabled = false;
+
+                    console.log('Cascade classifier loaded successfully');
+                } catch (error) {
+                    cascadeStatus.className = 'status status-error';
+                    cascadeStatus.textContent = 'Load failed';
+                    console.error('Error loading cascade:', error);
+                }
+            });
+
+            // Image input
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (faceImageMat) faceImageMat.delete();
+                faceImageMat = Utils.imageToMat(img);
+
+                const inputCanvas = document.getElementById('face-input-canvas');
+                inputCanvas.width = img.width;
+                inputCanvas.height = img.height;
+                cv.imshow(inputCanvas, faceImageMat);
+
+                const outputCanvas = document.getElementById('face-output-canvas');
+                outputCanvas.width = img.width;
+                outputCanvas.height = img.height;
+
+                if (cascadeLoaded) {
+                    detectBtn.disabled = false;
+                }
+            });
+
+            // Slider updates
+            scaleSlider.addEventListener('input', () => {
+                document.getElementById('face-scale-value').textContent = scaleSlider.value;
+            });
+            neighborsSlider.addEventListener('input', () => {
+                document.getElementById('face-neighbors-value').textContent = neighborsSlider.value;
+            });
+
+            // Detect button
+            detectBtn.addEventListener('click', () => {
+                if (!faceImageMat || !cascadeLoaded) return;
+                detectFaces(faceImageMat, 'face-output-canvas');
+            });
+
+            // Webcam controls
+            webcamStartBtn.addEventListener('click', startFaceWebcam);
+            webcamStopBtn.addEventListener('click', stopFaceWebcam);
+        }
+
+        async function startFaceWebcam() {
+            if (!cascadeLoaded) {
+                UIComponents.showToast({ message: 'Please load cascade file first', type: 'warning' });
+                return;
+            }
+
+            try {
+                faceWebcamStream = await Utils.getWebcam({ video: { width: 640, height: 480, facingMode: 'user' } });
+                const video = document.getElementById('face-video');
+                video.srcObject = faceWebcamStream;
+
+                video.onloadedmetadata = () => {
+                    const overlayCanvas = document.getElementById('face-overlay-canvas');
+                    overlayCanvas.width = video.videoWidth;
+                    overlayCanvas.height = video.videoHeight;
+
+                    document.getElementById('face-webcam-start').classList.add('hidden');
+                    document.getElementById('face-webcam-stop').classList.remove('hidden');
+
+                    processFaceWebcam();
+                };
+            } catch (error) {
+                UIComponents.showToast({ message: `Webcam error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        function stopFaceWebcam() {
+            if (faceAnimationId) {
+                cancelAnimationFrame(faceAnimationId);
+                faceAnimationId = null;
+            }
+            if (faceWebcamStream) {
+                Utils.stopWebcam(faceWebcamStream);
+                faceWebcamStream = null;
+            }
+            document.getElementById('face-webcam-start').classList.remove('hidden');
+            document.getElementById('face-webcam-stop').classList.add('hidden');
+        }
+
+        function processFaceWebcam() {
+            if (!faceWebcamStream) return;
+
+            const video = document.getElementById('face-video');
+            const overlayCanvas = document.getElementById('face-overlay-canvas');
+            const ctx = overlayCanvas.getContext('2d');
+
+            const frame = Utils.captureFrame(video);
+            const result = detectFacesRaw(frame);
+
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+            if (result.faces.length > 0) {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3;
+
+                for (const face of result.faces) {
+                    ctx.strokeRect(face.x, face.y, face.width, face.height);
+                }
+            }
+
+            UIComponents.updateMetric('face-count', result.faces.length);
+            UIComponents.updateMetric('face-time', `${result.time.toFixed(1)}ms`);
+
+            frame.delete();
+
+            faceAnimationId = requestAnimationFrame(processFaceWebcam);
+        }
+
+        function detectFaces(src, outputCanvasId) {
+            const start = performance.now();
+            const result = detectFacesRaw(src);
+            const time = performance.now() - start;
+
+            // Draw result
+            const output = src.clone();
+            const green = new cv.Scalar(16, 185, 129, 255);
+
+            for (const face of result.faces) {
+                const pt1 = new cv.Point(face.x, face.y);
+                const pt2 = new cv.Point(face.x + face.width, face.y + face.height);
+                cv.rectangle(output, pt1, pt2, green, 3);
+            }
+
+            cv.imshow(outputCanvasId, output);
+
+            UIComponents.updateMetric('face-count', result.faces.length);
+            UIComponents.updateMetric('face-time', `${time.toFixed(1)}ms`);
+
+            output.delete();
+        }
+
+        function detectFacesRaw(src) {
+            const start = performance.now();
+            const gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+            const faces = new cv.RectVector();
+            const scaleFactor = parseFloat(document.getElementById('face-scale').value);
+            const minNeighbors = parseInt(document.getElementById('face-neighbors').value);
+
+            cascadeClassifier.detectMultiScale(gray, faces, scaleFactor, minNeighbors, 0, new cv.Size(30, 30), new cv.Size(0, 0));
+
+            const faceArray = [];
+            for (let i = 0; i < faces.size(); i++) {
+                const face = faces.get(i);
+                faceArray.push({ x: face.x, y: face.y, width: face.width, height: face.height });
+            }
+
+            const time = performance.now() - start;
+
+            gray.delete();
+            faces.delete();
+
+            return { faces: faceArray, time };
+        }
+
+        // =====================
+        // HOG DETECTION SETUP
+        // =====================
+        function setupHOGDetection() {
+            const imageInput = document.getElementById('hog-image-input');
+            const detectBtn = document.getElementById('hog-detect-btn');
+            let hogImageMat = null;
+
+            const thresholdSlider = document.getElementById('hog-threshold');
+            const strideSlider = document.getElementById('hog-stride');
+            const paddingSlider = document.getElementById('hog-padding');
+
+            // Slider updates
+            thresholdSlider.addEventListener('input', () => {
+                document.getElementById('hog-threshold-value').textContent = thresholdSlider.value;
+            });
+            strideSlider.addEventListener('input', () => {
+                document.getElementById('hog-stride-value').textContent = strideSlider.value;
+            });
+            paddingSlider.addEventListener('input', () => {
+                document.getElementById('hog-padding-value').textContent = paddingSlider.value;
+            });
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (hogImageMat) hogImageMat.delete();
+                hogImageMat = Utils.imageToMat(img);
+
+                const inputCanvas = document.getElementById('hog-input-canvas');
+                inputCanvas.width = img.width;
+                inputCanvas.height = img.height;
+                cv.imshow(inputCanvas, hogImageMat);
+
+                const outputCanvas = document.getElementById('hog-output-canvas');
+                outputCanvas.width = img.width;
+                outputCanvas.height = img.height;
+
+                detectBtn.disabled = !hogDescriptor;
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!hogImageMat || !hogDescriptor) return;
+
+                const start = performance.now();
+
+                try {
+                    const hitThreshold = parseFloat(thresholdSlider.value);
+                    const winStride = parseInt(strideSlider.value);
+                    const padding = parseInt(paddingSlider.value);
+
+                    const foundLocations = new cv.RectVector();
+                    const weights = new cv.DoubleVector();
+
+                    hogDescriptor.detectMultiScale(
+                        hogImageMat,
+                        foundLocations,
+                        weights,
+                        hitThreshold,
+                        new cv.Size(winStride, winStride),
+                        new cv.Size(padding, padding),
+                        1.05,
+                        2.0,
+                        false
+                    );
+
+                    const output = hogImageMat.clone();
+                    const color = new cv.Scalar(99, 102, 241, 255);
+
+                    const count = foundLocations.size();
+                    for (let i = 0; i < count; i++) {
+                        const rect = foundLocations.get(i);
+                        const pt1 = new cv.Point(rect.x, rect.y);
+                        const pt2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                        cv.rectangle(output, pt1, pt2, color, 3);
+                    }
+
+                    const time = performance.now() - start;
+
+                    cv.imshow('hog-output-canvas', output);
+                    UIComponents.updateMetric('hog-count', count);
+                    UIComponents.updateMetric('hog-time', `${time.toFixed(1)}ms`);
+
+                    output.delete();
+                    foundLocations.delete();
+                    weights.delete();
+
+                } catch (error) {
+                    console.error('HOG detection error:', error);
+                    UIComponents.showToast({ message: `HOG error: ${error.message}`, type: 'error' });
+                }
+            });
+        }
+
+        // =====================
+        // QR CODE DETECTION SETUP
+        // =====================
+        function setupQRDetection() {
+            const imageInput = document.getElementById('qr-image-input');
+            const detectBtn = document.getElementById('qr-detect-btn');
+            let qrImageMat = null;
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (qrImageMat) qrImageMat.delete();
+                qrImageMat = Utils.imageToMat(img);
+
+                const inputCanvas = document.getElementById('qr-input-canvas');
+                inputCanvas.width = img.width;
+                inputCanvas.height = img.height;
+                cv.imshow(inputCanvas, qrImageMat);
+
+                const outputCanvas = document.getElementById('qr-output-canvas');
+                outputCanvas.width = img.width;
+                outputCanvas.height = img.height;
+
+                detectBtn.disabled = !qrDetector;
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!qrImageMat || !qrDetector) return;
+
+                const start = performance.now();
+
+                try {
+                    const points = new cv.Mat();
+                    const decodedText = qrDetector.detectAndDecode(qrImageMat, points);
+
+                    const output = qrImageMat.clone();
+                    let found = false;
+
+                    if (points.rows > 0) {
+                        found = true;
+                        const color = new cv.Scalar(16, 185, 129, 255);
+
+                        // Draw bounding polygon
+                        for (let i = 0; i < 4; i++) {
+                            const pt1 = new cv.Point(
+                                points.floatAt(0, i * 2),
+                                points.floatAt(0, i * 2 + 1)
+                            );
+                            const pt2 = new cv.Point(
+                                points.floatAt(0, ((i + 1) % 4) * 2),
+                                points.floatAt(0, ((i + 1) % 4) * 2 + 1)
+                            );
+                            cv.line(output, pt1, pt2, color, 3);
+                        }
+                    }
+
+                    const time = performance.now() - start;
+
+                    cv.imshow('qr-output-canvas', output);
+                    document.getElementById('qr-decoded-text').textContent = decodedText || 'No QR code detected';
+                    document.getElementById('qr-decoded-text').style.color = found ? 'var(--success)' : 'var(--text-muted)';
+
+                    UIComponents.updateMetric('qr-found', found ? 'Yes' : 'No');
+                    UIComponents.updateMetric('qr-time', `${time.toFixed(1)}ms`);
+
+                    output.delete();
+                    points.delete();
+
+                } catch (error) {
+                    console.error('QR detection error:', error);
+                    UIComponents.showToast({ message: `QR error: ${error.message}`, type: 'error' });
+                }
+            });
+        }
+
+        // =====================
+        // PROPOSALS DETECTION SETUP
+        // =====================
+        function setupProposalsDetection() {
+            const imageInput = document.getElementById('proposals-image-input');
+            const detectBtn = document.getElementById('proposals-detect-btn');
+            let proposalsImageMat = null;
+
+            const countSlider = document.getElementById('proposals-count');
+            const minAreaSlider = document.getElementById('proposals-min-area');
+
+            countSlider.addEventListener('input', () => {
+                document.getElementById('proposals-count-value').textContent = countSlider.value;
+            });
+            minAreaSlider.addEventListener('input', () => {
+                document.getElementById('proposals-min-area-value').textContent = minAreaSlider.value;
+            });
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (proposalsImageMat) proposalsImageMat.delete();
+                proposalsImageMat = Utils.imageToMat(img);
+
+                const inputCanvas = document.getElementById('proposals-input-canvas');
+                inputCanvas.width = img.width;
+                inputCanvas.height = img.height;
+                cv.imshow(inputCanvas, proposalsImageMat);
+
+                const outputCanvas = document.getElementById('proposals-output-canvas');
+                outputCanvas.width = img.width;
+                outputCanvas.height = img.height;
+
+                detectBtn.disabled = false;
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!proposalsImageMat) return;
+
+                const start = performance.now();
+
+                try {
+                    const maxProposals = parseInt(countSlider.value);
+                    const minArea = parseInt(minAreaSlider.value);
+
+                    // Convert to grayscale and detect edges
+                    const gray = new cv.Mat();
+                    const edges = new cv.Mat();
+                    cv.cvtColor(proposalsImageMat, gray, cv.COLOR_RGBA2GRAY);
+                    cv.Canny(gray, edges, 50, 150);
+
+                    // Dilate edges to close gaps
+                    const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
+                    cv.dilate(edges, edges, kernel);
+
+                    // Find contours
+                    const contours = new cv.MatVector();
+                    const hierarchy = new cv.Mat();
+                    cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                    // Get bounding rectangles and sort by area
+                    const proposals = [];
+                    for (let i = 0; i < contours.size(); i++) {
+                        const rect = cv.boundingRect(contours.get(i));
+                        const area = rect.width * rect.height;
+                        if (area >= minArea) {
+                            proposals.push({ rect, area });
+                        }
+                    }
+
+                    // Sort by area (largest first) and take top N
+                    proposals.sort((a, b) => b.area - a.area);
+                    const topProposals = proposals.slice(0, maxProposals);
+
+                    // Draw proposals
+                    const output = proposalsImageMat.clone();
+                    const colors = [
+                        new cv.Scalar(99, 102, 241, 255),   // Purple
+                        new cv.Scalar(16, 185, 129, 255),   // Green
+                        new cv.Scalar(245, 158, 11, 255),   // Orange
+                        new cv.Scalar(239, 68, 68, 255),    // Red
+                        new cv.Scalar(59, 130, 246, 255)    // Blue
+                    ];
+
+                    topProposals.forEach((proposal, i) => {
+                        const r = proposal.rect;
+                        const pt1 = new cv.Point(r.x, r.y);
+                        const pt2 = new cv.Point(r.x + r.width, r.y + r.height);
+                        const color = colors[i % colors.length];
+                        cv.rectangle(output, pt1, pt2, color, 2);
+                    });
+
+                    const time = performance.now() - start;
+
+                    cv.imshow('proposals-output-canvas', output);
+                    UIComponents.updateMetric('proposals-generated', topProposals.length);
+                    UIComponents.updateMetric('proposals-time', `${time.toFixed(1)}ms`);
+
+                    // Cleanup
+                    gray.delete();
+                    edges.delete();
+                    kernel.delete();
+                    contours.delete();
+                    hierarchy.delete();
+                    output.delete();
+
+                } catch (error) {
+                    console.error('Proposals detection error:', error);
+                    UIComponents.showToast({ message: `Proposals error: ${error.message}`, type: 'error' });
+                }
+            });
+        }
+
+        // =====================
+        // COLOR DETECTION SETUP
+        // =====================
+        function setupColorDetection() {
+            const imageInput = document.getElementById('color-image-input');
+            const detectBtn = document.getElementById('color-detect-btn');
+            const presetSelect = document.getElementById('color-preset');
+            const webcamStartBtn = document.getElementById('color-webcam-start');
+            const webcamStopBtn = document.getElementById('color-webcam-stop');
+
+            // HSV sliders
+            const sliders = {
+                hMin: document.getElementById('h-min'),
+                hMax: document.getElementById('h-max'),
+                sMin: document.getElementById('s-min'),
+                sMax: document.getElementById('s-max'),
+                vMin: document.getElementById('v-min'),
+                vMax: document.getElementById('v-max')
+            };
+
+            // Presets
+            const presets = {
+                red: { hMin: 0, hMax: 10, sMin: 100, sMax: 255, vMin: 100, vMax: 255 },
+                green: { hMin: 35, hMax: 85, sMin: 50, sMax: 255, vMin: 50, vMax: 255 },
+                blue: { hMin: 100, hMax: 130, sMin: 50, sMax: 255, vMin: 50, vMax: 255 },
+                yellow: { hMin: 20, hMax: 35, sMin: 100, sMax: 255, vMin: 100, vMax: 255 },
+                orange: { hMin: 10, hMax: 25, sMin: 100, sMax: 255, vMin: 100, vMax: 255 },
+                skin: { hMin: 0, hMax: 25, sMin: 40, sMax: 170, vMin: 80, vMax: 255 }
+            };
+
+            // Mode tabs
+            document.querySelectorAll('.mode-tab[data-section="color"]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-tab[data-section="color"]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    colorMode = tab.dataset.mode;
+
+                    document.getElementById('color-image-controls').classList.toggle('hidden', colorMode === 'webcam');
+                    document.getElementById('color-webcam-controls').classList.toggle('hidden', colorMode === 'image');
+                    document.getElementById('color-webcam-view').classList.toggle('hidden', colorMode === 'image');
+
+                    if (colorMode === 'image' && colorWebcamStream) {
+                        stopColorWebcam();
+                    }
+                });
+            });
+
+            // Slider updates and color swatch preview
+            function updateSliderValue(slider, valueId) {
+                document.getElementById(valueId).textContent = slider.value;
+                updateColorSwatches();
+            }
+
+            function updateColorSwatches() {
+                const hMin = parseInt(sliders.hMin.value);
+                const hMax = parseInt(sliders.hMax.value);
+                const sMin = parseInt(sliders.sMin.value);
+                const sMax = parseInt(sliders.sMax.value);
+                const vMin = parseInt(sliders.vMin.value);
+                const vMax = parseInt(sliders.vMax.value);
+
+                // Convert HSV to CSS HSL (approximate)
+                const minSwatch = document.getElementById('color-min-swatch');
+                const maxSwatch = document.getElementById('color-max-swatch');
+
+                minSwatch.style.background = `hsl(${hMin * 2}, ${(sMin / 255) * 100}%, ${(vMin / 255) * 50}%)`;
+                maxSwatch.style.background = `hsl(${hMax * 2}, ${(sMax / 255) * 100}%, ${(vMax / 255) * 50}%)`;
+            }
+
+            Object.entries(sliders).forEach(([key, slider]) => {
+                slider.addEventListener('input', () => {
+                    updateSliderValue(slider, `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-value`);
+                    if (colorImageMat && colorMode === 'image') {
+                        detectColors();
+                    }
+                });
+            });
+
+            // Preset selection
+            presetSelect.addEventListener('change', () => {
+                const preset = presets[presetSelect.value];
+                if (preset) {
+                    sliders.hMin.value = preset.hMin;
+                    sliders.hMax.value = preset.hMax;
+                    sliders.sMin.value = preset.sMin;
+                    sliders.sMax.value = preset.sMax;
+                    sliders.vMin.value = preset.vMin;
+                    sliders.vMax.value = preset.vMax;
+
+                    Object.entries(sliders).forEach(([key, slider]) => {
+                        updateSliderValue(slider, `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-value`);
+                    });
+
+                    if (colorImageMat && colorMode === 'image') {
+                        detectColors();
+                    }
+                }
+            });
+
+            // Image input
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (colorImageMat) colorImageMat.delete();
+                colorImageMat = Utils.imageToMat(img);
+
+                const inputCanvas = document.getElementById('color-input-canvas');
+                inputCanvas.width = img.width;
+                inputCanvas.height = img.height;
+                cv.imshow(inputCanvas, colorImageMat);
+
+                const maskCanvas = document.getElementById('color-mask-canvas');
+                maskCanvas.width = img.width;
+                maskCanvas.height = img.height;
+
+                const outputCanvas = document.getElementById('color-output-canvas');
+                outputCanvas.width = img.width;
+                outputCanvas.height = img.height;
+
+                detectBtn.disabled = false;
+            });
+
+            // Detect button
+            detectBtn.addEventListener('click', detectColors);
+
+            function detectColors() {
+                if (!colorImageMat) return;
+                detectColorsOnMat(colorImageMat, 'color-mask-canvas', 'color-output-canvas');
+            }
+
+            // Webcam controls
+            webcamStartBtn.addEventListener('click', startColorWebcam);
+            webcamStopBtn.addEventListener('click', stopColorWebcam);
+        }
+
+        async function startColorWebcam() {
+            try {
+                colorWebcamStream = await Utils.getWebcam({ video: { width: 640, height: 480, facingMode: 'user' } });
+                const video = document.getElementById('color-video');
+                video.srcObject = colorWebcamStream;
+
+                video.onloadedmetadata = () => {
+                    const maskCanvas = document.getElementById('color-mask-canvas');
+                    maskCanvas.width = video.videoWidth;
+                    maskCanvas.height = video.videoHeight;
+
+                    const outputCanvas = document.getElementById('color-output-canvas');
+                    outputCanvas.width = video.videoWidth;
+                    outputCanvas.height = video.videoHeight;
+
+                    const inputCanvas = document.getElementById('color-input-canvas');
+                    inputCanvas.width = video.videoWidth;
+                    inputCanvas.height = video.videoHeight;
+
+                    document.getElementById('color-webcam-start').classList.add('hidden');
+                    document.getElementById('color-webcam-stop').classList.remove('hidden');
+
+                    processColorWebcam();
+                };
+            } catch (error) {
+                UIComponents.showToast({ message: `Webcam error: ${error.message}`, type: 'error' });
+            }
+        }
+
+        function stopColorWebcam() {
+            if (colorAnimationId) {
+                cancelAnimationFrame(colorAnimationId);
+                colorAnimationId = null;
+            }
+            if (colorWebcamStream) {
+                Utils.stopWebcam(colorWebcamStream);
+                colorWebcamStream = null;
+            }
+            document.getElementById('color-webcam-start').classList.remove('hidden');
+            document.getElementById('color-webcam-stop').classList.add('hidden');
+        }
+
+        function processColorWebcam() {
+            if (!colorWebcamStream) return;
+
+            const video = document.getElementById('color-video');
+            const frame = Utils.captureFrame(video);
+
+            cv.imshow('color-input-canvas', frame);
+            detectColorsOnMat(frame, 'color-mask-canvas', 'color-output-canvas');
+
+            frame.delete();
+
+            colorAnimationId = requestAnimationFrame(processColorWebcam);
+        }
+
+        function detectColorsOnMat(src, maskCanvasId, outputCanvasId) {
+            const start = performance.now();
+
+            try {
+                const hMin = parseInt(document.getElementById('h-min').value);
+                const hMax = parseInt(document.getElementById('h-max').value);
+                const sMin = parseInt(document.getElementById('s-min').value);
+                const sMax = parseInt(document.getElementById('s-max').value);
+                const vMin = parseInt(document.getElementById('v-min').value);
+                const vMax = parseInt(document.getElementById('v-max').value);
+
+                // Convert to HSV
+                const hsv = new cv.Mat();
+                cv.cvtColor(src, hsv, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
+
+                // Create mask
+                const lowScalar = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), new cv.Scalar(hMin, sMin, vMin, 0));
+                const highScalar = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), new cv.Scalar(hMax, sMax, vMax, 0));
+                const mask = new cv.Mat();
+                cv.inRange(hsv, lowScalar, highScalar, mask);
+
+                // Clean up mask with morphological operations
+                const kernel = cv.Mat.ones(5, 5, cv.CV_8U);
+                cv.morphologyEx(mask, mask, cv.MORPH_OPEN, kernel);
+                cv.morphologyEx(mask, mask, cv.MORPH_CLOSE, kernel);
+
+                // Display mask
+                cv.imshow(maskCanvasId, mask);
+
+                // Find connected components
+                const labels = new cv.Mat();
+                const stats = new cv.Mat();
+                const centroids = new cv.Mat();
+                const numComponents = cv.connectedComponentsWithStats(mask, labels, stats, centroids);
+
+                // Create output with detected regions highlighted
+                const output = src.clone();
+                const color = new cv.Scalar(16, 185, 129, 255);
+
+                // Skip background (component 0)
+                for (let i = 1; i < numComponents; i++) {
+                    const x = stats.intAt(i, cv.CC_STAT_LEFT);
+                    const y = stats.intAt(i, cv.CC_STAT_TOP);
+                    const width = stats.intAt(i, cv.CC_STAT_WIDTH);
+                    const height = stats.intAt(i, cv.CC_STAT_HEIGHT);
+                    const area = stats.intAt(i, cv.CC_STAT_AREA);
+
+                    // Filter small components
+                    if (area > 100) {
+                        cv.rectangle(output, new cv.Point(x, y), new cv.Point(x + width, y + height), color, 2);
+                    }
+                }
+
+                const time = performance.now() - start;
+
+                cv.imshow(outputCanvasId, output);
+
+                // Calculate coverage
+                const totalPixels = src.rows * src.cols;
+                const maskPixels = cv.countNonZero(mask);
+                const coverage = ((maskPixels / totalPixels) * 100).toFixed(1);
+
+                UIComponents.updateMetric('color-count', numComponents - 1);
+                UIComponents.updateMetric('color-time', `${time.toFixed(1)}ms`);
+                UIComponents.updateMetric('color-coverage', `${coverage}%`);
+
+                // Cleanup
+                hsv.delete();
+                lowScalar.delete();
+                highScalar.delete();
+                mask.delete();
+                kernel.delete();
+                labels.delete();
+                stats.delete();
+                centroids.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('Color detection error:', error);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (cascadeClassifier) cascadeClassifier.delete();
+            if (hogDescriptor) hogDescriptor.delete();
+            if (qrDetector) qrDetector.delete();
+            if (faceImageMat) faceImageMat.delete();
+            if (colorImageMat) colorImageMat.delete();
+            stopFaceWebcam();
+            stopColorWebcam();
+        });
+    </script>
+</body>
+</html>

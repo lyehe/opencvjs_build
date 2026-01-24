@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Analysis - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles specific to face module */
+        .training-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .training-image {
+            position: relative;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+
+        .training-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .training-image .label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: rgba(0, 0, 0, 0.8);
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .training-image .remove-btn {
+            position: absolute;
+            top: var(--spacing-xs);
+            right: var(--spacing-xs);
+            width: 24px;
+            height: 24px;
+            background: var(--error);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .person-input {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .person-input input {
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .recognition-result {
+            padding: var(--spacing-lg);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .recognition-result .predicted-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .recognition-result .confidence {
+            color: var(--text-secondary);
+        }
+
+        .landmarks-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .landmark-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.85rem;
+        }
+
+        .landmark-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .preprocessing-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .preprocessing-step {
+            text-align: center;
+        }
+
+        .preprocessing-step .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .preprocessing-step .step-title {
+            font-weight: 500;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .face-info {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .face-info .face-item {
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .face-info .face-item:last-child {
+            border-bottom: none;
+        }
+
+        .subsection {
+            margin-top: var(--spacing-lg);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .subsection-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--text-primary);
+        }
+
+        .module-unavailable {
+            padding: var(--spacing-lg);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            color: var(--error);
+            text-align: center;
+        }
+
+        .feature-available {
+            color: var(--success);
+        }
+
+        .feature-unavailable {
+            color: var(--error);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Face Analysis</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Face Analysis</h1>
+            <p>Explore face detection, recognition algorithms (LBPH, Eigenfaces, Fisherfaces), facial landmarks, and preprocessing techniques using the OpenCV face module.</p>
+        </header>
+
+        <!-- Important Notes -->
+        <div class="alert alert-info mb-lg">
+            <strong>Important Notes:</strong>
+            <ul style="margin: var(--spacing-sm) 0 0 var(--spacing-lg); padding: 0;">
+                <li>Face detection requires Haar Cascade XML files (e.g., haarcascade_frontalface_default.xml)</li>
+                <li>Face recognition requires training data - results depend on training image quality and quantity</li>
+                <li>Facial landmark detection may require additional model files</li>
+                <li>For best results, use clear, well-lit face images with minimal occlusion</li>
+            </ul>
+        </div>
+
+        <!-- Section 1: Face Detection -->
+        <section class="demo-section" id="face-detection-section">
+            <h3>1. Face Detection</h3>
+            <p class="mb-md">Detect faces in images using Haar Cascade Classifiers. This is the foundation for most face analysis tasks.</p>
+
+            <div class="alert alert-warning mb-md" id="cascade-warning">
+                <strong>Note:</strong> Face detection requires loading a Haar Cascade XML file. You can download
+                <a href="https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml" target="_blank">haarcascade_frontalface_default.xml</a>
+                from the OpenCV repository.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label>Cascade File</label>
+                    <input type="file" id="cascadeFile" accept=".xml">
+                </div>
+                <div class="form-group">
+                    <label>Image Source</label>
+                    <input type="file" id="detectionImageInput" accept="image/*">
+                </div>
+                <button class="btn btn-secondary" id="startWebcamDetection">Use Webcam</button>
+                <button class="btn btn-danger hidden" id="stopWebcamDetection">Stop Webcam</button>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label>Scale Factor</label>
+                    <div class="range-group">
+                        <input type="range" id="scaleFactor" min="1.05" max="2.0" step="0.05" value="1.1">
+                        <span class="range-value" id="scaleFactorValue">1.1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Min Neighbors</label>
+                    <div class="range-group">
+                        <input type="range" id="minNeighbors" min="1" max="10" step="1" value="3">
+                        <span class="range-value" id="minNeighborsValue">3</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Min Size</label>
+                    <div class="range-group">
+                        <input type="range" id="minSize" min="20" max="200" step="10" value="30">
+                        <span class="range-value" id="minSizeValue">30</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="detectFaces" disabled>Detect Faces</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <video id="detectionVideo" autoplay playsinline class="hidden"></video>
+                    <canvas id="detectionCanvas"></canvas>
+                    <span class="canvas-label">Detection Result</span>
+                </div>
+            </div>
+
+            <div class="face-info hidden" id="detectionInfo">
+                <div id="faceCount" style="font-weight: 600; margin-bottom: var(--spacing-sm);">Faces detected: 0</div>
+                <div id="faceCoordinates"></div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Faces Found</span>
+                    <span class="metric-value" id="faceCountMetric">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Detection Time</span>
+                    <span class="metric-value" id="detectionTime">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Face Recognition - LBPH -->
+        <section class="demo-section" id="lbph-section">
+            <h3>2. Face Recognition - LBPH</h3>
+            <p class="mb-md">Local Binary Patterns Histograms (LBPH) is a texture-based face recognition algorithm that is robust to lighting changes.</p>
+
+            <div id="lbphAvailability" class="mb-md"></div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Training</h4>
+                <p class="mb-md">Upload multiple face images for at least 2 different people. Use clear, frontal face images for best results.</p>
+
+                <div class="demo-controls">
+                    <div class="person-input">
+                        <input type="text" id="lbphPersonName" placeholder="Person name (e.g., John)">
+                        <input type="file" id="lbphTrainingInput" accept="image/*" multiple>
+                        <button class="btn btn-secondary" id="addLbphTraining">Add Images</button>
+                    </div>
+                </div>
+
+                <div class="training-grid" id="lbphTrainingGrid"></div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Radius</label>
+                        <div class="range-group">
+                            <input type="range" id="lbphRadius" min="1" max="5" step="1" value="1">
+                            <span class="range-value" id="lbphRadiusValue">1</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Neighbors</label>
+                        <div class="range-group">
+                            <input type="range" id="lbphNeighbors" min="4" max="16" step="1" value="8">
+                            <span class="range-value" id="lbphNeighborsValue">8</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Grid X</label>
+                        <div class="range-group">
+                            <input type="range" id="lbphGridX" min="4" max="16" step="1" value="8">
+                            <span class="range-value" id="lbphGridXValue">8</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Grid Y</label>
+                        <div class="range-group">
+                            <input type="range" id="lbphGridY" min="4" max="16" step="1" value="8">
+                            <span class="range-value" id="lbphGridYValue">8</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <div class="range-group">
+                            <input type="range" id="lbphThreshold" min="0" max="500" step="10" value="100">
+                            <span class="range-value" id="lbphThresholdValue">100</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="trainLbph" disabled>Train Model</button>
+                    <button class="btn btn-secondary" id="clearLbphTraining">Clear All</button>
+                </div>
+
+                <div id="lbphTrainingStatus" class="mt-md"></div>
+            </div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Recognition</h4>
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Test Image</label>
+                        <input type="file" id="lbphTestInput" accept="image/*">
+                    </div>
+                    <button class="btn btn-primary" id="recognizeLbph" disabled>Recognize Face</button>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="lbphTestCanvas"></canvas>
+                        <span class="canvas-label">Test Image</span>
+                    </div>
+                    <div class="recognition-result" id="lbphResult">
+                        <div class="predicted-name">-</div>
+                        <div class="confidence">Upload a test image and click Recognize</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Face Recognition - Eigenfaces -->
+        <section class="demo-section" id="eigenfaces-section">
+            <h3>3. Face Recognition - Eigenfaces</h3>
+            <p class="mb-md">Eigenfaces uses Principal Component Analysis (PCA) to find the principal components of face images, representing faces as a combination of eigenfaces.</p>
+
+            <div id="eigenfacesAvailability" class="mb-md"></div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Training</h4>
+                <div class="demo-controls">
+                    <div class="person-input">
+                        <input type="text" id="eigenPersonName" placeholder="Person name">
+                        <input type="file" id="eigenTrainingInput" accept="image/*" multiple>
+                        <button class="btn btn-secondary" id="addEigenTraining">Add Images</button>
+                    </div>
+                </div>
+
+                <div class="training-grid" id="eigenTrainingGrid"></div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Num Components</label>
+                        <div class="range-group">
+                            <input type="range" id="eigenNumComponents" min="0" max="50" step="1" value="0">
+                            <span class="range-value" id="eigenNumComponentsValue">0 (auto)</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <div class="range-group">
+                            <input type="range" id="eigenThreshold" min="0" max="10000" step="100" value="3500">
+                            <span class="range-value" id="eigenThresholdValue">3500</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="trainEigen" disabled>Train Model</button>
+                    <button class="btn btn-secondary" id="clearEigenTraining">Clear All</button>
+                </div>
+
+                <div id="eigenTrainingStatus" class="mt-md"></div>
+            </div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Recognition</h4>
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Test Image</label>
+                        <input type="file" id="eigenTestInput" accept="image/*">
+                    </div>
+                    <button class="btn btn-primary" id="recognizeEigen" disabled>Recognize Face</button>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="eigenTestCanvas"></canvas>
+                        <span class="canvas-label">Test Image</span>
+                    </div>
+                    <div class="recognition-result" id="eigenResult">
+                        <div class="predicted-name">-</div>
+                        <div class="confidence">Upload a test image and click Recognize</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Eigenfaces Visualization</h4>
+                <p class="mb-md">Visualization of the computed eigenfaces (principal components).</p>
+                <div class="demo-output" id="eigenfacesVisualization">
+                    <p class="text-center" style="color: var(--text-muted);">Train the model to visualize eigenfaces</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Face Recognition - Fisherfaces -->
+        <section class="demo-section" id="fisherfaces-section">
+            <h3>4. Face Recognition - Fisherfaces</h3>
+            <p class="mb-md">Fisherfaces uses Linear Discriminant Analysis (LDA), which finds a linear combination of features that best separates classes while minimizing within-class variance.</p>
+
+            <div id="fisherfacesAvailability" class="mb-md"></div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Training</h4>
+                <div class="demo-controls">
+                    <div class="person-input">
+                        <input type="text" id="fisherPersonName" placeholder="Person name">
+                        <input type="file" id="fisherTrainingInput" accept="image/*" multiple>
+                        <button class="btn btn-secondary" id="addFisherTraining">Add Images</button>
+                    </div>
+                </div>
+
+                <div class="training-grid" id="fisherTrainingGrid"></div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Num Components</label>
+                        <div class="range-group">
+                            <input type="range" id="fisherNumComponents" min="0" max="50" step="1" value="0">
+                            <span class="range-value" id="fisherNumComponentsValue">0 (auto)</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <div class="range-group">
+                            <input type="range" id="fisherThreshold" min="0" max="10000" step="100" value="3500">
+                            <span class="range-value" id="fisherThresholdValue">3500</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="trainFisher" disabled>Train Model</button>
+                    <button class="btn btn-secondary" id="clearFisherTraining">Clear All</button>
+                </div>
+
+                <div id="fisherTrainingStatus" class="mt-md"></div>
+            </div>
+
+            <div class="subsection">
+                <h4 class="subsection-title">Recognition</h4>
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Test Image</label>
+                        <input type="file" id="fisherTestInput" accept="image/*">
+                    </div>
+                    <button class="btn btn-primary" id="recognizeFisher" disabled>Recognize Face</button>
+                </div>
+
+                <div class="demo-output">
+                    <div class="canvas-container">
+                        <canvas id="fisherTestCanvas"></canvas>
+                        <span class="canvas-label">Test Image</span>
+                    </div>
+                    <div class="recognition-result" id="fisherResult">
+                        <div class="predicted-name">-</div>
+                        <div class="confidence">Upload a test image and click Recognize</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Face Landmarks -->
+        <section class="demo-section" id="landmarks-section">
+            <h3>5. Face Landmarks</h3>
+            <p class="mb-md">Detect 68 facial landmark points (eyes, nose, mouth, jawline, eyebrows) using Facemark detectors.</p>
+
+            <div class="alert alert-warning mb-md">
+                <strong>Note:</strong> Facial landmark detection requires pre-trained model files:
+                <ul style="margin: var(--spacing-sm) 0 0 var(--spacing-lg); padding: 0;">
+                    <li>FacemarkLBF: lbfmodel.yaml</li>
+                    <li>FacemarkAAM: aam.yaml</li>
+                    <li>FacemarkKazemi: face_landmark_model.dat</li>
+                </ul>
+                These models can be found in the OpenCV contrib repository.
+            </div>
+
+            <div id="landmarksAvailability" class="mb-md"></div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label>Model File</label>
+                    <input type="file" id="landmarkModelFile" accept=".yaml,.dat">
+                </div>
+                <div class="form-group">
+                    <label>Facemark Type</label>
+                    <select id="facemarkType">
+                        <option value="lbf">FacemarkLBF</option>
+                        <option value="aam">FacemarkAAM</option>
+                        <option value="kazemi">FacemarkKazemi</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Image</label>
+                    <input type="file" id="landmarksImageInput" accept="image/*">
+                </div>
+                <button class="btn btn-primary" id="detectLandmarks" disabled>Detect Landmarks</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="landmarksCanvas"></canvas>
+                    <span class="canvas-label">Facial Landmarks</span>
+                </div>
+            </div>
+
+            <div class="landmarks-legend">
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #ff6b6b;"></div>
+                    <span>Jawline (0-16)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #4ecdc4;"></div>
+                    <span>Right Eyebrow (17-21)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #45b7d1;"></div>
+                    <span>Left Eyebrow (22-26)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #96ceb4;"></div>
+                    <span>Nose (27-35)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #ffeaa7;"></div>
+                    <span>Right Eye (36-41)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #dfe6e9;"></div>
+                    <span>Left Eye (42-47)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #fd79a8;"></div>
+                    <span>Outer Mouth (48-59)</span>
+                </div>
+                <div class="landmark-item">
+                    <div class="landmark-dot" style="background: #a29bfe;"></div>
+                    <span>Inner Mouth (60-67)</span>
+                </div>
+            </div>
+
+            <div class="face-info hidden" id="landmarksInfo">
+                <div id="landmarksCount" style="font-weight: 600; margin-bottom: var(--spacing-sm);">Landmarks detected: 0</div>
+                <div id="landmarksCoordinates" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+        </section>
+
+        <!-- Section 6: Face Preprocessing -->
+        <section class="demo-section" id="preprocessing-section">
+            <h3>6. Face Preprocessing</h3>
+            <p class="mb-md">Preprocessing is essential for improving face recognition accuracy. This section demonstrates common preprocessing steps.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label>Image</label>
+                    <input type="file" id="preprocessImageInput" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Target Size</label>
+                    <select id="preprocessSize">
+                        <option value="100">100x100</option>
+                        <option value="128">128x128</option>
+                        <option value="200" selected>200x200</option>
+                        <option value="256">256x256</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="preprocessImage" disabled>Process Image</button>
+            </div>
+
+            <div class="preprocessing-steps mt-lg mb-lg">
+                <div class="preprocessing-step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Face Detection</div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Locate face region in image</p>
+                </div>
+                <div class="preprocessing-step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Eye Detection</div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Find eye positions for alignment</p>
+                </div>
+                <div class="preprocessing-step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Face Alignment</div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Rotate to align eyes horizontally</p>
+                </div>
+                <div class="preprocessing-step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Crop & Resize</div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Extract face region at standard size</p>
+                </div>
+                <div class="preprocessing-step">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Histogram Equalization</div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Normalize lighting conditions</p>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="preprocessOriginal"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="preprocessDetected"></canvas>
+                    <span class="canvas-label">Face Detected</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="preprocessAligned"></canvas>
+                    <span class="canvas-label">Aligned</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="preprocessEqualized"></canvas>
+                    <span class="canvas-label">Equalized</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Original Size</span>
+                    <span class="metric-value" id="preprocessOriginalSize">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Face Region</span>
+                    <span class="metric-value" id="preprocessFaceRegion">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Output Size</span>
+                    <span class="metric-value" id="preprocessOutputSize">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="preprocessTime">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Availability Summary -->
+        <section class="demo-section" id="feature-summary">
+            <h3>Feature Availability</h3>
+            <p class="mb-md">Check which face module features are available in the current OpenCV.js build.</p>
+            <div id="featureList" class="code-block">
+                Loading feature availability...
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+    <script>
+        // Global state
+        const state = {
+            cascadeClassifier: null,
+            eyeCascade: null,
+            cascadeLoaded: false,
+            webcamStream: null,
+            webcamRunning: false,
+            animationFrameId: null,
+
+            // LBPH recognizer
+            lbphRecognizer: null,
+            lbphTrained: false,
+            lbphTrainingData: [], // {name, label, images[]}
+            lbphLabelMap: {}, // label -> name
+
+            // Eigenfaces recognizer
+            eigenRecognizer: null,
+            eigenTrained: false,
+            eigenTrainingData: [],
+            eigenLabelMap: {},
+
+            // Fisherfaces recognizer
+            fisherRecognizer: null,
+            fisherTrained: false,
+            fisherTrainingData: [],
+            fisherLabelMap: {},
+
+            // Landmarks
+            facemarkModel: null,
+            facemark: null
+        };
+
+        // Feature availability
+        const features = {
+            cascadeClassifier: false,
+            lbphRecognizer: false,
+            eigenRecognizer: false,
+            fisherRecognizer: false,
+            facemarkLBF: false,
+            facemarkAAM: false,
+            facemarkKazemi: false
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await UIComponents.initPage({
+                    title: 'Face Analysis',
+                    buildType: 'full'
+                });
+
+                checkFeatureAvailability();
+                initializeEventListeners();
+
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+            }
+        });
+
+        // Check which features are available
+        function checkFeatureAvailability() {
+            features.cascadeClassifier = typeof cv.CascadeClassifier !== 'undefined';
+
+            // Check face module recognizers
+            try {
+                features.lbphRecognizer = typeof cv.face_LBPHFaceRecognizer !== 'undefined' ||
+                                          typeof cv.face !== 'undefined' && typeof cv.face.LBPHFaceRecognizer !== 'undefined';
+            } catch (e) { features.lbphRecognizer = false; }
+
+            try {
+                features.eigenRecognizer = typeof cv.face_EigenFaceRecognizer !== 'undefined' ||
+                                           typeof cv.face !== 'undefined' && typeof cv.face.EigenFaceRecognizer !== 'undefined';
+            } catch (e) { features.eigenRecognizer = false; }
+
+            try {
+                features.fisherRecognizer = typeof cv.face_FisherFaceRecognizer !== 'undefined' ||
+                                            typeof cv.face !== 'undefined' && typeof cv.face.FisherFaceRecognizer !== 'undefined';
+            } catch (e) { features.fisherRecognizer = false; }
+
+            // Check facemark detectors
+            try {
+                features.facemarkLBF = typeof cv.face_FacemarkLBF !== 'undefined' ||
+                                       typeof cv.face !== 'undefined' && typeof cv.face.FacemarkLBF !== 'undefined';
+            } catch (e) { features.facemarkLBF = false; }
+
+            try {
+                features.facemarkAAM = typeof cv.face_FacemarkAAM !== 'undefined' ||
+                                       typeof cv.face !== 'undefined' && typeof cv.face.FacemarkAAM !== 'undefined';
+            } catch (e) { features.facemarkAAM = false; }
+
+            try {
+                features.facemarkKazemi = typeof cv.face_FacemarkKazemi !== 'undefined' ||
+                                          typeof cv.face !== 'undefined' && typeof cv.face.FacemarkKazemi !== 'undefined';
+            } catch (e) { features.facemarkKazemi = false; }
+
+            updateFeatureUI();
+        }
+
+        // Update UI based on feature availability
+        function updateFeatureUI() {
+            // Update feature summary
+            const featureList = document.getElementById('featureList');
+            featureList.innerHTML = `
+CascadeClassifier:    ${features.cascadeClassifier ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+LBPHFaceRecognizer:   ${features.lbphRecognizer ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+EigenFaceRecognizer:  ${features.eigenRecognizer ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+FisherFaceRecognizer: ${features.fisherRecognizer ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+FacemarkLBF:          ${features.facemarkLBF ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+FacemarkAAM:          ${features.facemarkAAM ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+FacemarkKazemi:       ${features.facemarkKazemi ? '<span class="feature-available">Available</span>' : '<span class="feature-unavailable">Not Available</span>'}
+            `;
+
+            // Update individual section availability notices
+            updateSectionAvailability('lbphAvailability', features.lbphRecognizer, 'LBPHFaceRecognizer');
+            updateSectionAvailability('eigenfacesAvailability', features.eigenRecognizer, 'EigenFaceRecognizer');
+            updateSectionAvailability('fisherfacesAvailability', features.fisherRecognizer, 'FisherFaceRecognizer');
+            updateSectionAvailability('landmarksAvailability',
+                features.facemarkLBF || features.facemarkAAM || features.facemarkKazemi,
+                'Facemark detectors');
+        }
+
+        function updateSectionAvailability(elementId, available, featureName) {
+            const el = document.getElementById(elementId);
+            if (available) {
+                el.innerHTML = `<div class="status status-success">${featureName} is available</div>`;
+            } else {
+                el.innerHTML = `<div class="module-unavailable">${featureName} is not available in this OpenCV.js build. This feature requires the face contrib module.</div>`;
+            }
+        }
+
+        // Initialize all event listeners
+        function initializeEventListeners() {
+            // Slider value displays
+            setupSlider('scaleFactor', 'scaleFactorValue');
+            setupSlider('minNeighbors', 'minNeighborsValue');
+            setupSlider('minSize', 'minSizeValue');
+            setupSlider('lbphRadius', 'lbphRadiusValue');
+            setupSlider('lbphNeighbors', 'lbphNeighborsValue');
+            setupSlider('lbphGridX', 'lbphGridXValue');
+            setupSlider('lbphGridY', 'lbphGridYValue');
+            setupSlider('lbphThreshold', 'lbphThresholdValue');
+            setupSlider('eigenNumComponents', 'eigenNumComponentsValue', v => v === '0' ? '0 (auto)' : v);
+            setupSlider('eigenThreshold', 'eigenThresholdValue');
+            setupSlider('fisherNumComponents', 'fisherNumComponentsValue', v => v === '0' ? '0 (auto)' : v);
+            setupSlider('fisherThreshold', 'fisherThresholdValue');
+
+            // Face Detection
+            document.getElementById('cascadeFile').addEventListener('change', loadCascadeFile);
+            document.getElementById('detectionImageInput').addEventListener('change', loadDetectionImage);
+            document.getElementById('detectFaces').addEventListener('click', detectFaces);
+            document.getElementById('startWebcamDetection').addEventListener('click', startWebcamDetection);
+            document.getElementById('stopWebcamDetection').addEventListener('click', stopWebcamDetection);
+
+            // LBPH
+            document.getElementById('addLbphTraining').addEventListener('click', () => addTrainingImages('lbph'));
+            document.getElementById('trainLbph').addEventListener('click', trainLbph);
+            document.getElementById('clearLbphTraining').addEventListener('click', () => clearTraining('lbph'));
+            document.getElementById('lbphTestInput').addEventListener('change', (e) => loadTestImage(e, 'lbph'));
+            document.getElementById('recognizeLbph').addEventListener('click', () => recognizeFace('lbph'));
+
+            // Eigenfaces
+            document.getElementById('addEigenTraining').addEventListener('click', () => addTrainingImages('eigen'));
+            document.getElementById('trainEigen').addEventListener('click', trainEigen);
+            document.getElementById('clearEigenTraining').addEventListener('click', () => clearTraining('eigen'));
+            document.getElementById('eigenTestInput').addEventListener('change', (e) => loadTestImage(e, 'eigen'));
+            document.getElementById('recognizeEigen').addEventListener('click', () => recognizeFace('eigen'));
+
+            // Fisherfaces
+            document.getElementById('addFisherTraining').addEventListener('click', () => addTrainingImages('fisher'));
+            document.getElementById('trainFisher').addEventListener('click', trainFisher);
+            document.getElementById('clearFisherTraining').addEventListener('click', () => clearTraining('fisher'));
+            document.getElementById('fisherTestInput').addEventListener('change', (e) => loadTestImage(e, 'fisher'));
+            document.getElementById('recognizeFisher').addEventListener('click', () => recognizeFace('fisher'));
+
+            // Landmarks
+            document.getElementById('landmarkModelFile').addEventListener('change', loadLandmarkModel);
+            document.getElementById('landmarksImageInput').addEventListener('change', loadLandmarksImage);
+            document.getElementById('detectLandmarks').addEventListener('click', detectLandmarks);
+
+            // Preprocessing
+            document.getElementById('preprocessImageInput').addEventListener('change', loadPreprocessImage);
+            document.getElementById('preprocessImage').addEventListener('click', preprocessFace);
+        }
+
+        function setupSlider(sliderId, valueId, formatter = v => v) {
+            const slider = document.getElementById(sliderId);
+            const value = document.getElementById(valueId);
+            slider.addEventListener('input', () => {
+                value.textContent = formatter(slider.value);
+            });
+        }
+
+        // ==================== Face Detection ====================
+
+        async function loadCascadeFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+
+                // Create a virtual file for OpenCV
+                const data = new TextEncoder().encode(text);
+                cv.FS_createDataFile('/', 'haarcascade_frontalface.xml', data, true, false, false);
+
+                // Create cascade classifier
+                if (state.cascadeClassifier) {
+                    state.cascadeClassifier.delete();
+                }
+                state.cascadeClassifier = new cv.CascadeClassifier();
+                state.cascadeClassifier.load('haarcascade_frontalface.xml');
+
+                state.cascadeLoaded = true;
+                document.getElementById('detectFaces').disabled = false;
+                document.getElementById('cascade-warning').classList.add('hidden');
+
+                UIComponents.showToast({ message: 'Cascade file loaded successfully', type: 'success' });
+            } catch (error) {
+                console.error('Failed to load cascade:', error);
+                UIComponents.showToast({ message: 'Failed to load cascade file', type: 'error' });
+            }
+        }
+
+        async function loadDetectionImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const img = await Utils.loadImage(file);
+                const canvas = document.getElementById('detectionCanvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                if (state.cascadeLoaded) {
+                    document.getElementById('detectFaces').disabled = false;
+                }
+            } catch (error) {
+                UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+            }
+        }
+
+        function detectFaces() {
+            if (!state.cascadeLoaded) {
+                UIComponents.showToast({ message: 'Please load a cascade file first', type: 'warning' });
+                return;
+            }
+
+            const canvas = document.getElementById('detectionCanvas');
+            const startTime = performance.now();
+
+            try {
+                const src = cv.imread(canvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                const faces = new cv.RectVector();
+                const scaleFactor = parseFloat(document.getElementById('scaleFactor').value);
+                const minNeighbors = parseInt(document.getElementById('minNeighbors').value);
+                const minSize = parseInt(document.getElementById('minSize').value);
+
+                state.cascadeClassifier.detectMultiScale(
+                    gray, faces, scaleFactor, minNeighbors, 0,
+                    new cv.Size(minSize, minSize), new cv.Size(0, 0)
+                );
+
+                // Draw rectangles
+                const color = new cv.Scalar(99, 102, 241, 255);
+                const faceCoords = [];
+
+                for (let i = 0; i < faces.size(); i++) {
+                    const face = faces.get(i);
+                    const pt1 = new cv.Point(face.x, face.y);
+                    const pt2 = new cv.Point(face.x + face.width, face.y + face.height);
+                    cv.rectangle(src, pt1, pt2, color, 2);
+
+                    faceCoords.push({
+                        x: face.x,
+                        y: face.y,
+                        width: face.width,
+                        height: face.height
+                    });
+                }
+
+                cv.imshow(canvas, src);
+
+                const endTime = performance.now();
+
+                // Update UI
+                document.getElementById('faceCountMetric').textContent = faces.size();
+                document.getElementById('detectionTime').textContent = `${(endTime - startTime).toFixed(1)}ms`;
+
+                // Update face info
+                const infoDiv = document.getElementById('detectionInfo');
+                infoDiv.classList.remove('hidden');
+                document.getElementById('faceCount').textContent = `Faces detected: ${faces.size()}`;
+
+                const coordsDiv = document.getElementById('faceCoordinates');
+                coordsDiv.innerHTML = faceCoords.map((f, i) =>
+                    `<div class="face-item">Face ${i + 1}: x=${f.x}, y=${f.y}, w=${f.width}, h=${f.height}</div>`
+                ).join('');
+
+                // Cleanup
+                src.delete();
+                gray.delete();
+                faces.delete();
+
+            } catch (error) {
+                console.error('Face detection error:', error);
+                UIComponents.showToast({ message: 'Face detection failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        async function startWebcamDetection() {
+            if (!state.cascadeLoaded) {
+                UIComponents.showToast({ message: 'Please load a cascade file first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const video = document.getElementById('detectionVideo');
+                const canvas = document.getElementById('detectionCanvas');
+
+                state.webcamStream = await Utils.getWebcam();
+                video.srcObject = state.webcamStream;
+                video.classList.remove('hidden');
+
+                await video.play();
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                document.getElementById('startWebcamDetection').classList.add('hidden');
+                document.getElementById('stopWebcamDetection').classList.remove('hidden');
+
+                state.webcamRunning = true;
+                processWebcamFrame();
+
+            } catch (error) {
+                UIComponents.showToast({ message: 'Failed to access webcam', type: 'error' });
+            }
+        }
+
+        function stopWebcamDetection() {
+            state.webcamRunning = false;
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+            }
+            if (state.webcamStream) {
+                Utils.stopWebcam(state.webcamStream);
+                state.webcamStream = null;
+            }
+
+            const video = document.getElementById('detectionVideo');
+            video.classList.add('hidden');
+
+            document.getElementById('startWebcamDetection').classList.remove('hidden');
+            document.getElementById('stopWebcamDetection').classList.add('hidden');
+        }
+
+        function processWebcamFrame() {
+            if (!state.webcamRunning) return;
+
+            const video = document.getElementById('detectionVideo');
+            const canvas = document.getElementById('detectionCanvas');
+
+            const src = Utils.captureFrame(video);
+            const gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+            const faces = new cv.RectVector();
+            const scaleFactor = parseFloat(document.getElementById('scaleFactor').value);
+            const minNeighbors = parseInt(document.getElementById('minNeighbors').value);
+            const minSize = parseInt(document.getElementById('minSize').value);
+
+            state.cascadeClassifier.detectMultiScale(
+                gray, faces, scaleFactor, minNeighbors, 0,
+                new cv.Size(minSize, minSize), new cv.Size(0, 0)
+            );
+
+            const color = new cv.Scalar(99, 102, 241, 255);
+            for (let i = 0; i < faces.size(); i++) {
+                const face = faces.get(i);
+                cv.rectangle(src,
+                    new cv.Point(face.x, face.y),
+                    new cv.Point(face.x + face.width, face.y + face.height),
+                    color, 2
+                );
+            }
+
+            cv.imshow(canvas, src);
+            document.getElementById('faceCountMetric').textContent = faces.size();
+
+            src.delete();
+            gray.delete();
+            faces.delete();
+
+            state.animationFrameId = requestAnimationFrame(processWebcamFrame);
+        }
+
+        // ==================== Training Functions ====================
+
+        async function addTrainingImages(recognizerType) {
+            const nameInput = document.getElementById(`${recognizerType}PersonName`);
+            const fileInput = document.getElementById(`${recognizerType}TrainingInput`);
+            const grid = document.getElementById(`${recognizerType}TrainingGrid`);
+
+            const name = nameInput.value.trim();
+            if (!name) {
+                UIComponents.showToast({ message: 'Please enter a person name', type: 'warning' });
+                return;
+            }
+
+            const files = fileInput.files;
+            if (files.length === 0) {
+                UIComponents.showToast({ message: 'Please select images', type: 'warning' });
+                return;
+            }
+
+            const trainingData = state[`${recognizerType}TrainingData`];
+            const labelMap = state[`${recognizerType}LabelMap`];
+
+            // Find or create person entry
+            let personEntry = trainingData.find(p => p.name === name);
+            if (!personEntry) {
+                const label = trainingData.length;
+                personEntry = { name, label, images: [] };
+                trainingData.push(personEntry);
+                labelMap[label] = name;
+            }
+
+            // Load images
+            for (const file of files) {
+                try {
+                    const img = await Utils.loadImage(file);
+                    personEntry.images.push(img);
+
+                    // Add to grid
+                    const div = document.createElement('div');
+                    div.className = 'training-image';
+                    div.innerHTML = `
+                        <img src="${img.src}">
+                        <span class="label">${name}</span>
+                        <button class="remove-btn" onclick="removeTrainingImage('${recognizerType}', ${personEntry.label}, ${personEntry.images.length - 1})">&times;</button>
+                    `;
+                    grid.appendChild(div);
+                } catch (e) {
+                    console.error('Failed to load image:', e);
+                }
+            }
+
+            // Update train button state
+            updateTrainButtonState(recognizerType);
+
+            // Clear inputs
+            nameInput.value = '';
+            fileInput.value = '';
+
+            UIComponents.showToast({ message: `Added ${files.length} images for ${name}`, type: 'success' });
+        }
+
+        function removeTrainingImage(recognizerType, label, imageIndex) {
+            const trainingData = state[`${recognizerType}TrainingData`];
+            const personEntry = trainingData.find(p => p.label === label);
+
+            if (personEntry) {
+                personEntry.images.splice(imageIndex, 1);
+
+                // Remove empty entries
+                if (personEntry.images.length === 0) {
+                    const idx = trainingData.indexOf(personEntry);
+                    trainingData.splice(idx, 1);
+                }
+            }
+
+            // Rebuild grid
+            rebuildTrainingGrid(recognizerType);
+            updateTrainButtonState(recognizerType);
+        }
+
+        function rebuildTrainingGrid(recognizerType) {
+            const grid = document.getElementById(`${recognizerType}TrainingGrid`);
+            const trainingData = state[`${recognizerType}TrainingData`];
+
+            grid.innerHTML = '';
+
+            trainingData.forEach((person, personIdx) => {
+                person.images.forEach((img, imgIdx) => {
+                    const div = document.createElement('div');
+                    div.className = 'training-image';
+                    div.innerHTML = `
+                        <img src="${img.src}">
+                        <span class="label">${person.name}</span>
+                        <button class="remove-btn" onclick="removeTrainingImage('${recognizerType}', ${person.label}, ${imgIdx})">&times;</button>
+                    `;
+                    grid.appendChild(div);
+                });
+            });
+        }
+
+        function clearTraining(recognizerType) {
+            state[`${recognizerType}TrainingData`] = [];
+            state[`${recognizerType}LabelMap`] = {};
+            state[`${recognizerType}Trained`] = false;
+
+            if (state[`${recognizerType}Recognizer`]) {
+                state[`${recognizerType}Recognizer`].delete();
+                state[`${recognizerType}Recognizer`] = null;
+            }
+
+            document.getElementById(`${recognizerType}TrainingGrid`).innerHTML = '';
+            document.getElementById(`${recognizerType}TrainingStatus`).innerHTML = '';
+            document.getElementById(`recognize${recognizerType.charAt(0).toUpperCase() + recognizerType.slice(1)}`).disabled = true;
+
+            updateTrainButtonState(recognizerType);
+        }
+
+        function updateTrainButtonState(recognizerType) {
+            const trainingData = state[`${recognizerType}TrainingData`];
+            const uniquePeople = trainingData.filter(p => p.images.length > 0).length;
+            const totalImages = trainingData.reduce((sum, p) => sum + p.images.length, 0);
+
+            const trainBtn = document.getElementById(`train${recognizerType.charAt(0).toUpperCase() + recognizerType.slice(1)}`);
+            trainBtn.disabled = uniquePeople < 2 || totalImages < 4;
+        }
+
+        // ==================== LBPH Training & Recognition ====================
+
+        function trainLbph() {
+            if (!features.lbphRecognizer) {
+                UIComponents.showToast({ message: 'LBPH Recognizer not available', type: 'error' });
+                return;
+            }
+
+            const statusEl = document.getElementById('lbphTrainingStatus');
+            statusEl.innerHTML = '<div class="alert alert-info">Training in progress...</div>';
+
+            try {
+                const radius = parseInt(document.getElementById('lbphRadius').value);
+                const neighbors = parseInt(document.getElementById('lbphNeighbors').value);
+                const gridX = parseInt(document.getElementById('lbphGridX').value);
+                const gridY = parseInt(document.getElementById('lbphGridY').value);
+                const threshold = parseFloat(document.getElementById('lbphThreshold').value);
+
+                // Create recognizer
+                if (state.lbphRecognizer) {
+                    state.lbphRecognizer.delete();
+                }
+
+                // Try different API styles
+                if (typeof cv.face_LBPHFaceRecognizer !== 'undefined') {
+                    state.lbphRecognizer = new cv.face_LBPHFaceRecognizer(radius, neighbors, gridX, gridY, threshold);
+                } else if (typeof cv.face !== 'undefined' && typeof cv.face.LBPHFaceRecognizer !== 'undefined') {
+                    state.lbphRecognizer = cv.face.LBPHFaceRecognizer.create(radius, neighbors, gridX, gridY, threshold);
+                } else {
+                    throw new Error('LBPHFaceRecognizer not found');
+                }
+
+                // Prepare training data
+                const { images, labels } = prepareTrainingData('lbph');
+
+                // Train
+                state.lbphRecognizer.train(images, labels);
+                state.lbphTrained = true;
+
+                // Cleanup
+                images.delete();
+                labels.delete();
+
+                document.getElementById('recognizeLbph').disabled = false;
+                statusEl.innerHTML = '<div class="alert alert-success">LBPH model trained successfully!</div>';
+                UIComponents.showToast({ message: 'LBPH model trained', type: 'success' });
+
+            } catch (error) {
+                console.error('LBPH training error:', error);
+                statusEl.innerHTML = `<div class="alert alert-error">Training failed: ${error.message}</div>`;
+            }
+        }
+
+        // ==================== Eigenfaces Training & Recognition ====================
+
+        function trainEigen() {
+            if (!features.eigenRecognizer) {
+                UIComponents.showToast({ message: 'Eigenfaces Recognizer not available', type: 'error' });
+                return;
+            }
+
+            const statusEl = document.getElementById('eigenTrainingStatus');
+            statusEl.innerHTML = '<div class="alert alert-info">Training in progress...</div>';
+
+            try {
+                const numComponents = parseInt(document.getElementById('eigenNumComponents').value);
+                const threshold = parseFloat(document.getElementById('eigenThreshold').value);
+
+                // Create recognizer
+                if (state.eigenRecognizer) {
+                    state.eigenRecognizer.delete();
+                }
+
+                if (typeof cv.face_EigenFaceRecognizer !== 'undefined') {
+                    state.eigenRecognizer = new cv.face_EigenFaceRecognizer(numComponents, threshold);
+                } else if (typeof cv.face !== 'undefined' && typeof cv.face.EigenFaceRecognizer !== 'undefined') {
+                    state.eigenRecognizer = cv.face.EigenFaceRecognizer.create(numComponents, threshold);
+                } else {
+                    throw new Error('EigenFaceRecognizer not found');
+                }
+
+                // Prepare training data
+                const { images, labels } = prepareTrainingData('eigen');
+
+                // Train
+                state.eigenRecognizer.train(images, labels);
+                state.eigenTrained = true;
+
+                // Cleanup
+                images.delete();
+                labels.delete();
+
+                document.getElementById('recognizeEigen').disabled = false;
+                statusEl.innerHTML = '<div class="alert alert-success">Eigenfaces model trained successfully!</div>';
+
+                // Visualize eigenfaces if possible
+                visualizeEigenfaces();
+
+                UIComponents.showToast({ message: 'Eigenfaces model trained', type: 'success' });
+
+            } catch (error) {
+                console.error('Eigenfaces training error:', error);
+                statusEl.innerHTML = `<div class="alert alert-error">Training failed: ${error.message}</div>`;
+            }
+        }
+
+        function visualizeEigenfaces() {
+            const container = document.getElementById('eigenfacesVisualization');
+            container.innerHTML = '<p style="color: var(--text-muted);">Eigenfaces visualization is not directly supported in OpenCV.js. The model is trained and ready for recognition.</p>';
+        }
+
+        // ==================== Fisherfaces Training & Recognition ====================
+
+        function trainFisher() {
+            if (!features.fisherRecognizer) {
+                UIComponents.showToast({ message: 'Fisherfaces Recognizer not available', type: 'error' });
+                return;
+            }
+
+            const statusEl = document.getElementById('fisherTrainingStatus');
+            statusEl.innerHTML = '<div class="alert alert-info">Training in progress...</div>';
+
+            try {
+                const numComponents = parseInt(document.getElementById('fisherNumComponents').value);
+                const threshold = parseFloat(document.getElementById('fisherThreshold').value);
+
+                // Create recognizer
+                if (state.fisherRecognizer) {
+                    state.fisherRecognizer.delete();
+                }
+
+                if (typeof cv.face_FisherFaceRecognizer !== 'undefined') {
+                    state.fisherRecognizer = new cv.face_FisherFaceRecognizer(numComponents, threshold);
+                } else if (typeof cv.face !== 'undefined' && typeof cv.face.FisherFaceRecognizer !== 'undefined') {
+                    state.fisherRecognizer = cv.face.FisherFaceRecognizer.create(numComponents, threshold);
+                } else {
+                    throw new Error('FisherFaceRecognizer not found');
+                }
+
+                // Prepare training data
+                const { images, labels } = prepareTrainingData('fisher');
+
+                // Train
+                state.fisherRecognizer.train(images, labels);
+                state.fisherTrained = true;
+
+                // Cleanup
+                images.delete();
+                labels.delete();
+
+                document.getElementById('recognizeFisher').disabled = false;
+                statusEl.innerHTML = '<div class="alert alert-success">Fisherfaces model trained successfully!</div>';
+                UIComponents.showToast({ message: 'Fisherfaces model trained', type: 'success' });
+
+            } catch (error) {
+                console.error('Fisherfaces training error:', error);
+                statusEl.innerHTML = `<div class="alert alert-error">Training failed: ${error.message}</div>`;
+            }
+        }
+
+        // ==================== Common Recognition Functions ====================
+
+        function prepareTrainingData(recognizerType) {
+            const trainingData = state[`${recognizerType}TrainingData`];
+            const images = new cv.MatVector();
+            const labelsArr = [];
+
+            trainingData.forEach(person => {
+                person.images.forEach(img => {
+                    const mat = Utils.imageToMat(img);
+                    const gray = new cv.Mat();
+                    cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+
+                    // Resize to standard size for recognition
+                    const resized = new cv.Mat();
+                    cv.resize(gray, resized, new cv.Size(100, 100));
+
+                    images.push_back(resized);
+                    labelsArr.push(person.label);
+
+                    mat.delete();
+                    gray.delete();
+                });
+            });
+
+            const labels = cv.matFromArray(labelsArr.length, 1, cv.CV_32SC1, labelsArr);
+
+            return { images, labels };
+        }
+
+        function loadTestImage(e, recognizerType) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById(`${recognizerType}TestCanvas`);
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function recognizeFace(recognizerType) {
+            const recognizer = state[`${recognizerType}Recognizer`];
+            const labelMap = state[`${recognizerType}LabelMap`];
+            const canvas = document.getElementById(`${recognizerType}TestCanvas`);
+            const resultDiv = document.getElementById(`${recognizerType}Result`);
+
+            if (!recognizer || !state[`${recognizerType}Trained`]) {
+                UIComponents.showToast({ message: 'Please train the model first', type: 'warning' });
+                return;
+            }
+
+            try {
+                const src = cv.imread(canvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                // Resize to match training size
+                const resized = new cv.Mat();
+                cv.resize(gray, resized, new cv.Size(100, 100));
+
+                // Predict
+                const labelResult = recognizer.predict_label(resized);
+
+                // Try to get confidence (API may vary)
+                let confidence = 0;
+                try {
+                    const result = recognizer.predict_collect(resized);
+                    confidence = result.getDistance ? result.getDistance() : 0;
+                } catch (e) {
+                    // Confidence not available
+                }
+
+                const name = labelMap[labelResult] || 'Unknown';
+
+                resultDiv.innerHTML = `
+                    <div class="predicted-name">${name}</div>
+                    <div class="confidence">Label: ${labelResult}${confidence ? `, Distance: ${confidence.toFixed(2)}` : ''}</div>
+                `;
+
+                src.delete();
+                gray.delete();
+                resized.delete();
+
+            } catch (error) {
+                console.error('Recognition error:', error);
+                resultDiv.innerHTML = `
+                    <div class="predicted-name" style="color: var(--error);">Error</div>
+                    <div class="confidence">${error.message}</div>
+                `;
+            }
+        }
+
+        // ==================== Facial Landmarks ====================
+
+        async function loadLandmarkModel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const data = await file.arrayBuffer();
+                const uint8Array = new Uint8Array(data);
+
+                const filename = file.name;
+                cv.FS_createDataFile('/', filename, uint8Array, true, false, false);
+
+                state.facemarkModel = '/' + filename;
+                document.getElementById('detectLandmarks').disabled = false;
+
+                UIComponents.showToast({ message: 'Landmark model loaded', type: 'success' });
+            } catch (error) {
+                console.error('Failed to load landmark model:', error);
+                UIComponents.showToast({ message: 'Failed to load model', type: 'error' });
+            }
+        }
+
+        async function loadLandmarksImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const img = await Utils.loadImage(file);
+                const canvas = document.getElementById('landmarksCanvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            } catch (error) {
+                UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+            }
+        }
+
+        function detectLandmarks() {
+            const type = document.getElementById('facemarkType').value;
+            const available = features[`facemark${type.toUpperCase()}`] || features[`facemark${type.charAt(0).toUpperCase() + type.slice(1)}`];
+
+            if (!available) {
+                UIComponents.showToast({ message: `Facemark ${type} is not available`, type: 'error' });
+                return;
+            }
+
+            if (!state.facemarkModel) {
+                UIComponents.showToast({ message: 'Please load a landmark model file first', type: 'warning' });
+                return;
+            }
+
+            const canvas = document.getElementById('landmarksCanvas');
+
+            try {
+                // Note: Facemark API in OpenCV.js may be limited
+                // This is a placeholder for the actual implementation
+                UIComponents.showToast({
+                    message: 'Facial landmark detection requires the Facemark module which may have limited support in OpenCV.js',
+                    type: 'warning'
+                });
+
+                // Simulated landmark visualization
+                const infoDiv = document.getElementById('landmarksInfo');
+                infoDiv.classList.remove('hidden');
+                document.getElementById('landmarksCount').textContent = 'Landmarks: Requires Facemark module support';
+                document.getElementById('landmarksCoordinates').innerHTML =
+                    '<p>The Facemark module requires pre-trained models and may have limited browser support.</p>';
+
+            } catch (error) {
+                console.error('Landmark detection error:', error);
+                UIComponents.showToast({ message: 'Landmark detection failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==================== Face Preprocessing ====================
+
+        async function loadPreprocessImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const img = await Utils.loadImage(file);
+                const canvas = document.getElementById('preprocessOriginal');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                document.getElementById('preprocessOriginalSize').textContent = `${img.width}x${img.height}`;
+                document.getElementById('preprocessImage').disabled = !state.cascadeLoaded;
+
+                if (!state.cascadeLoaded) {
+                    UIComponents.showToast({ message: 'Load a cascade file in Section 1 to enable preprocessing', type: 'info' });
+                }
+            } catch (error) {
+                UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+            }
+        }
+
+        function preprocessFace() {
+            if (!state.cascadeLoaded) {
+                UIComponents.showToast({ message: 'Please load a cascade file first', type: 'warning' });
+                return;
+            }
+
+            const startTime = performance.now();
+            const targetSize = parseInt(document.getElementById('preprocessSize').value);
+
+            try {
+                const srcCanvas = document.getElementById('preprocessOriginal');
+                const src = cv.imread(srcCanvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                // Detect faces
+                const faces = new cv.RectVector();
+                state.cascadeClassifier.detectMultiScale(gray, faces, 1.1, 3, 0, new cv.Size(30, 30));
+
+                if (faces.size() === 0) {
+                    UIComponents.showToast({ message: 'No faces detected', type: 'warning' });
+                    src.delete();
+                    gray.delete();
+                    faces.delete();
+                    return;
+                }
+
+                const face = faces.get(0);
+                document.getElementById('preprocessFaceRegion').textContent =
+                    `${face.x},${face.y} - ${face.width}x${face.height}`;
+
+                // Step 1: Show detected face
+                const detected = src.clone();
+                cv.rectangle(detected,
+                    new cv.Point(face.x, face.y),
+                    new cv.Point(face.x + face.width, face.y + face.height),
+                    new cv.Scalar(99, 102, 241, 255), 2
+                );
+
+                const detectedCanvas = document.getElementById('preprocessDetected');
+                detectedCanvas.width = src.cols;
+                detectedCanvas.height = src.rows;
+                cv.imshow(detectedCanvas, detected);
+
+                // Step 2: Crop face region
+                const faceROI = gray.roi(face);
+
+                // Step 3: Resize to target size
+                const resized = new cv.Mat();
+                cv.resize(faceROI, resized, new cv.Size(targetSize, targetSize));
+
+                const alignedCanvas = document.getElementById('preprocessAligned');
+                alignedCanvas.width = targetSize;
+                alignedCanvas.height = targetSize;
+                cv.imshow(alignedCanvas, resized);
+
+                // Step 4: Histogram equalization
+                const equalized = new cv.Mat();
+                cv.equalizeHist(resized, equalized);
+
+                const equalizedCanvas = document.getElementById('preprocessEqualized');
+                equalizedCanvas.width = targetSize;
+                equalizedCanvas.height = targetSize;
+                cv.imshow(equalizedCanvas, equalized);
+
+                const endTime = performance.now();
+                document.getElementById('preprocessOutputSize').textContent = `${targetSize}x${targetSize}`;
+                document.getElementById('preprocessTime').textContent = `${(endTime - startTime).toFixed(1)}ms`;
+
+                // Cleanup
+                src.delete();
+                gray.delete();
+                detected.delete();
+                faceROI.delete();
+                resized.delete();
+                equalized.delete();
+                faces.delete();
+
+                UIComponents.showToast({ message: 'Preprocessing complete', type: 'success' });
+
+            } catch (error) {
+                console.error('Preprocessing error:', error);
+                UIComponents.showToast({ message: 'Preprocessing failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopWebcamDetection();
+
+            if (state.cascadeClassifier) state.cascadeClassifier.delete();
+            if (state.lbphRecognizer) state.lbphRecognizer.delete();
+            if (state.eigenRecognizer) state.eigenRecognizer.delete();
+            if (state.fisherRecognizer) state.fisherRecognizer.delete();
+        });
+    </script>
+</body>
+</html>

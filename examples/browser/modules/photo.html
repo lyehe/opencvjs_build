@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Enhancement - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for photo demo */
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .comparison-container.single {
+            grid-template-columns: 1fr;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .drawing-canvas {
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .drawing-controls {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .brush-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ff0000;
+            border: 2px solid var(--border-color);
+        }
+
+        .histogram-canvas {
+            width: 100%;
+            height: 150px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+        }
+
+        .processing-indicator {
+            display: none;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: var(--radius-md);
+            color: var(--accent-secondary);
+        }
+
+        .processing-indicator.active {
+            display: flex;
+        }
+
+        .processing-indicator .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .feature-unavailable {
+            padding: var(--spacing-md);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            color: var(--warning);
+            text-align: center;
+        }
+
+        .clone-preview {
+            position: relative;
+            border: 2px dashed var(--border-accent);
+            cursor: crosshair;
+        }
+
+        .clone-preview .selection-rect {
+            position: absolute;
+            border: 2px solid var(--accent-primary);
+            background: rgba(99, 102, 241, 0.2);
+            pointer-events: none;
+        }
+
+        .image-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        @media (max-width: 768px) {
+            .image-pair {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .download-btn {
+            margin-top: var(--spacing-sm);
+        }
+
+        .section-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-md);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Photo Enhancement</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Photo Enhancement</h1>
+            <p>Advanced photo enhancement features from photo, xphoto, and intensity_transform modules</p>
+        </header>
+
+        <!-- Feature Availability Info -->
+        <div id="featureStatus" class="alert alert-info mb-lg">
+            Checking available features...
+        </div>
+
+        <!-- 1. Denoising Section -->
+        <section class="demo-section" id="denoising-section">
+            <h3>Denoising</h3>
+            <p class="section-description">
+                Remove noise from images using Non-Local Means Denoising. This algorithm can be slow on large images.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="denoise-upload">Upload Image</label>
+                    <input type="file" id="denoise-upload" accept="image/*">
+                    <label for="denoise-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Noisy Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="denoise-h">Filter Strength (h)</label>
+                    <div class="range-group">
+                        <input type="range" id="denoise-h" min="3" max="21" value="10" step="1">
+                        <span class="range-value" id="denoise-h-value">10</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="denoise-template">Template Window</label>
+                    <select id="denoise-template">
+                        <option value="5">5x5</option>
+                        <option value="7" selected>7x7</option>
+                        <option value="9">9x9</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="denoise-search">Search Window</label>
+                    <select id="denoise-search">
+                        <option value="15">15x15</option>
+                        <option value="21" selected>21x21</option>
+                        <option value="31">31x31</option>
+                    </select>
+                </div>
+
+                <button id="denoise-btn" class="btn btn-primary" disabled>Apply Denoising</button>
+
+                <div class="processing-indicator" id="denoise-processing">
+                    <div class="spinner"></div>
+                    <span>Processing (this may take a while)...</span>
+                </div>
+            </div>
+
+            <div class="comparison-container" id="denoise-output">
+                <div class="canvas-container">
+                    <canvas id="denoise-before"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="denoise-after"></canvas>
+                    <span class="canvas-label">Denoised</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="denoise-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="denoise-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Image Size</span>
+                    <span class="metric-value" id="denoise-size">-</span>
+                </div>
+            </div>
+
+            <button id="denoise-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+
+        <!-- 2. HDR Tone Mapping Section -->
+        <section class="demo-section" id="tonemap-section">
+            <h3>HDR Tone Mapping</h3>
+            <p class="section-description">
+                Apply tone mapping to simulate HDR effects. Various algorithms produce different artistic results.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="tonemap-upload">Upload Image</label>
+                    <input type="file" id="tonemap-upload" accept="image/*">
+                    <label for="tonemap-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="tonemap-method">Tone Mapping Method</label>
+                    <select id="tonemap-method">
+                        <option value="drago">Drago</option>
+                        <option value="reinhard">Reinhard</option>
+                        <option value="mantiuk">Mantiuk</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tonemap-gamma">Gamma</label>
+                    <div class="range-group">
+                        <input type="range" id="tonemap-gamma" min="0.5" max="3.0" value="1.0" step="0.1">
+                        <span class="range-value" id="tonemap-gamma-value">1.0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tonemap-saturation">Saturation</label>
+                    <div class="range-group">
+                        <input type="range" id="tonemap-saturation" min="0.0" max="2.0" value="1.0" step="0.1">
+                        <span class="range-value" id="tonemap-saturation-value">1.0</span>
+                    </div>
+                </div>
+
+                <button id="tonemap-btn" class="btn btn-primary" disabled>Apply Tone Mapping</button>
+            </div>
+
+            <div class="comparison-container" id="tonemap-output">
+                <div class="canvas-container">
+                    <canvas id="tonemap-before"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="tonemap-after"></canvas>
+                    <span class="canvas-label">Tone Mapped</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="tonemap-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="tonemap-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Method</span>
+                    <span class="metric-value" id="tonemap-method-used">-</span>
+                </div>
+            </div>
+
+            <button id="tonemap-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+
+        <!-- 3. White Balance Section -->
+        <section class="demo-section" id="whitebalance-section">
+            <h3>White Balance (xphoto)</h3>
+            <p class="section-description">
+                Automatically correct color temperature using various white balance algorithms.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="wb-upload">Upload Image</label>
+                    <input type="file" id="wb-upload" accept="image/*">
+                    <label for="wb-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="wb-method">White Balance Method</label>
+                    <select id="wb-method">
+                        <option value="grayworld">Grayworld WB</option>
+                        <option value="simple">Simple WB</option>
+                        <option value="learning">Learning-Based WB</option>
+                    </select>
+                </div>
+
+                <button id="wb-btn" class="btn btn-primary" disabled>Apply White Balance</button>
+            </div>
+
+            <div class="comparison-container" id="wb-output">
+                <div class="canvas-container">
+                    <canvas id="wb-before"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="wb-after"></canvas>
+                    <span class="canvas-label">White Balanced</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="wb-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="wb-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Method</span>
+                    <span class="metric-value" id="wb-method-used">-</span>
+                </div>
+            </div>
+
+            <button id="wb-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+
+        <!-- 4. Contrast Enhancement Section -->
+        <section class="demo-section" id="contrast-section">
+            <h3>Contrast Enhancement (CLAHE)</h3>
+            <p class="section-description">
+                Enhance local contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization) and compare with standard histogram equalization.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="contrast-upload">Upload Image</label>
+                    <input type="file" id="contrast-upload" accept="image/*">
+                    <label for="contrast-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="clahe-clip">Clip Limit</label>
+                    <div class="range-group">
+                        <input type="range" id="clahe-clip" min="1" max="10" value="2" step="0.5">
+                        <span class="range-value" id="clahe-clip-value">2.0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="clahe-tile">Tile Grid Size</label>
+                    <select id="clahe-tile">
+                        <option value="4">4x4</option>
+                        <option value="8" selected>8x8</option>
+                        <option value="16">16x16</option>
+                    </select>
+                </div>
+
+                <button id="contrast-btn" class="btn btn-primary" disabled>Apply Enhancement</button>
+            </div>
+
+            <div class="comparison-container" style="grid-template-columns: repeat(3, 1fr);" id="contrast-output">
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="contrast-before"></canvas>
+                        <span class="canvas-label">Original</span>
+                    </div>
+                    <canvas id="hist-before" class="histogram-canvas mt-sm"></canvas>
+                </div>
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="contrast-equalized"></canvas>
+                        <span class="canvas-label">Histogram Equalized</span>
+                    </div>
+                    <canvas id="hist-equalized" class="histogram-canvas mt-sm"></canvas>
+                </div>
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="contrast-clahe"></canvas>
+                        <span class="canvas-label">CLAHE</span>
+                    </div>
+                    <canvas id="hist-clahe" class="histogram-canvas mt-sm"></canvas>
+                </div>
+            </div>
+
+            <div class="metrics" id="contrast-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">CLAHE Time</span>
+                    <span class="metric-value" id="contrast-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Clip Limit</span>
+                    <span class="metric-value" id="contrast-clip-used">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Tile Size</span>
+                    <span class="metric-value" id="contrast-tile-used">-</span>
+                </div>
+            </div>
+
+            <button id="contrast-download" class="btn btn-secondary download-btn" style="display: none;">Download CLAHE Result</button>
+        </section>
+
+        <!-- 5. Inpainting Section -->
+        <section class="demo-section" id="inpaint-section">
+            <h3>Inpainting</h3>
+            <p class="section-description">
+                Remove objects or repair damaged areas by drawing a mask over the regions to inpaint.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="inpaint-upload">Upload Image</label>
+                    <input type="file" id="inpaint-upload" accept="image/*">
+                    <label for="inpaint-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="inpaint-brush">Brush Size</label>
+                    <div class="range-group">
+                        <input type="range" id="inpaint-brush" min="5" max="50" value="15" step="1">
+                        <span class="range-value" id="inpaint-brush-value">15</span>
+                    </div>
+                </div>
+
+                <div class="brush-preview" id="brush-preview"></div>
+
+                <div class="form-group">
+                    <label for="inpaint-method">Inpainting Method</label>
+                    <select id="inpaint-method">
+                        <option value="telea">TELEA</option>
+                        <option value="ns">Navier-Stokes</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="inpaint-radius">Inpaint Radius</label>
+                    <div class="range-group">
+                        <input type="range" id="inpaint-radius" min="1" max="10" value="3" step="1">
+                        <span class="range-value" id="inpaint-radius-value">3</span>
+                    </div>
+                </div>
+
+                <button id="inpaint-clear" class="btn btn-secondary" disabled>Clear Mask</button>
+                <button id="inpaint-btn" class="btn btn-primary" disabled>Apply Inpainting</button>
+
+                <div class="processing-indicator" id="inpaint-processing">
+                    <div class="spinner"></div>
+                    <span>Processing...</span>
+                </div>
+            </div>
+
+            <div class="comparison-container" id="inpaint-output">
+                <div class="canvas-container">
+                    <canvas id="inpaint-canvas" class="drawing-canvas"></canvas>
+                    <span class="canvas-label">Draw mask (red areas will be inpainted)</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="inpaint-result"></canvas>
+                    <span class="canvas-label">Inpainted Result</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="inpaint-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="inpaint-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Method</span>
+                    <span class="metric-value" id="inpaint-method-used">-</span>
+                </div>
+            </div>
+
+            <button id="inpaint-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+
+        <!-- 6. Seamless Cloning Section -->
+        <section class="demo-section" id="clone-section">
+            <h3>Seamless Cloning</h3>
+            <p class="section-description">
+                Blend a source image into a destination image seamlessly using Poisson blending.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="clone-src-upload">Source Image</label>
+                    <input type="file" id="clone-src-upload" accept="image/*">
+                    <label for="clone-src-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Source
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="clone-dst-upload">Destination Image</label>
+                    <input type="file" id="clone-dst-upload" accept="image/*">
+                    <label for="clone-dst-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Destination
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="clone-method">Clone Method</label>
+                    <select id="clone-method">
+                        <option value="normal">Normal Clone</option>
+                        <option value="mixed">Mixed Clone</option>
+                    </select>
+                </div>
+
+                <button id="clone-btn" class="btn btn-primary" disabled>Apply Seamless Clone</button>
+            </div>
+
+            <p class="section-description">
+                Click on the destination image to set the clone center position.
+            </p>
+
+            <div class="image-pair">
+                <div class="canvas-container">
+                    <canvas id="clone-src"></canvas>
+                    <span class="canvas-label">Source (will be cloned)</span>
+                </div>
+                <div class="canvas-container clone-preview">
+                    <canvas id="clone-dst"></canvas>
+                    <span class="canvas-label">Destination (click to set position)</span>
+                </div>
+            </div>
+
+            <div class="comparison-container single">
+                <div class="canvas-container">
+                    <canvas id="clone-result"></canvas>
+                    <span class="canvas-label">Cloned Result</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="clone-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="clone-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Method</span>
+                    <span class="metric-value" id="clone-method-used">-</span>
+                </div>
+            </div>
+
+            <button id="clone-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+
+        <!-- 7. Intensity Transform Section -->
+        <section class="demo-section" id="intensity-section">
+            <h3>Intensity Transform</h3>
+            <p class="section-description">
+                Apply various intensity transformations including gamma correction, log transform, and low-light enhancement.
+            </p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="intensity-upload">Upload Image</label>
+                    <input type="file" id="intensity-upload" accept="image/*">
+                    <label for="intensity-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="intensity-method">Transform Method</label>
+                    <select id="intensity-method">
+                        <option value="gamma">Gamma Correction</option>
+                        <option value="log">Log Transform</option>
+                        <option value="bimef">BIMEF (Low-Light Enhancement)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="gamma-control">
+                    <label for="intensity-gamma">Gamma Value</label>
+                    <div class="range-group">
+                        <input type="range" id="intensity-gamma" min="0.1" max="3.0" value="1.0" step="0.1">
+                        <span class="range-value" id="intensity-gamma-value">1.0</span>
+                    </div>
+                </div>
+
+                <button id="intensity-btn" class="btn btn-primary" disabled>Apply Transform</button>
+            </div>
+
+            <div class="comparison-container" id="intensity-output">
+                <div class="canvas-container">
+                    <canvas id="intensity-before"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="intensity-after"></canvas>
+                    <span class="canvas-label">Transformed</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="intensity-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="intensity-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Method</span>
+                    <span class="metric-value" id="intensity-method-used">-</span>
+                </div>
+            </div>
+
+            <button id="intensity-download" class="btn btn-secondary download-btn" style="display: none;">Download Result</button>
+        </section>
+    </div>
+
+    <!-- Load OpenCV and utilities -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Feature availability flags
+        const features = {
+            denoising: false,
+            tonemap: false,
+            whiteBalance: false,
+            clahe: false,
+            inpaint: false,
+            seamlessClone: false,
+            intensityTransform: false,
+            bimef: false
+        };
+
+        // State for inpainting drawing
+        const inpaintState = {
+            isDrawing: false,
+            originalImage: null,
+            maskMat: null,
+            displayMat: null
+        };
+
+        // State for seamless cloning
+        const cloneState = {
+            srcMat: null,
+            dstMat: null,
+            center: null
+        };
+
+        // Initialize the page
+        async function init() {
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: UIComponents.updateLoadingProgress,
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                checkFeatures();
+                setupEventListeners();
+                UIComponents.hideLoadingOverlay();
+            } catch (error) {
+                UIComponents.updateLoadingStatus(`Error: ${error.message}`);
+                console.error('Failed to load OpenCV:', error);
+            }
+        }
+
+        // Check which features are available
+        function checkFeatures() {
+            const statusEl = document.getElementById('featureStatus');
+            const available = [];
+            const unavailable = [];
+
+            // Check denoising
+            features.denoising = typeof cv.fastNlMeansDenoisingColored !== 'undefined';
+            if (features.denoising) available.push('Denoising');
+            else unavailable.push('Denoising');
+
+            // Check tone mapping
+            features.tonemap = typeof cv.createTonemapDrago !== 'undefined';
+            if (features.tonemap) available.push('Tone Mapping');
+            else unavailable.push('Tone Mapping');
+
+            // Check white balance (xphoto)
+            features.whiteBalance = typeof cv.xphoto_GrayworldWB !== 'undefined' ||
+                                   typeof cv.createGrayworldWB !== 'undefined';
+            if (features.whiteBalance) available.push('White Balance');
+            else unavailable.push('White Balance');
+
+            // Check CLAHE
+            features.clahe = typeof cv.createCLAHE !== 'undefined';
+            if (features.clahe) available.push('CLAHE');
+            else unavailable.push('CLAHE');
+
+            // Check inpainting
+            features.inpaint = typeof cv.inpaint !== 'undefined';
+            if (features.inpaint) available.push('Inpainting');
+            else unavailable.push('Inpainting');
+
+            // Check seamless cloning
+            features.seamlessClone = typeof cv.seamlessClone !== 'undefined';
+            if (features.seamlessClone) available.push('Seamless Cloning');
+            else unavailable.push('Seamless Cloning');
+
+            // Check intensity transform / BIMEF
+            features.bimef = typeof cv.intensity_transform_BIMEF !== 'undefined' ||
+                            typeof cv.BIMEF !== 'undefined';
+            features.intensityTransform = true; // Gamma and log can be done manually
+
+            if (features.bimef) available.push('BIMEF');
+            else unavailable.push('BIMEF');
+
+            // Update status message
+            let statusHTML = '';
+            if (available.length > 0) {
+                statusHTML += `<strong>Available:</strong> ${available.join(', ')}<br>`;
+            }
+            if (unavailable.length > 0) {
+                statusHTML += `<strong style="color: var(--warning);">Not available:</strong> ${unavailable.join(', ')}`;
+            }
+            statusEl.innerHTML = statusHTML;
+
+            // Hide unavailable sections
+            if (!features.denoising) hideSection('denoising-section');
+            if (!features.tonemap) hideSection('tonemap-section');
+            if (!features.whiteBalance) hideSection('whitebalance-section');
+            if (!features.clahe) hideSection('contrast-section');
+            if (!features.inpaint) hideSection('inpaint-section');
+            if (!features.seamlessClone) hideSection('clone-section');
+
+            // Update BIMEF option
+            if (!features.bimef) {
+                const bimefOption = document.querySelector('#intensity-method option[value="bimef"]');
+                if (bimefOption) {
+                    bimefOption.textContent = 'BIMEF (Not Available)';
+                    bimefOption.disabled = true;
+                }
+            }
+        }
+
+        function hideSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.innerHTML = `
+                    <h3>${section.querySelector('h3').textContent}</h3>
+                    <div class="feature-unavailable">
+                        This feature is not available in the current OpenCV.js build.
+                    </div>
+                `;
+            }
+        }
+
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Range slider value updates
+            setupRangeSlider('denoise-h', 'denoise-h-value');
+            setupRangeSlider('tonemap-gamma', 'tonemap-gamma-value');
+            setupRangeSlider('tonemap-saturation', 'tonemap-saturation-value');
+            setupRangeSlider('clahe-clip', 'clahe-clip-value', v => v.toFixed(1));
+            setupRangeSlider('inpaint-brush', 'inpaint-brush-value', v => v, updateBrushPreview);
+            setupRangeSlider('inpaint-radius', 'inpaint-radius-value');
+            setupRangeSlider('intensity-gamma', 'intensity-gamma-value');
+
+            // File uploads
+            setupFileUpload('denoise-upload', handleDenoiseUpload);
+            setupFileUpload('tonemap-upload', handleTonemapUpload);
+            setupFileUpload('wb-upload', handleWBUpload);
+            setupFileUpload('contrast-upload', handleContrastUpload);
+            setupFileUpload('inpaint-upload', handleInpaintUpload);
+            setupFileUpload('clone-src-upload', handleCloneSrcUpload);
+            setupFileUpload('clone-dst-upload', handleCloneDstUpload);
+            setupFileUpload('intensity-upload', handleIntensityUpload);
+
+            // Action buttons
+            document.getElementById('denoise-btn').addEventListener('click', applyDenoising);
+            document.getElementById('tonemap-btn').addEventListener('click', applyToneMapping);
+            document.getElementById('wb-btn').addEventListener('click', applyWhiteBalance);
+            document.getElementById('contrast-btn').addEventListener('click', applyContrastEnhancement);
+            document.getElementById('inpaint-btn').addEventListener('click', applyInpainting);
+            document.getElementById('inpaint-clear').addEventListener('click', clearInpaintMask);
+            document.getElementById('clone-btn').addEventListener('click', applySeamlessClone);
+            document.getElementById('intensity-btn').addEventListener('click', applyIntensityTransform);
+
+            // Download buttons
+            setupDownloadButton('denoise-download', 'denoise-after', 'denoised.png');
+            setupDownloadButton('tonemap-download', 'tonemap-after', 'tonemapped.png');
+            setupDownloadButton('wb-download', 'wb-after', 'whitebalanced.png');
+            setupDownloadButton('contrast-download', 'contrast-clahe', 'clahe.png');
+            setupDownloadButton('inpaint-download', 'inpaint-result', 'inpainted.png');
+            setupDownloadButton('clone-download', 'clone-result', 'cloned.png');
+            setupDownloadButton('intensity-download', 'intensity-after', 'transformed.png');
+
+            // Inpainting canvas drawing
+            setupInpaintDrawing();
+
+            // Clone destination click
+            setupCloneDestination();
+
+            // Intensity method change
+            document.getElementById('intensity-method').addEventListener('change', (e) => {
+                const gammaControl = document.getElementById('gamma-control');
+                gammaControl.style.display = e.target.value === 'gamma' ? 'flex' : 'none';
+            });
+        }
+
+        function setupRangeSlider(inputId, valueId, format = v => v, onChange = null) {
+            const input = document.getElementById(inputId);
+            const valueEl = document.getElementById(valueId);
+            if (input && valueEl) {
+                input.addEventListener('input', (e) => {
+                    valueEl.textContent = format(parseFloat(e.target.value));
+                    if (onChange) onChange(parseFloat(e.target.value));
+                });
+            }
+        }
+
+        function setupFileUpload(inputId, handler) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handler(e.target.files[0]);
+                    }
+                });
+            }
+        }
+
+        function setupDownloadButton(btnId, canvasId, filename) {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    Utils.downloadCanvas(canvasId, filename);
+                });
+            }
+        }
+
+        function updateBrushPreview(size) {
+            const preview = document.getElementById('brush-preview');
+            if (preview) {
+                preview.style.width = size + 'px';
+                preview.style.height = size + 'px';
+            }
+        }
+
+        // ==================== DENOISING ====================
+        let denoiseOriginal = null;
+
+        async function handleDenoiseUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('denoise-before');
+
+            // Resize for performance if needed
+            const maxDim = 800;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            denoiseOriginal = cv.imread(canvas);
+            document.getElementById('denoise-btn').disabled = false;
+            document.getElementById('denoise-size').textContent = `${canvas.width}x${canvas.height}`;
+        }
+
+        async function applyDenoising() {
+            if (!denoiseOriginal) return;
+
+            const btn = document.getElementById('denoise-btn');
+            const processing = document.getElementById('denoise-processing');
+
+            btn.disabled = true;
+            processing.classList.add('active');
+
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                try {
+                    const start = performance.now();
+
+                    const h = parseInt(document.getElementById('denoise-h').value);
+                    const templateWindowSize = parseInt(document.getElementById('denoise-template').value);
+                    const searchWindowSize = parseInt(document.getElementById('denoise-search').value);
+
+                    const dst = new cv.Mat();
+
+                    if (denoiseOriginal.channels() >= 3) {
+                        // Convert to 3-channel if 4-channel
+                        let src3 = denoiseOriginal;
+                        if (denoiseOriginal.channels() === 4) {
+                            src3 = new cv.Mat();
+                            cv.cvtColor(denoiseOriginal, src3, cv.COLOR_RGBA2RGB);
+                        }
+                        cv.fastNlMeansDenoisingColored(src3, dst, h, h, templateWindowSize, searchWindowSize);
+                        if (denoiseOriginal.channels() === 4) {
+                            src3.delete();
+                        }
+                    } else {
+                        cv.fastNlMeansDenoising(denoiseOriginal, dst, h, templateWindowSize, searchWindowSize);
+                    }
+
+                    const time = ((performance.now() - start) / 1000).toFixed(2);
+
+                    // Display result
+                    const canvas = document.getElementById('denoise-after');
+                    canvas.width = dst.cols;
+                    canvas.height = dst.rows;
+                    cv.imshow(canvas, dst);
+
+                    // Update metrics
+                    document.getElementById('denoise-time').textContent = time + 's';
+                    document.getElementById('denoise-metrics').style.display = 'flex';
+                    document.getElementById('denoise-download').style.display = 'inline-flex';
+
+                    dst.delete();
+                } catch (error) {
+                    console.error('Denoising error:', error);
+                    UIComponents.showToast({ message: 'Denoising failed: ' + error.message, type: 'error' });
+                } finally {
+                    btn.disabled = false;
+                    processing.classList.remove('active');
+                }
+            }, 50);
+        }
+
+        // ==================== TONE MAPPING ====================
+        let tonemapOriginal = null;
+
+        async function handleTonemapUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('tonemap-before');
+
+            const maxDim = 800;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            tonemapOriginal = cv.imread(canvas);
+            document.getElementById('tonemap-btn').disabled = false;
+        }
+
+        function applyToneMapping() {
+            if (!tonemapOriginal || !features.tonemap) return;
+
+            try {
+                const start = performance.now();
+
+                const method = document.getElementById('tonemap-method').value;
+                const gamma = parseFloat(document.getElementById('tonemap-gamma').value);
+                const saturation = parseFloat(document.getElementById('tonemap-saturation').value);
+
+                // Convert to 3-channel float
+                let src = tonemapOriginal;
+                if (src.channels() === 4) {
+                    const tmp = new cv.Mat();
+                    cv.cvtColor(src, tmp, cv.COLOR_RGBA2RGB);
+                    src = tmp;
+                }
+
+                // Convert to float32 and normalize
+                const srcFloat = new cv.Mat();
+                src.convertTo(srcFloat, cv.CV_32FC3, 1.0 / 255.0);
+
+                if (src !== tonemapOriginal) src.delete();
+
+                // Create tone mapper
+                let tonemap;
+                switch (method) {
+                    case 'drago':
+                        tonemap = cv.createTonemapDrago(gamma, saturation);
+                        break;
+                    case 'reinhard':
+                        tonemap = cv.createTonemapReinhard(gamma, 0.0, 0.0, 0.0);
+                        break;
+                    case 'mantiuk':
+                        tonemap = cv.createTonemapMantiuk(gamma, saturation, 0.85);
+                        break;
+                    default:
+                        tonemap = cv.createTonemapDrago(gamma, saturation);
+                }
+
+                const dst = new cv.Mat();
+                tonemap.process(srcFloat, dst);
+
+                // Convert back to 8-bit
+                const dst8 = new cv.Mat();
+                dst.convertTo(dst8, cv.CV_8UC3, 255.0);
+
+                const time = ((performance.now() - start)).toFixed(1);
+
+                // Display result
+                const canvas = document.getElementById('tonemap-after');
+                canvas.width = dst8.cols;
+                canvas.height = dst8.rows;
+                cv.imshow(canvas, dst8);
+
+                // Update metrics
+                document.getElementById('tonemap-time').textContent = time + 'ms';
+                document.getElementById('tonemap-method-used').textContent = method.charAt(0).toUpperCase() + method.slice(1);
+                document.getElementById('tonemap-metrics').style.display = 'flex';
+                document.getElementById('tonemap-download').style.display = 'inline-flex';
+
+                srcFloat.delete();
+                dst.delete();
+                dst8.delete();
+                tonemap.delete();
+            } catch (error) {
+                console.error('Tone mapping error:', error);
+                UIComponents.showToast({ message: 'Tone mapping failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==================== WHITE BALANCE ====================
+        let wbOriginal = null;
+
+        async function handleWBUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('wb-before');
+
+            const maxDim = 800;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            wbOriginal = cv.imread(canvas);
+            document.getElementById('wb-btn').disabled = false;
+        }
+
+        function applyWhiteBalance() {
+            if (!wbOriginal || !features.whiteBalance) return;
+
+            try {
+                const start = performance.now();
+
+                const method = document.getElementById('wb-method').value;
+
+                // Convert to 3-channel
+                let src = wbOriginal;
+                if (src.channels() === 4) {
+                    const tmp = new cv.Mat();
+                    cv.cvtColor(src, tmp, cv.COLOR_RGBA2BGR);
+                    src = tmp;
+                } else if (src.channels() === 3) {
+                    const tmp = new cv.Mat();
+                    cv.cvtColor(src, tmp, cv.COLOR_RGB2BGR);
+                    src = tmp;
+                }
+
+                let wb;
+                let methodName;
+
+                // Try different API patterns for xphoto white balance
+                switch (method) {
+                    case 'grayworld':
+                        if (typeof cv.xphoto_createGrayworldWB !== 'undefined') {
+                            wb = cv.xphoto_createGrayworldWB();
+                        } else if (typeof cv.createGrayworldWB !== 'undefined') {
+                            wb = cv.createGrayworldWB();
+                        }
+                        methodName = 'Grayworld';
+                        break;
+                    case 'simple':
+                        if (typeof cv.xphoto_createSimpleWB !== 'undefined') {
+                            wb = cv.xphoto_createSimpleWB();
+                        } else if (typeof cv.createSimpleWB !== 'undefined') {
+                            wb = cv.createSimpleWB();
+                        }
+                        methodName = 'Simple';
+                        break;
+                    case 'learning':
+                        if (typeof cv.xphoto_createLearningBasedWB !== 'undefined') {
+                            wb = cv.xphoto_createLearningBasedWB();
+                        } else if (typeof cv.createLearningBasedWB !== 'undefined') {
+                            wb = cv.createLearningBasedWB();
+                        }
+                        methodName = 'Learning-Based';
+                        break;
+                }
+
+                if (!wb) {
+                    throw new Error('White balance method not available');
+                }
+
+                const dst = new cv.Mat();
+                wb.balanceWhite(src, dst);
+
+                // Convert back to RGB
+                const dstRGB = new cv.Mat();
+                cv.cvtColor(dst, dstRGB, cv.COLOR_BGR2RGB);
+
+                const time = ((performance.now() - start)).toFixed(1);
+
+                // Display result
+                const canvas = document.getElementById('wb-after');
+                canvas.width = dstRGB.cols;
+                canvas.height = dstRGB.rows;
+                cv.imshow(canvas, dstRGB);
+
+                // Update metrics
+                document.getElementById('wb-time').textContent = time + 'ms';
+                document.getElementById('wb-method-used').textContent = methodName;
+                document.getElementById('wb-metrics').style.display = 'flex';
+                document.getElementById('wb-download').style.display = 'inline-flex';
+
+                if (src !== wbOriginal) src.delete();
+                dst.delete();
+                dstRGB.delete();
+                wb.delete();
+            } catch (error) {
+                console.error('White balance error:', error);
+                UIComponents.showToast({ message: 'White balance failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==================== CONTRAST ENHANCEMENT ====================
+        let contrastOriginal = null;
+
+        async function handleContrastUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('contrast-before');
+
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            contrastOriginal = cv.imread(canvas);
+            document.getElementById('contrast-btn').disabled = false;
+
+            // Draw original histogram
+            drawHistogramOnCanvas(contrastOriginal, 'hist-before');
+        }
+
+        function applyContrastEnhancement() {
+            if (!contrastOriginal || !features.clahe) return;
+
+            try {
+                const start = performance.now();
+
+                const clipLimit = parseFloat(document.getElementById('clahe-clip').value);
+                const tileSize = parseInt(document.getElementById('clahe-tile').value);
+
+                // Convert to grayscale or work with L channel of LAB
+                let gray;
+                if (contrastOriginal.channels() > 1) {
+                    gray = new cv.Mat();
+                    cv.cvtColor(contrastOriginal, gray, cv.COLOR_RGBA2GRAY);
+                } else {
+                    gray = contrastOriginal.clone();
+                }
+
+                // Regular histogram equalization
+                const equalized = new cv.Mat();
+                cv.equalizeHist(gray, equalized);
+
+                // CLAHE
+                const clahe = cv.createCLAHE(clipLimit, new cv.Size(tileSize, tileSize));
+                const claheDst = new cv.Mat();
+                clahe.apply(gray, claheDst);
+
+                const time = ((performance.now() - start)).toFixed(1);
+
+                // Display results
+                const eqCanvas = document.getElementById('contrast-equalized');
+                eqCanvas.width = equalized.cols;
+                eqCanvas.height = equalized.rows;
+                cv.imshow(eqCanvas, equalized);
+
+                const claheCanvas = document.getElementById('contrast-clahe');
+                claheCanvas.width = claheDst.cols;
+                claheCanvas.height = claheDst.rows;
+                cv.imshow(claheCanvas, claheDst);
+
+                // Draw histograms
+                drawHistogramOnCanvas(equalized, 'hist-equalized');
+                drawHistogramOnCanvas(claheDst, 'hist-clahe');
+
+                // Update metrics
+                document.getElementById('contrast-time').textContent = time + 'ms';
+                document.getElementById('contrast-clip-used').textContent = clipLimit.toFixed(1);
+                document.getElementById('contrast-tile-used').textContent = tileSize + 'x' + tileSize;
+                document.getElementById('contrast-metrics').style.display = 'flex';
+                document.getElementById('contrast-download').style.display = 'inline-flex';
+
+                gray.delete();
+                equalized.delete();
+                claheDst.delete();
+                clahe.delete();
+            } catch (error) {
+                console.error('CLAHE error:', error);
+                UIComponents.showToast({ message: 'CLAHE failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function drawHistogramOnCanvas(src, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            Utils.drawHistogram(src, canvas, 'gray');
+        }
+
+        // ==================== INPAINTING ====================
+        function setupInpaintDrawing() {
+            const canvas = document.getElementById('inpaint-canvas');
+
+            canvas.addEventListener('mousedown', startInpaintDraw);
+            canvas.addEventListener('mousemove', continueInpaintDraw);
+            canvas.addEventListener('mouseup', stopInpaintDraw);
+            canvas.addEventListener('mouseleave', stopInpaintDraw);
+
+            // Touch events
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                startInpaintDraw({
+                    offsetX: touch.clientX - rect.left,
+                    offsetY: touch.clientY - rect.top
+                });
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                continueInpaintDraw({
+                    offsetX: touch.clientX - rect.left,
+                    offsetY: touch.clientY - rect.top
+                });
+            });
+            canvas.addEventListener('touchend', stopInpaintDraw);
+        }
+
+        async function handleInpaintUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('inpaint-canvas');
+
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Store original
+            inpaintState.originalImage = cv.imread(canvas);
+            inpaintState.displayMat = inpaintState.originalImage.clone();
+
+            // Create mask
+            inpaintState.maskMat = new cv.Mat.zeros(canvas.height, canvas.width, cv.CV_8UC1);
+
+            document.getElementById('inpaint-btn').disabled = false;
+            document.getElementById('inpaint-clear').disabled = false;
+        }
+
+        function startInpaintDraw(e) {
+            if (!inpaintState.originalImage) return;
+            inpaintState.isDrawing = true;
+            drawOnMask(e);
+        }
+
+        function continueInpaintDraw(e) {
+            if (!inpaintState.isDrawing) return;
+            drawOnMask(e);
+        }
+
+        function stopInpaintDraw() {
+            inpaintState.isDrawing = false;
+        }
+
+        function drawOnMask(e) {
+            const canvas = document.getElementById('inpaint-canvas');
+            const brushSize = parseInt(document.getElementById('inpaint-brush').value);
+
+            // Scale coordinates
+            const scaleX = canvas.width / canvas.clientWidth;
+            const scaleY = canvas.height / canvas.clientHeight;
+            const x = Math.round(e.offsetX * scaleX);
+            const y = Math.round(e.offsetY * scaleY);
+
+            // Draw on mask
+            cv.circle(inpaintState.maskMat, new cv.Point(x, y), brushSize / 2, new cv.Scalar(255), -1);
+
+            // Update display with red overlay
+            updateInpaintDisplay();
+        }
+
+        function updateInpaintDisplay() {
+            const canvas = document.getElementById('inpaint-canvas');
+
+            // Create display with red overlay where mask is
+            inpaintState.displayMat = inpaintState.originalImage.clone();
+
+            // Create red overlay
+            for (let y = 0; y < inpaintState.maskMat.rows; y++) {
+                for (let x = 0; x < inpaintState.maskMat.cols; x++) {
+                    if (inpaintState.maskMat.ucharAt(y, x) > 0) {
+                        // Blend with red
+                        const idx = (y * inpaintState.displayMat.cols + x) * 4;
+                        inpaintState.displayMat.data[idx] = 255; // R
+                        inpaintState.displayMat.data[idx + 1] = Math.floor(inpaintState.displayMat.data[idx + 1] * 0.3); // G
+                        inpaintState.displayMat.data[idx + 2] = Math.floor(inpaintState.displayMat.data[idx + 2] * 0.3); // B
+                    }
+                }
+            }
+
+            cv.imshow(canvas, inpaintState.displayMat);
+        }
+
+        function clearInpaintMask() {
+            if (!inpaintState.originalImage) return;
+
+            const canvas = document.getElementById('inpaint-canvas');
+            inpaintState.maskMat = new cv.Mat.zeros(canvas.height, canvas.width, cv.CV_8UC1);
+            cv.imshow(canvas, inpaintState.originalImage);
+        }
+
+        function applyInpainting() {
+            if (!inpaintState.originalImage || !inpaintState.maskMat || !features.inpaint) return;
+
+            const btn = document.getElementById('inpaint-btn');
+            const processing = document.getElementById('inpaint-processing');
+
+            btn.disabled = true;
+            processing.classList.add('active');
+
+            setTimeout(() => {
+                try {
+                    const start = performance.now();
+
+                    const method = document.getElementById('inpaint-method').value;
+                    const radius = parseInt(document.getElementById('inpaint-radius').value);
+
+                    // Convert to 3-channel
+                    let src = inpaintState.originalImage;
+                    if (src.channels() === 4) {
+                        const tmp = new cv.Mat();
+                        cv.cvtColor(src, tmp, cv.COLOR_RGBA2RGB);
+                        src = tmp;
+                    }
+
+                    const dst = new cv.Mat();
+                    const inpaintMethod = method === 'telea' ? cv.INPAINT_TELEA : cv.INPAINT_NS;
+
+                    cv.inpaint(src, inpaintState.maskMat, dst, radius, inpaintMethod);
+
+                    const time = ((performance.now() - start)).toFixed(1);
+
+                    // Display result
+                    const canvas = document.getElementById('inpaint-result');
+                    canvas.width = dst.cols;
+                    canvas.height = dst.rows;
+                    cv.imshow(canvas, dst);
+
+                    // Update metrics
+                    document.getElementById('inpaint-time').textContent = time + 'ms';
+                    document.getElementById('inpaint-method-used').textContent = method.toUpperCase();
+                    document.getElementById('inpaint-metrics').style.display = 'flex';
+                    document.getElementById('inpaint-download').style.display = 'inline-flex';
+
+                    if (src !== inpaintState.originalImage) src.delete();
+                    dst.delete();
+                } catch (error) {
+                    console.error('Inpainting error:', error);
+                    UIComponents.showToast({ message: 'Inpainting failed: ' + error.message, type: 'error' });
+                } finally {
+                    btn.disabled = false;
+                    processing.classList.remove('active');
+                }
+            }, 50);
+        }
+
+        // ==================== SEAMLESS CLONING ====================
+        async function handleCloneSrcUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('clone-src');
+
+            const maxDim = 400;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            if (cloneState.srcMat) cloneState.srcMat.delete();
+            cloneState.srcMat = cv.imread(canvas);
+
+            updateCloneButton();
+        }
+
+        async function handleCloneDstUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('clone-dst');
+
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            if (cloneState.dstMat) cloneState.dstMat.delete();
+            cloneState.dstMat = cv.imread(canvas);
+
+            // Default center to middle of destination
+            cloneState.center = new cv.Point(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
+
+            updateCloneButton();
+        }
+
+        function setupCloneDestination() {
+            const canvas = document.getElementById('clone-dst');
+            canvas.addEventListener('click', (e) => {
+                if (!cloneState.dstMat) return;
+
+                const scaleX = canvas.width / canvas.clientWidth;
+                const scaleY = canvas.height / canvas.clientHeight;
+                cloneState.center = new cv.Point(
+                    Math.floor(e.offsetX * scaleX),
+                    Math.floor(e.offsetY * scaleY)
+                );
+
+                // Visual feedback - redraw with marker
+                const ctx = canvas.getContext('2d');
+                cv.imshow(canvas, cloneState.dstMat);
+
+                // Draw crosshair at center
+                ctx.strokeStyle = '#6366f1';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(e.offsetX - 10, e.offsetY);
+                ctx.lineTo(e.offsetX + 10, e.offsetY);
+                ctx.moveTo(e.offsetX, e.offsetY - 10);
+                ctx.lineTo(e.offsetX, e.offsetY + 10);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(e.offsetX, e.offsetY, 15, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function updateCloneButton() {
+            const btn = document.getElementById('clone-btn');
+            btn.disabled = !(cloneState.srcMat && cloneState.dstMat);
+        }
+
+        function applySeamlessClone() {
+            if (!cloneState.srcMat || !cloneState.dstMat || !cloneState.center || !features.seamlessClone) return;
+
+            try {
+                const start = performance.now();
+
+                const method = document.getElementById('clone-method').value;
+
+                // Convert to 3-channel
+                let src = cloneState.srcMat;
+                let dst = cloneState.dstMat;
+
+                if (src.channels() === 4) {
+                    const tmp = new cv.Mat();
+                    cv.cvtColor(src, tmp, cv.COLOR_RGBA2RGB);
+                    src = tmp;
+                }
+
+                if (dst.channels() === 4) {
+                    const tmp = new cv.Mat();
+                    cv.cvtColor(dst, tmp, cv.COLOR_RGBA2RGB);
+                    dst = tmp;
+                }
+
+                // Create mask (all white = use entire source)
+                const mask = new cv.Mat.ones(src.rows, src.cols, cv.CV_8UC1);
+                mask.setTo(new cv.Scalar(255));
+
+                const result = new cv.Mat();
+                const cloneMethod = method === 'normal' ? cv.NORMAL_CLONE : cv.MIXED_CLONE;
+
+                cv.seamlessClone(src, dst, mask, cloneState.center, result, cloneMethod);
+
+                const time = ((performance.now() - start)).toFixed(1);
+
+                // Display result
+                const canvas = document.getElementById('clone-result');
+                canvas.width = result.cols;
+                canvas.height = result.rows;
+                cv.imshow(canvas, result);
+
+                // Update metrics
+                document.getElementById('clone-time').textContent = time + 'ms';
+                document.getElementById('clone-method-used').textContent = method === 'normal' ? 'Normal' : 'Mixed';
+                document.getElementById('clone-metrics').style.display = 'flex';
+                document.getElementById('clone-download').style.display = 'inline-flex';
+
+                if (src !== cloneState.srcMat) src.delete();
+                if (dst !== cloneState.dstMat) dst.delete();
+                mask.delete();
+                result.delete();
+            } catch (error) {
+                console.error('Seamless clone error:', error);
+                UIComponents.showToast({ message: 'Seamless cloning failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ==================== INTENSITY TRANSFORM ====================
+        let intensityOriginal = null;
+
+        async function handleIntensityUpload(file) {
+            const img = await Utils.loadImage(file);
+            const canvas = document.getElementById('intensity-before');
+
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            if (intensityOriginal) intensityOriginal.delete();
+            intensityOriginal = cv.imread(canvas);
+            document.getElementById('intensity-btn').disabled = false;
+        }
+
+        function applyIntensityTransform() {
+            if (!intensityOriginal) return;
+
+            try {
+                const start = performance.now();
+
+                const method = document.getElementById('intensity-method').value;
+                const gamma = parseFloat(document.getElementById('intensity-gamma').value);
+
+                let dst = new cv.Mat();
+                let methodName;
+
+                switch (method) {
+                    case 'gamma':
+                        // Manual gamma correction
+                        applyGammaCorrection(intensityOriginal, dst, gamma);
+                        methodName = `Gamma (${gamma.toFixed(1)})`;
+                        break;
+                    case 'log':
+                        // Manual log transform
+                        applyLogTransform(intensityOriginal, dst);
+                        methodName = 'Log Transform';
+                        break;
+                    case 'bimef':
+                        if (features.bimef) {
+                            // Try BIMEF
+                            if (typeof cv.intensity_transform_BIMEF !== 'undefined') {
+                                cv.intensity_transform_BIMEF(intensityOriginal, dst);
+                            } else if (typeof cv.BIMEF !== 'undefined') {
+                                cv.BIMEF(intensityOriginal, dst);
+                            }
+                            methodName = 'BIMEF';
+                        } else {
+                            throw new Error('BIMEF not available');
+                        }
+                        break;
+                }
+
+                const time = ((performance.now() - start)).toFixed(1);
+
+                // Display result
+                const canvas = document.getElementById('intensity-after');
+                canvas.width = dst.cols;
+                canvas.height = dst.rows;
+                cv.imshow(canvas, dst);
+
+                // Update metrics
+                document.getElementById('intensity-time').textContent = time + 'ms';
+                document.getElementById('intensity-method-used').textContent = methodName;
+                document.getElementById('intensity-metrics').style.display = 'flex';
+                document.getElementById('intensity-download').style.display = 'inline-flex';
+
+                dst.delete();
+            } catch (error) {
+                console.error('Intensity transform error:', error);
+                UIComponents.showToast({ message: 'Transform failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function applyGammaCorrection(src, dst, gamma) {
+            // Create lookup table
+            const lookUpTable = new cv.Mat(1, 256, cv.CV_8U);
+            const invGamma = 1.0 / gamma;
+
+            for (let i = 0; i < 256; i++) {
+                lookUpTable.data[i] = Math.round(Math.pow(i / 255.0, invGamma) * 255.0);
+            }
+
+            // Apply LUT
+            cv.LUT(src, lookUpTable, dst);
+            lookUpTable.delete();
+        }
+
+        function applyLogTransform(src, dst) {
+            // Convert to float
+            const srcFloat = new cv.Mat();
+            src.convertTo(srcFloat, cv.CV_32F);
+
+            // Add 1 to avoid log(0)
+            const ones = new cv.Mat(srcFloat.rows, srcFloat.cols, srcFloat.type(), new cv.Scalar(1, 1, 1, 1));
+            cv.add(srcFloat, ones, srcFloat);
+
+            // Apply log
+            cv.log(srcFloat, srcFloat);
+
+            // Normalize to 0-255
+            cv.normalize(srcFloat, srcFloat, 0, 255, cv.NORM_MINMAX);
+
+            // Convert back to 8-bit
+            srcFloat.convertTo(dst, cv.CV_8U);
+
+            srcFloat.delete();
+            ones.delete();
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (denoiseOriginal) denoiseOriginal.delete();
+            if (tonemapOriginal) tonemapOriginal.delete();
+            if (wbOriginal) wbOriginal.delete();
+            if (contrastOriginal) contrastOriginal.delete();
+            if (inpaintState.originalImage) inpaintState.originalImage.delete();
+            if (inpaintState.maskMat) inpaintState.maskMat.delete();
+            if (inpaintState.displayMat) inpaintState.displayMat.delete();
+            if (cloneState.srcMat) cloneState.srcMat.delete();
+            if (cloneState.dstMat) cloneState.dstMat.delete();
+            if (intensityOriginal) intensityOriginal.delete();
+        });
+    </script>
+</body>
+</html>

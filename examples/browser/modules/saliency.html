@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saliency Detection - OpenCV.js Demos</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for saliency demo */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .info-box strong {
+            color: var(--info);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .visualization-tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .visualization-tabs button {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .visualization-tabs button.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .visualization-tabs button:hover:not(.active) {
+            background: var(--bg-card-hover);
+            border-color: var(--border-accent);
+        }
+
+        .method-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .method-card h5 {
+            color: var(--accent-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-unavailable {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .feature-unavailable::after {
+            content: ' (Not Available)';
+            color: var(--warning);
+            font-size: 0.8rem;
+        }
+
+        .webcam-container {
+            position: relative;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            aspect-ratio: 4/3;
+        }
+
+        .webcam-container video,
+        .webcam-container canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .slider-group label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .slider-group input[type="range"] {
+            width: 120px;
+        }
+
+        .slider-group .value {
+            min-width: 40px;
+            font-family: monospace;
+            color: var(--accent-secondary);
+        }
+
+        .extracted-objects {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            min-height: 100px;
+        }
+
+        .extracted-object {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .extracted-object canvas {
+            display: block;
+            max-width: 150px;
+            max-height: 150px;
+        }
+
+        .note-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.85rem;
+            color: var(--warning);
+        }
+
+        .processing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .color-scale {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .color-scale .gradient {
+            width: 100px;
+            height: 12px;
+            border-radius: 2px;
+            background: linear-gradient(to right, #000080, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Saliency Detection</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Saliency Detection</h1>
+            <p>Detect visually salient (attention-grabbing) regions in images and video using OpenCV's saliency module. Saliency detection predicts where humans are likely to look in an image.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Introduction -->
+        <div class="info-box">
+            <strong>What is Saliency Detection?</strong><br>
+            Saliency detection identifies regions in an image that stand out visually and are likely to attract human attention. It is used in:
+            <ul style="margin: 10px 0 0 20px;">
+                <li><strong>Visual attention prediction</strong> - Understanding where people look</li>
+                <li><strong>Object detection preprocessing</strong> - Reducing search space for objects</li>
+                <li><strong>Image retargeting</strong> - Intelligent image cropping and resizing</li>
+                <li><strong>Image compression</strong> - Allocating more bits to salient regions</li>
+                <li><strong>Video summarization</strong> - Identifying important frames</li>
+            </ul>
+        </div>
+
+        <!-- Section 1: Spectral Residual Saliency -->
+        <section class="demo-section" id="section-spectral">
+            <h3>1. Spectral Residual Saliency</h3>
+            <p>StaticSaliencySpectralResidual computes saliency based on the spectral residual of the image's Fourier transform. It identifies regions that differ from the image's overall spectral pattern.</p>
+
+            <div class="method-card">
+                <h5>How it works:</h5>
+                <p style="font-size: 0.85rem; margin: 0;">
+                    1. Convert image to frequency domain using FFT<br>
+                    2. Compute log amplitude spectrum<br>
+                    3. Calculate spectral residual (difference from average)<br>
+                    4. Transform back to spatial domain<br>
+                    5. Apply Gaussian smoothing for final saliency map
+                </p>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="spectral-input" accept="image/*">
+                    <label for="spectral-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="spectral-compute" disabled>Compute Saliency</button>
+                <div class="slider-group">
+                    <label>Threshold:</label>
+                    <input type="range" id="spectral-threshold" min="0" max="255" value="128">
+                    <span class="value" id="spectral-threshold-val">128</span>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="spectral-original"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="spectral-saliency"></canvas>
+                    <span class="canvas-label">Saliency Map (Grayscale)</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="spectral-heatmap"></canvas>
+                    <span class="canvas-label">Saliency Heatmap</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="spectral-binary"></canvas>
+                    <span class="canvas-label">Binary Salient Regions</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="spectral-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="spectral-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Image Size</span>
+                    <span class="metric-value" id="spectral-size">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Fine-Grained Saliency -->
+        <section class="demo-section" id="section-finegrained">
+            <h3>2. Fine-Grained Saliency</h3>
+            <p>StaticSaliencyFineGrained provides more detailed local saliency detection with better edge preservation. It produces sharper saliency maps that better follow object boundaries.</p>
+
+            <div class="method-card">
+                <h5>Comparison with Spectral Residual:</h5>
+                <p style="font-size: 0.85rem; margin: 0;">
+                    - More computationally intensive<br>
+                    - Better preservation of object edges<br>
+                    - More detailed local saliency information<br>
+                    - Better for object segmentation tasks
+                </p>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="finegrained-input" accept="image/*">
+                    <label for="finegrained-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="finegrained-compute" disabled>Compute Saliency</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="finegrained-original"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="finegrained-saliency"></canvas>
+                    <span class="canvas-label">Fine-Grained Saliency</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="finegrained-heatmap"></canvas>
+                    <span class="canvas-label">Heatmap Visualization</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="finegrained-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="finegrained-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Motion Saliency -->
+        <section class="demo-section" id="section-motion">
+            <h3>3. Motion Saliency (Video)</h3>
+            <p>MotionSaliencyBinWangApr2014 detects salient moving regions in video streams. It highlights areas with attention-grabbing motion patterns.</p>
+
+            <div class="method-card">
+                <h5>Use cases:</h5>
+                <p style="font-size: 0.85rem; margin: 0;">
+                    - Surveillance and anomaly detection<br>
+                    - Video summarization<br>
+                    - Action recognition preprocessing<br>
+                    - Tracking initialization
+                </p>
+            </div>
+
+            <div class="demo-controls">
+                <button class="btn btn-success" id="motion-start">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Start Camera
+                </button>
+                <button class="btn btn-danger hidden" id="motion-stop">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="6" width="12" height="12"/>
+                    </svg>
+                    Stop
+                </button>
+                <span class="status status-info" id="motion-status">Camera not started</span>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container webcam-container">
+                    <video id="motion-video" autoplay playsinline muted></video>
+                    <span class="canvas-label">Webcam Input</span>
+                </div>
+                <div class="canvas-container webcam-container">
+                    <canvas id="motion-output"></canvas>
+                    <span class="canvas-label">Motion Saliency</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="motion-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="motion-fps">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Frame</span>
+                    <span class="metric-value" id="motion-frame">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Objectness Saliency (BING) -->
+        <section class="demo-section" id="section-objectness">
+            <h3>4. Objectness Saliency (BING)</h3>
+            <p>ObjectnessBING generates object proposals by computing objectness scores for windows. It predicts which regions are likely to contain objects.</p>
+
+            <div class="note-box">
+                <strong>Note:</strong> ObjectnessBING requires trained model files to function. The model needs to be trained on a dataset of objects before use. This demo shows the concept and will attempt to use the algorithm if available.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="objectness-input" accept="image/*">
+                    <label for="objectness-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="objectness-compute" disabled>Generate Proposals</button>
+                <div class="slider-group">
+                    <label>Max Proposals:</label>
+                    <input type="range" id="objectness-max" min="1" max="50" value="10">
+                    <span class="value" id="objectness-max-val">10</span>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="objectness-original"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="objectness-proposals"></canvas>
+                    <span class="canvas-label">Object Proposals</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="objectness-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Proposals Found</span>
+                    <span class="metric-value" id="objectness-count">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Saliency Comparison -->
+        <section class="demo-section" id="section-comparison">
+            <h3>5. Saliency Method Comparison</h3>
+            <p>Compare all available static saliency methods side by side on the same image to see differences in their outputs.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="comparison-input" accept="image/*">
+                    <label for="comparison-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="comparison-compute" disabled>Compare All Methods</button>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="canvas-container">
+                    <canvas id="comparison-original"></canvas>
+                    <span class="canvas-label">Original Image</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="comparison-spectral"></canvas>
+                    <span class="canvas-label">Spectral Residual</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="comparison-finegrained"></canvas>
+                    <span class="canvas-label">Fine-Grained</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="comparison-difference"></canvas>
+                    <span class="canvas-label">Difference Map</span>
+                </div>
+            </div>
+
+            <div class="info-box" style="margin-top: var(--spacing-md);">
+                <strong>Key Differences:</strong><br>
+                - <strong>Spectral Residual:</strong> Faster, smoother output, good for general attention prediction<br>
+                - <strong>Fine-Grained:</strong> Sharper edges, more detail, better for segmentation<br>
+                - The difference map shows where the methods disagree (brighter = more difference)
+            </div>
+
+            <div class="metrics" id="comparison-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Spectral Time</span>
+                    <span class="metric-value" id="comparison-spectral-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Fine-Grained Time</span>
+                    <span class="metric-value" id="comparison-finegrained-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Salient Object Extraction -->
+        <section class="demo-section" id="section-extraction">
+            <h3>6. Salient Object Extraction</h3>
+            <p>Use saliency maps to automatically extract salient objects from images. This creates cutouts and masks based on detected saliency.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="extraction-input" accept="image/*">
+                    <label for="extraction-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="extraction-compute" disabled>Extract Objects</button>
+                <div class="slider-group">
+                    <label>Threshold:</label>
+                    <input type="range" id="extraction-threshold" min="0" max="255" value="100">
+                    <span class="value" id="extraction-threshold-val">100</span>
+                </div>
+                <div class="slider-group">
+                    <label>Min Area:</label>
+                    <input type="range" id="extraction-minarea" min="100" max="5000" value="500" step="100">
+                    <span class="value" id="extraction-minarea-val">500</span>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="extraction-original"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="extraction-saliency"></canvas>
+                    <span class="canvas-label">Saliency Map</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="extraction-mask"></canvas>
+                    <span class="canvas-label">Extraction Mask</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="extraction-result"></canvas>
+                    <span class="canvas-label">Extracted Result</span>
+                </div>
+            </div>
+
+            <h4 style="margin-top: var(--spacing-lg);">Extracted Objects</h4>
+            <div class="extracted-objects" id="extracted-objects">
+                <p style="color: var(--text-muted); margin: auto;">Upload an image and click "Extract Objects" to see individual salient regions.</p>
+            </div>
+
+            <div class="metrics" id="extraction-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Objects Found</span>
+                    <span class="metric-value" id="extraction-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="extraction-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Visualization Options -->
+        <section class="demo-section" id="section-visualization">
+            <h3>7. Saliency Visualization Options</h3>
+            <p>Explore different ways to visualize saliency maps. Each visualization method highlights different aspects of the saliency information.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="viz-input" accept="image/*">
+                    <label for="viz-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="viz-compute" disabled>Compute Visualizations</button>
+            </div>
+
+            <div class="visualization-tabs" id="viz-tabs">
+                <button class="active" data-viz="grayscale">Grayscale</button>
+                <button data-viz="heatmap">Heatmap (Jet)</button>
+                <button data-viz="overlay">Overlay</button>
+                <button data-viz="binary">Binary Mask</button>
+                <button data-viz="contours">Contours</button>
+            </div>
+
+            <div class="slider-row" style="margin-bottom: var(--spacing-md);">
+                <div class="slider-group">
+                    <label>Threshold (Binary):</label>
+                    <input type="range" id="viz-threshold" min="0" max="255" value="128">
+                    <span class="value" id="viz-threshold-val">128</span>
+                </div>
+                <div class="slider-group">
+                    <label>Overlay Opacity:</label>
+                    <input type="range" id="viz-opacity" min="0" max="100" value="50">
+                    <span class="value" id="viz-opacity-val">50%</span>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="viz-original"></canvas>
+                    <span class="canvas-label">Original Image</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="viz-result"></canvas>
+                    <span class="canvas-label" id="viz-result-label">Saliency Visualization</span>
+                </div>
+            </div>
+
+            <div class="color-scale">
+                <span>Low Saliency</span>
+                <div class="gradient"></div>
+                <span>High Saliency</span>
+            </div>
+
+            <div class="info-box" style="margin-top: var(--spacing-md);">
+                <strong>Visualization Modes:</strong><br>
+                - <strong>Grayscale:</strong> Raw saliency values (darker = less salient, brighter = more salient)<br>
+                - <strong>Heatmap:</strong> Color-coded saliency using jet colormap for better visualization<br>
+                - <strong>Overlay:</strong> Heatmap blended with original image<br>
+                - <strong>Binary Mask:</strong> Thresholded saliency showing only highly salient regions<br>
+                - <strong>Contours:</strong> Outlines of salient regions drawn on original image
+            </div>
+
+            <div class="metrics" id="viz-metrics" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="viz-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Mean Saliency</span>
+                    <span class="metric-value" id="viz-mean">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer style="text-align: center; padding: var(--spacing-xl) 0; color: var(--text-muted); border-top: 1px solid var(--border-color); margin-top: var(--spacing-xl);">
+            <p>OpenCV.js Saliency Detection Demo</p>
+            <p style="font-size: 0.85rem;">Saliency module provides algorithms for visual attention prediction</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Feature availability flags
+        let hasSpectralResidual = false;
+        let hasFineGrained = false;
+        let hasMotionSaliency = false;
+        let hasObjectness = false;
+
+        // State
+        let motionStream = null;
+        let motionAnimationId = null;
+        let motionSaliency = null;
+        let motionFrameCount = 0;
+        let lastFrameTime = 0;
+
+        // Cached data for each section
+        const sectionData = {
+            spectral: { src: null, saliencyMap: null },
+            finegrained: { src: null, saliencyMap: null },
+            comparison: { src: null },
+            extraction: { src: null, saliencyMap: null },
+            viz: { src: null, saliencyMap: null }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (progress) => {
+                        document.getElementById('loading-progress').style.width = progress + '%';
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Check feature availability
+                checkFeatureAvailability();
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }, 500);
+
+                // Setup all sections
+                setupSpectralSection();
+                setupFineGrainedSection();
+                setupMotionSection();
+                setupObjectnessSection();
+                setupComparisonSection();
+                setupExtractionSection();
+                setupVisualizationSection();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = 'Error: ' + error.message;
+                console.error('Failed to load OpenCV:', error);
+            }
+        });
+
+        function checkFeatureAvailability() {
+            // Check for saliency functions
+            hasSpectralResidual = typeof cv.StaticSaliencySpectralResidual !== 'undefined';
+            hasFineGrained = typeof cv.StaticSaliencyFineGrained !== 'undefined';
+            hasMotionSaliency = typeof cv.MotionSaliencyBinWangApr2014 !== 'undefined';
+            hasObjectness = typeof cv.ObjectnessBING !== 'undefined';
+
+            console.log('Saliency features available:', {
+                spectralResidual: hasSpectralResidual,
+                fineGrained: hasFineGrained,
+                motionSaliency: hasMotionSaliency,
+                objectness: hasObjectness
+            });
+
+            // Update UI based on availability
+            if (!hasSpectralResidual) {
+                document.getElementById('section-spectral').classList.add('feature-unavailable');
+            }
+            if (!hasFineGrained) {
+                document.getElementById('section-finegrained').classList.add('feature-unavailable');
+            }
+            if (!hasMotionSaliency) {
+                document.getElementById('section-motion').classList.add('feature-unavailable');
+            }
+            if (!hasObjectness) {
+                document.getElementById('section-objectness').classList.add('feature-unavailable');
+            }
+        }
+
+        // ============ Section 1: Spectral Residual ============
+        function setupSpectralSection() {
+            const input = document.getElementById('spectral-input');
+            const computeBtn = document.getElementById('spectral-compute');
+            const thresholdSlider = document.getElementById('spectral-threshold');
+            const thresholdVal = document.getElementById('spectral-threshold-val');
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (sectionData.spectral.src) sectionData.spectral.src.delete();
+                sectionData.spectral.src = Utils.imageToMat(img);
+
+                // Display original
+                const canvas = document.getElementById('spectral-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, sectionData.spectral.src);
+
+                computeBtn.disabled = !hasSpectralResidual;
+            });
+
+            thresholdSlider.addEventListener('input', () => {
+                thresholdVal.textContent = thresholdSlider.value;
+                if (sectionData.spectral.saliencyMap) {
+                    updateSpectralBinary(parseInt(thresholdSlider.value));
+                }
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!sectionData.spectral.src || !hasSpectralResidual) return;
+
+                const startTime = performance.now();
+
+                try {
+                    // Create saliency detector
+                    const saliency = new cv.StaticSaliencySpectralResidual();
+
+                    // Compute saliency
+                    if (sectionData.spectral.saliencyMap) sectionData.spectral.saliencyMap.delete();
+                    sectionData.spectral.saliencyMap = new cv.Mat();
+
+                    const success = saliency.computeSaliency(sectionData.spectral.src, sectionData.spectral.saliencyMap);
+
+                    if (success) {
+                        // Convert to 8-bit for display
+                        const saliency8bit = new cv.Mat();
+                        sectionData.spectral.saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                        // Display grayscale saliency
+                        const canvasSaliency = document.getElementById('spectral-saliency');
+                        canvasSaliency.width = saliency8bit.cols;
+                        canvasSaliency.height = saliency8bit.rows;
+                        cv.imshow(canvasSaliency, saliency8bit);
+
+                        // Create and display heatmap
+                        const heatmap = new cv.Mat();
+                        cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+                        const canvasHeatmap = document.getElementById('spectral-heatmap');
+                        canvasHeatmap.width = heatmap.cols;
+                        canvasHeatmap.height = heatmap.rows;
+                        cv.imshow(canvasHeatmap, heatmap);
+
+                        // Update binary with current threshold
+                        updateSpectralBinary(parseInt(thresholdSlider.value));
+
+                        // Update metrics
+                        const endTime = performance.now();
+                        document.getElementById('spectral-time').textContent = (endTime - startTime).toFixed(2) + ' ms';
+                        document.getElementById('spectral-size').textContent = sectionData.spectral.src.cols + 'x' + sectionData.spectral.src.rows;
+                        document.getElementById('spectral-metrics').style.display = 'flex';
+
+                        // Cleanup
+                        saliency8bit.delete();
+                        heatmap.delete();
+                    }
+
+                    saliency.delete();
+
+                } catch (error) {
+                    console.error('Spectral saliency error:', error);
+                    UIComponents.showToast({ message: 'Error: ' + error.message, type: 'error' });
+                }
+            });
+        }
+
+        function updateSpectralBinary(threshold) {
+            if (!sectionData.spectral.saliencyMap) return;
+
+            const saliency8bit = new cv.Mat();
+            sectionData.spectral.saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+            const binary = new cv.Mat();
+            cv.threshold(saliency8bit, binary, threshold, 255, cv.THRESH_BINARY);
+
+            const canvasBinary = document.getElementById('spectral-binary');
+            canvasBinary.width = binary.cols;
+            canvasBinary.height = binary.rows;
+            cv.imshow(canvasBinary, binary);
+
+            saliency8bit.delete();
+            binary.delete();
+        }
+
+        // ============ Section 2: Fine-Grained ============
+        function setupFineGrainedSection() {
+            const input = document.getElementById('finegrained-input');
+            const computeBtn = document.getElementById('finegrained-compute');
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (sectionData.finegrained.src) sectionData.finegrained.src.delete();
+                sectionData.finegrained.src = Utils.imageToMat(img);
+
+                const canvas = document.getElementById('finegrained-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, sectionData.finegrained.src);
+
+                computeBtn.disabled = !hasFineGrained;
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!sectionData.finegrained.src || !hasFineGrained) return;
+
+                const startTime = performance.now();
+
+                try {
+                    const saliency = new cv.StaticSaliencyFineGrained();
+
+                    if (sectionData.finegrained.saliencyMap) sectionData.finegrained.saliencyMap.delete();
+                    sectionData.finegrained.saliencyMap = new cv.Mat();
+
+                    const success = saliency.computeSaliency(sectionData.finegrained.src, sectionData.finegrained.saliencyMap);
+
+                    if (success) {
+                        const saliency8bit = new cv.Mat();
+                        sectionData.finegrained.saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                        // Display saliency
+                        const canvasSaliency = document.getElementById('finegrained-saliency');
+                        canvasSaliency.width = saliency8bit.cols;
+                        canvasSaliency.height = saliency8bit.rows;
+                        cv.imshow(canvasSaliency, saliency8bit);
+
+                        // Heatmap
+                        const heatmap = new cv.Mat();
+                        cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+                        const canvasHeatmap = document.getElementById('finegrained-heatmap');
+                        canvasHeatmap.width = heatmap.cols;
+                        canvasHeatmap.height = heatmap.rows;
+                        cv.imshow(canvasHeatmap, heatmap);
+
+                        const endTime = performance.now();
+                        document.getElementById('finegrained-time').textContent = (endTime - startTime).toFixed(2) + ' ms';
+                        document.getElementById('finegrained-metrics').style.display = 'flex';
+
+                        saliency8bit.delete();
+                        heatmap.delete();
+                    }
+
+                    saliency.delete();
+
+                } catch (error) {
+                    console.error('Fine-grained saliency error:', error);
+                    UIComponents.showToast({ message: 'Error: ' + error.message, type: 'error' });
+                }
+            });
+        }
+
+        // ============ Section 3: Motion Saliency ============
+        function setupMotionSection() {
+            const startBtn = document.getElementById('motion-start');
+            const stopBtn = document.getElementById('motion-stop');
+            const statusEl = document.getElementById('motion-status');
+            const video = document.getElementById('motion-video');
+            const outputCanvas = document.getElementById('motion-output');
+
+            startBtn.addEventListener('click', async () => {
+                if (!hasMotionSaliency) {
+                    UIComponents.showToast({ message: 'Motion saliency not available in this build', type: 'warning' });
+                    return;
+                }
+
+                try {
+                    motionStream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 480, facingMode: 'user' }
+                    });
+
+                    video.srcObject = motionStream;
+
+                    video.onloadedmetadata = () => {
+                        outputCanvas.width = video.videoWidth;
+                        outputCanvas.height = video.videoHeight;
+
+                        // Initialize motion saliency
+                        motionSaliency = new cv.MotionSaliencyBinWangApr2014();
+                        motionSaliency.setImagesize(video.videoWidth, video.videoHeight);
+                        motionSaliency.init();
+
+                        motionFrameCount = 0;
+                        lastFrameTime = performance.now();
+
+                        startBtn.classList.add('hidden');
+                        stopBtn.classList.remove('hidden');
+                        statusEl.textContent = 'Detecting motion saliency...';
+                        statusEl.className = 'status status-success';
+                        document.getElementById('motion-metrics').style.display = 'flex';
+
+                        processMotionFrame();
+                    };
+
+                } catch (error) {
+                    console.error('Webcam error:', error);
+                    statusEl.textContent = 'Camera access denied';
+                    statusEl.className = 'status status-error';
+                }
+            });
+
+            stopBtn.addEventListener('click', stopMotionSaliency);
+        }
+
+        function processMotionFrame() {
+            if (!motionStream || !motionSaliency) return;
+
+            const video = document.getElementById('motion-video');
+            const outputCanvas = document.getElementById('motion-output');
+
+            // Capture frame
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            try {
+                const frame = cv.imread(tempCanvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+                const saliencyMap = new cv.Mat();
+                const success = motionSaliency.computeSaliency(gray, saliencyMap);
+
+                if (success && saliencyMap.rows > 0) {
+                    const saliency8bit = new cv.Mat();
+                    saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                    const heatmap = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+
+                    cv.imshow(outputCanvas, heatmap);
+
+                    saliency8bit.delete();
+                    heatmap.delete();
+                }
+
+                // Update FPS
+                motionFrameCount++;
+                const now = performance.now();
+                if (now - lastFrameTime >= 1000) {
+                    document.getElementById('motion-fps').textContent = motionFrameCount + ' fps';
+                    motionFrameCount = 0;
+                    lastFrameTime = now;
+                }
+                document.getElementById('motion-frame').textContent = motionFrameCount;
+
+                frame.delete();
+                gray.delete();
+                saliencyMap.delete();
+
+            } catch (error) {
+                console.error('Motion frame processing error:', error);
+            }
+
+            motionAnimationId = requestAnimationFrame(processMotionFrame);
+        }
+
+        function stopMotionSaliency() {
+            if (motionAnimationId) {
+                cancelAnimationFrame(motionAnimationId);
+                motionAnimationId = null;
+            }
+
+            if (motionStream) {
+                motionStream.getTracks().forEach(track => track.stop());
+                motionStream = null;
+            }
+
+            if (motionSaliency) {
+                motionSaliency.delete();
+                motionSaliency = null;
+            }
+
+            document.getElementById('motion-start').classList.remove('hidden');
+            document.getElementById('motion-stop').classList.add('hidden');
+            document.getElementById('motion-status').textContent = 'Camera stopped';
+            document.getElementById('motion-status').className = 'status status-info';
+        }
+
+        // ============ Section 4: Objectness ============
+        function setupObjectnessSection() {
+            const input = document.getElementById('objectness-input');
+            const computeBtn = document.getElementById('objectness-compute');
+            const maxSlider = document.getElementById('objectness-max');
+            const maxVal = document.getElementById('objectness-max-val');
+
+            maxSlider.addEventListener('input', () => {
+                maxVal.textContent = maxSlider.value;
+            });
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                const src = Utils.imageToMat(img);
+
+                const canvas = document.getElementById('objectness-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, src);
+
+                src.delete();
+                computeBtn.disabled = !hasObjectness;
+            });
+
+            computeBtn.addEventListener('click', () => {
+                UIComponents.showToast({
+                    message: 'ObjectnessBING requires pre-trained model files which are not included in the OpenCV.js build.',
+                    type: 'warning',
+                    duration: 5000
+                });
+            });
+        }
+
+        // ============ Section 5: Comparison ============
+        function setupComparisonSection() {
+            const input = document.getElementById('comparison-input');
+            const computeBtn = document.getElementById('comparison-compute');
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (sectionData.comparison.src) sectionData.comparison.src.delete();
+                sectionData.comparison.src = Utils.imageToMat(img);
+
+                const canvas = document.getElementById('comparison-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, sectionData.comparison.src);
+
+                computeBtn.disabled = !(hasSpectralResidual || hasFineGrained);
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!sectionData.comparison.src) return;
+
+                let spectralMap = null;
+                let fineGrainedMap = null;
+
+                // Spectral Residual
+                if (hasSpectralResidual) {
+                    const startTime = performance.now();
+                    const saliency = new cv.StaticSaliencySpectralResidual();
+                    spectralMap = new cv.Mat();
+                    saliency.computeSaliency(sectionData.comparison.src, spectralMap);
+
+                    const saliency8bit = new cv.Mat();
+                    spectralMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                    const heatmap = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+
+                    const canvas = document.getElementById('comparison-spectral');
+                    canvas.width = heatmap.cols;
+                    canvas.height = heatmap.rows;
+                    cv.imshow(canvas, heatmap);
+
+                    document.getElementById('comparison-spectral-time').textContent = (performance.now() - startTime).toFixed(2) + ' ms';
+
+                    saliency8bit.delete();
+                    heatmap.delete();
+                    saliency.delete();
+                }
+
+                // Fine-Grained
+                if (hasFineGrained) {
+                    const startTime = performance.now();
+                    const saliency = new cv.StaticSaliencyFineGrained();
+                    fineGrainedMap = new cv.Mat();
+                    saliency.computeSaliency(sectionData.comparison.src, fineGrainedMap);
+
+                    const saliency8bit = new cv.Mat();
+                    fineGrainedMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                    const heatmap = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+
+                    const canvas = document.getElementById('comparison-finegrained');
+                    canvas.width = heatmap.cols;
+                    canvas.height = heatmap.rows;
+                    cv.imshow(canvas, heatmap);
+
+                    document.getElementById('comparison-finegrained-time').textContent = (performance.now() - startTime).toFixed(2) + ' ms';
+
+                    saliency8bit.delete();
+                    heatmap.delete();
+                    saliency.delete();
+                }
+
+                // Compute difference
+                if (spectralMap && fineGrainedMap) {
+                    const spectral8 = new cv.Mat();
+                    const finegrained8 = new cv.Mat();
+                    spectralMap.convertTo(spectral8, cv.CV_8UC1, 255);
+                    fineGrainedMap.convertTo(finegrained8, cv.CV_8UC1, 255);
+
+                    const diff = new cv.Mat();
+                    cv.absdiff(spectral8, finegrained8, diff);
+
+                    const diffHeatmap = new cv.Mat();
+                    cv.applyColorMap(diff, diffHeatmap, cv.COLORMAP_HOT);
+
+                    const canvas = document.getElementById('comparison-difference');
+                    canvas.width = diffHeatmap.cols;
+                    canvas.height = diffHeatmap.rows;
+                    cv.imshow(canvas, diffHeatmap);
+
+                    spectral8.delete();
+                    finegrained8.delete();
+                    diff.delete();
+                    diffHeatmap.delete();
+                }
+
+                if (spectralMap) spectralMap.delete();
+                if (fineGrainedMap) fineGrainedMap.delete();
+
+                document.getElementById('comparison-metrics').style.display = 'flex';
+            });
+        }
+
+        // ============ Section 6: Extraction ============
+        function setupExtractionSection() {
+            const input = document.getElementById('extraction-input');
+            const computeBtn = document.getElementById('extraction-compute');
+            const thresholdSlider = document.getElementById('extraction-threshold');
+            const thresholdVal = document.getElementById('extraction-threshold-val');
+            const minAreaSlider = document.getElementById('extraction-minarea');
+            const minAreaVal = document.getElementById('extraction-minarea-val');
+
+            thresholdSlider.addEventListener('input', () => {
+                thresholdVal.textContent = thresholdSlider.value;
+            });
+
+            minAreaSlider.addEventListener('input', () => {
+                minAreaVal.textContent = minAreaSlider.value;
+            });
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (sectionData.extraction.src) sectionData.extraction.src.delete();
+                sectionData.extraction.src = Utils.imageToMat(img);
+
+                const canvas = document.getElementById('extraction-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, sectionData.extraction.src);
+
+                computeBtn.disabled = !hasSpectralResidual;
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!sectionData.extraction.src || !hasSpectralResidual) return;
+
+                const startTime = performance.now();
+                const threshold = parseInt(thresholdSlider.value);
+                const minArea = parseInt(minAreaSlider.value);
+
+                try {
+                    // Compute saliency
+                    const saliency = new cv.StaticSaliencySpectralResidual();
+                    if (sectionData.extraction.saliencyMap) sectionData.extraction.saliencyMap.delete();
+                    sectionData.extraction.saliencyMap = new cv.Mat();
+                    saliency.computeSaliency(sectionData.extraction.src, sectionData.extraction.saliencyMap);
+
+                    const saliency8bit = new cv.Mat();
+                    sectionData.extraction.saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+                    // Display saliency
+                    const canvasSaliency = document.getElementById('extraction-saliency');
+                    canvasSaliency.width = saliency8bit.cols;
+                    canvasSaliency.height = saliency8bit.rows;
+                    const heatmap = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+                    cv.imshow(canvasSaliency, heatmap);
+
+                    // Create binary mask
+                    const binary = new cv.Mat();
+                    cv.threshold(saliency8bit, binary, threshold, 255, cv.THRESH_BINARY);
+
+                    // Morphological operations to clean up
+                    const kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5));
+                    cv.morphologyEx(binary, binary, cv.MORPH_CLOSE, kernel);
+                    cv.morphologyEx(binary, binary, cv.MORPH_OPEN, kernel);
+
+                    // Display mask
+                    const canvasMask = document.getElementById('extraction-mask');
+                    canvasMask.width = binary.cols;
+                    canvasMask.height = binary.rows;
+                    cv.imshow(canvasMask, binary);
+
+                    // Apply mask to original
+                    const mask3ch = new cv.Mat();
+                    cv.cvtColor(binary, mask3ch, cv.COLOR_GRAY2RGBA);
+                    const result = new cv.Mat();
+                    cv.bitwise_and(sectionData.extraction.src, mask3ch, result);
+
+                    const canvasResult = document.getElementById('extraction-result');
+                    canvasResult.width = result.cols;
+                    canvasResult.height = result.rows;
+                    cv.imshow(canvasResult, result);
+
+                    // Find and extract contours
+                    const contours = new cv.MatVector();
+                    const hierarchy = new cv.Mat();
+                    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                    // Extract individual objects
+                    const extractedContainer = document.getElementById('extracted-objects');
+                    extractedContainer.innerHTML = '';
+
+                    let objectCount = 0;
+                    for (let i = 0; i < contours.size(); i++) {
+                        const contour = contours.get(i);
+                        const area = cv.contourArea(contour);
+
+                        if (area >= minArea) {
+                            const rect = cv.boundingRect(contour);
+
+                            // Extract ROI
+                            const roi = sectionData.extraction.src.roi(rect);
+
+                            // Create canvas for this object
+                            const objDiv = document.createElement('div');
+                            objDiv.className = 'extracted-object';
+                            const objCanvas = document.createElement('canvas');
+                            objCanvas.width = roi.cols;
+                            objCanvas.height = roi.rows;
+                            cv.imshow(objCanvas, roi);
+                            objDiv.appendChild(objCanvas);
+                            extractedContainer.appendChild(objDiv);
+
+                            roi.delete();
+                            objectCount++;
+                        }
+                    }
+
+                    if (objectCount === 0) {
+                        extractedContainer.innerHTML = '<p style="color: var(--text-muted); margin: auto;">No objects found. Try lowering the threshold or minimum area.</p>';
+                    }
+
+                    // Update metrics
+                    document.getElementById('extraction-count').textContent = objectCount;
+                    document.getElementById('extraction-time').textContent = (performance.now() - startTime).toFixed(2) + ' ms';
+                    document.getElementById('extraction-metrics').style.display = 'flex';
+
+                    // Cleanup
+                    saliency.delete();
+                    saliency8bit.delete();
+                    heatmap.delete();
+                    binary.delete();
+                    kernel.delete();
+                    mask3ch.delete();
+                    result.delete();
+                    contours.delete();
+                    hierarchy.delete();
+
+                } catch (error) {
+                    console.error('Extraction error:', error);
+                    UIComponents.showToast({ message: 'Error: ' + error.message, type: 'error' });
+                }
+            });
+        }
+
+        // ============ Section 7: Visualization ============
+        function setupVisualizationSection() {
+            const input = document.getElementById('viz-input');
+            const computeBtn = document.getElementById('viz-compute');
+            const tabs = document.querySelectorAll('#viz-tabs button');
+            const thresholdSlider = document.getElementById('viz-threshold');
+            const thresholdVal = document.getElementById('viz-threshold-val');
+            const opacitySlider = document.getElementById('viz-opacity');
+            const opacityVal = document.getElementById('viz-opacity-val');
+
+            let currentVizMode = 'grayscale';
+
+            thresholdSlider.addEventListener('input', () => {
+                thresholdVal.textContent = thresholdSlider.value;
+                if (sectionData.viz.saliencyMap) {
+                    updateVisualization(currentVizMode);
+                }
+            });
+
+            opacitySlider.addEventListener('input', () => {
+                opacityVal.textContent = opacitySlider.value + '%';
+                if (sectionData.viz.saliencyMap) {
+                    updateVisualization(currentVizMode);
+                }
+            });
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentVizMode = tab.dataset.viz;
+                    if (sectionData.viz.saliencyMap) {
+                        updateVisualization(currentVizMode);
+                    }
+                });
+            });
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const img = await Utils.loadImage(file);
+                if (sectionData.viz.src) sectionData.viz.src.delete();
+                sectionData.viz.src = Utils.imageToMat(img);
+
+                const canvas = document.getElementById('viz-original');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                cv.imshow(canvas, sectionData.viz.src);
+
+                computeBtn.disabled = !hasSpectralResidual;
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!sectionData.viz.src || !hasSpectralResidual) return;
+
+                const startTime = performance.now();
+
+                try {
+                    const saliency = new cv.StaticSaliencySpectralResidual();
+                    if (sectionData.viz.saliencyMap) sectionData.viz.saliencyMap.delete();
+                    sectionData.viz.saliencyMap = new cv.Mat();
+                    saliency.computeSaliency(sectionData.viz.src, sectionData.viz.saliencyMap);
+
+                    // Compute mean saliency
+                    const mean = cv.mean(sectionData.viz.saliencyMap);
+                    document.getElementById('viz-mean').textContent = (mean[0] * 255).toFixed(2);
+
+                    document.getElementById('viz-time').textContent = (performance.now() - startTime).toFixed(2) + ' ms';
+                    document.getElementById('viz-metrics').style.display = 'flex';
+
+                    updateVisualization(currentVizMode);
+
+                    saliency.delete();
+
+                } catch (error) {
+                    console.error('Visualization error:', error);
+                    UIComponents.showToast({ message: 'Error: ' + error.message, type: 'error' });
+                }
+            });
+        }
+
+        function updateVisualization(mode) {
+            if (!sectionData.viz.saliencyMap || !sectionData.viz.src) return;
+
+            const canvas = document.getElementById('viz-result');
+            const label = document.getElementById('viz-result-label');
+            const threshold = parseInt(document.getElementById('viz-threshold').value);
+            const opacity = parseInt(document.getElementById('viz-opacity').value) / 100;
+
+            const saliency8bit = new cv.Mat();
+            sectionData.viz.saliencyMap.convertTo(saliency8bit, cv.CV_8UC1, 255);
+
+            let result = null;
+
+            switch (mode) {
+                case 'grayscale':
+                    result = saliency8bit.clone();
+                    label.textContent = 'Grayscale Saliency';
+                    break;
+
+                case 'heatmap':
+                    result = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, result, cv.COLORMAP_JET);
+                    label.textContent = 'Heatmap (Jet Colormap)';
+                    break;
+
+                case 'overlay':
+                    const heatmap = new cv.Mat();
+                    cv.applyColorMap(saliency8bit, heatmap, cv.COLORMAP_JET);
+
+                    // Convert heatmap to RGBA
+                    const heatmapRGBA = new cv.Mat();
+                    cv.cvtColor(heatmap, heatmapRGBA, cv.COLOR_BGR2RGBA);
+
+                    result = new cv.Mat();
+                    cv.addWeighted(sectionData.viz.src, 1 - opacity, heatmapRGBA, opacity, 0, result);
+
+                    heatmap.delete();
+                    heatmapRGBA.delete();
+                    label.textContent = 'Overlay (' + Math.round(opacity * 100) + '% opacity)';
+                    break;
+
+                case 'binary':
+                    result = new cv.Mat();
+                    cv.threshold(saliency8bit, result, threshold, 255, cv.THRESH_BINARY);
+                    label.textContent = 'Binary Mask (threshold: ' + threshold + ')';
+                    break;
+
+                case 'contours':
+                    const binary = new cv.Mat();
+                    cv.threshold(saliency8bit, binary, threshold, 255, cv.THRESH_BINARY);
+
+                    const contours = new cv.MatVector();
+                    const hierarchy = new cv.Mat();
+                    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                    result = sectionData.viz.src.clone();
+                    const color = new cv.Scalar(0, 255, 0, 255);
+                    cv.drawContours(result, contours, -1, color, 2);
+
+                    binary.delete();
+                    contours.delete();
+                    hierarchy.delete();
+                    label.textContent = 'Contours (threshold: ' + threshold + ')';
+                    break;
+            }
+
+            if (result) {
+                canvas.width = result.cols;
+                canvas.height = result.rows;
+                cv.imshow(canvas, result);
+                result.delete();
+            }
+
+            saliency8bit.delete();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopMotionSaliency();
+
+            // Clean up all cached data
+            for (const section in sectionData) {
+                if (sectionData[section].src) {
+                    sectionData[section].src.delete();
+                }
+                if (sectionData[section].saliencyMap) {
+                    sectionData[section].saliencyMap.delete();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

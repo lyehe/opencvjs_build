@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D & Calibration - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for calibration page */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.9rem;
+        }
+
+        .info-box h4 {
+            color: var(--info);
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.95rem;
+        }
+
+        .info-box ul {
+            margin: 0;
+            padding-left: var(--spacing-lg);
+            color: var(--text-secondary);
+        }
+
+        .info-box li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .matrix-display {
+            font-family: 'Fira Code', monospace;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            overflow-x: auto;
+            white-space: pre;
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .param-item {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .param-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .param-value {
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: monospace;
+            color: var(--accent-secondary);
+            margin-top: 4px;
+        }
+
+        .image-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .image-thumbnail {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .image-thumbnail:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .image-thumbnail.detected {
+            border-color: var(--success);
+        }
+
+        .image-thumbnail.failed {
+            border-color: var(--error);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-primary);
+        }
+
+        .checkbox-item label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .side-by-side {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        @media (max-width: 768px) {
+            .side-by-side {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .pattern-item {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm);
+            text-align: center;
+        }
+
+        .pattern-item canvas {
+            width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+        }
+
+        .pattern-item p {
+            margin: var(--spacing-xs) 0 0;
+            font-size: 0.8rem;
+        }
+
+        .workflow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .workflow-step {
+            display: flex;
+            gap: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .step-content h5 {
+            margin: 0 0 var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        .step-content p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        textarea.matrix-input {
+            width: 100%;
+            min-height: 150px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        .unavailable-notice {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--warning);
+        }
+
+        .point-input-row {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+            align-items: center;
+        }
+
+        .point-input-row input {
+            width: 70px;
+        }
+
+        .point-input-row .remove-btn {
+            background: var(--error);
+            padding: var(--spacing-xs) var(--spacing-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">3D & Calibration</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>3D & Calibration</h1>
+            <p>Camera calibration, pose estimation, and 3D reconstruction features from calib3d, ccalib, and structured_light modules</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Tips Section -->
+        <div class="info-box">
+            <h4>Tips for Good Calibration Images</h4>
+            <ul>
+                <li>Take 15-25 images from different angles and positions</li>
+                <li>Cover the entire image area with the pattern</li>
+                <li>Tilt the pattern at various angles (not just flat)</li>
+                <li>Ensure the pattern is fully visible in each image</li>
+                <li>Use good lighting and avoid reflections on the pattern</li>
+                <li>Keep the pattern flat - any warping will affect accuracy</li>
+            </ul>
+        </div>
+
+        <!-- Section 1: Checkerboard Detection -->
+        <section class="demo-section" id="section-checkerboard">
+            <h3>1. Checkerboard Detection</h3>
+            <p>Detect internal corners of a checkerboard pattern using findChessboardCorners with sub-pixel refinement.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="checkerboard-upload">Upload Checkerboard Image</label>
+                    <input type="file" id="checkerboard-upload" accept="image/*">
+                    <label for="checkerboard-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Board Size (inner corners)</label>
+                    <div class="flex gap-sm items-center">
+                        <input type="number" id="board-width" value="9" min="2" max="20" style="width: 60px;">
+                        <span>x</span>
+                        <input type="number" id="board-height" value="6" min="2" max="20" style="width: 60px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Detection Flags</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="flag-adaptive" checked>
+                            <label for="flag-adaptive">ADAPTIVE_THRESH</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="flag-normalize" checked>
+                            <label for="flag-normalize">NORMALIZE_IMAGE</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="flag-fast">
+                            <label for="flag-fast">FAST_CHECK</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="detect-checkerboard-btn" disabled>Detect Corners</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="checkerboard-canvas"></canvas>
+                    <span class="canvas-label">Result</span>
+                </div>
+                <div>
+                    <div class="metrics" id="checkerboard-metrics">
+                        <div class="metric">
+                            <span class="metric-label">Status</span>
+                            <span class="metric-value" id="checkerboard-status">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Corners Found</span>
+                            <span class="metric-value" id="checkerboard-count">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Time</span>
+                            <span class="metric-value" id="checkerboard-time">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Camera Calibration -->
+        <section class="demo-section" id="section-calibration">
+            <h3>2. Camera Calibration</h3>
+            <p>Upload multiple checkerboard images to calibrate your camera. Minimum 10-20 images recommended for accurate results.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="calibration-upload">Upload Multiple Images</label>
+                    <input type="file" id="calibration-upload" accept="image/*" multiple>
+                    <label for="calibration-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Select Images (10-20)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Board Size (inner corners)</label>
+                    <div class="flex gap-sm items-center">
+                        <input type="number" id="calib-board-width" value="9" min="2" max="20" style="width: 60px;">
+                        <span>x</span>
+                        <input type="number" id="calib-board-height" value="6" min="2" max="20" style="width: 60px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="square-size">Square Size (mm)</label>
+                    <input type="number" id="square-size" value="25" min="1" max="100" step="0.1" style="width: 80px;">
+                </div>
+
+                <button class="btn btn-primary" id="run-calibration-btn" disabled>Run Calibration</button>
+                <button class="btn btn-secondary" id="download-calibration-btn" disabled>Download JSON</button>
+            </div>
+
+            <div id="calibration-images" class="image-list"></div>
+
+            <div class="metrics mt-md" id="calibration-progress-metrics">
+                <div class="metric">
+                    <span class="metric-label">Images Loaded</span>
+                    <span class="metric-value" id="images-loaded">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Patterns Detected</span>
+                    <span class="metric-value" id="patterns-detected">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Calibration Status</span>
+                    <span class="metric-value" id="calibration-status">Not started</span>
+                </div>
+            </div>
+
+            <div id="calibration-results" class="hidden mt-lg">
+                <h4>Calibration Results</h4>
+
+                <div class="param-grid">
+                    <div class="param-item">
+                        <div class="param-label">Focal Length X (fx)</div>
+                        <div class="param-value" id="fx-value">-</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">Focal Length Y (fy)</div>
+                        <div class="param-value" id="fy-value">-</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">Principal X (cx)</div>
+                        <div class="param-value" id="cx-value">-</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">Principal Y (cy)</div>
+                        <div class="param-value" id="cy-value">-</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">Reprojection Error</div>
+                        <div class="param-value" id="reproj-error">-</div>
+                    </div>
+                </div>
+
+                <h5 class="mt-md">Camera Matrix</h5>
+                <div class="matrix-display" id="camera-matrix-display">-</div>
+
+                <h5 class="mt-md">Distortion Coefficients (k1, k2, p1, p2, k3)</h5>
+                <div class="matrix-display" id="dist-coeffs-display">-</div>
+            </div>
+        </section>
+
+        <!-- Section 3: Undistortion -->
+        <section class="demo-section" id="section-undistort">
+            <h3>3. Image Undistortion</h3>
+            <p>Remove lens distortion from images using camera calibration parameters.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="undistort-upload">Upload Distorted Image</label>
+                    <input type="file" id="undistort-upload" accept="image/*">
+                    <label for="undistort-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <button class="btn btn-secondary" id="use-calibration-btn" disabled>Use Calibration Result</button>
+                <button class="btn btn-primary" id="undistort-btn" disabled>Undistort</button>
+            </div>
+
+            <div class="form-group mt-md">
+                <label for="camera-matrix-input">Camera Matrix (3x3, comma-separated rows)</label>
+                <textarea id="camera-matrix-input" class="matrix-input" placeholder="fx, 0, cx
+0, fy, cy
+0, 0, 1
+
+Example:
+1000, 0, 320
+0, 1000, 240
+0, 0, 1"></textarea>
+            </div>
+
+            <div class="form-group mt-md">
+                <label for="dist-coeffs-input">Distortion Coefficients (k1, k2, p1, p2, k3)</label>
+                <textarea id="dist-coeffs-input" class="matrix-input" style="min-height: 60px;" placeholder="k1, k2, p1, p2, k3
+
+Example:
+-0.2, 0.1, 0, 0, 0"></textarea>
+            </div>
+
+            <div class="side-by-side mt-lg">
+                <div class="canvas-container">
+                    <canvas id="distorted-canvas"></canvas>
+                    <span class="canvas-label">Original (Distorted)</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="undistorted-canvas"></canvas>
+                    <span class="canvas-label">Undistorted</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Circles Grid Detection -->
+        <section class="demo-section" id="section-circles">
+            <h3>4. Circles Grid Detection</h3>
+            <p>An alternative to checkerboard - detect circle centers in a grid pattern.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="circles-upload">Upload Circles Grid Image</label>
+                    <input type="file" id="circles-upload" accept="image/*">
+                    <label for="circles-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Grid Size (columns x rows)</label>
+                    <div class="flex gap-sm items-center">
+                        <input type="number" id="circles-width" value="7" min="2" max="20" style="width: 60px;">
+                        <span>x</span>
+                        <input type="number" id="circles-height" value="6" min="2" max="20" style="width: 60px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="circles-type">Pattern Type</label>
+                    <select id="circles-type">
+                        <option value="symmetric">Symmetric Grid</option>
+                        <option value="asymmetric">Asymmetric Grid</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="detect-circles-btn" disabled>Detect Circles</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="circles-canvas"></canvas>
+                    <span class="canvas-label">Result</span>
+                </div>
+                <div>
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="metric-label">Status</span>
+                            <span class="metric-value" id="circles-status">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Centers Found</span>
+                            <span class="metric-value" id="circles-count">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: solvePnP - Pose Estimation -->
+        <section class="demo-section" id="section-pnp">
+            <h3>5. Pose Estimation (solvePnP)</h3>
+            <p>Estimate camera pose from known 3D object points and their 2D image projections. This draws coordinate axes on detected checkerboard patterns.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="pnp-upload">Upload Checkerboard Image</label>
+                    <input type="file" id="pnp-upload" accept="image/*">
+                    <label for="pnp-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Board Size (inner corners)</label>
+                    <div class="flex gap-sm items-center">
+                        <input type="number" id="pnp-board-width" value="9" min="2" max="20" style="width: 60px;">
+                        <span>x</span>
+                        <input type="number" id="pnp-board-height" value="6" min="2" max="20" style="width: 60px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pnp-square-size">Square Size (mm)</label>
+                    <input type="number" id="pnp-square-size" value="25" min="1" max="100" step="0.1" style="width: 80px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="axis-length">Axis Length (mm)</label>
+                    <input type="number" id="axis-length" value="75" min="10" max="500" style="width: 80px;">
+                </div>
+
+                <button class="btn btn-secondary" id="use-calib-pnp-btn" disabled>Use Calibration</button>
+                <button class="btn btn-primary" id="estimate-pose-btn" disabled>Estimate Pose</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="pnp-canvas"></canvas>
+                    <span class="canvas-label">Pose with Axes</span>
+                </div>
+                <div>
+                    <h5>Rotation Vector (Rodrigues)</h5>
+                    <div class="matrix-display" id="rvec-display">-</div>
+
+                    <h5 class="mt-md">Translation Vector</h5>
+                    <div class="matrix-display" id="tvec-display">-</div>
+
+                    <h5 class="mt-md">Rotation Matrix (from Rodrigues)</h5>
+                    <div class="matrix-display" id="rmat-display">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Stereo Calibration (Educational) -->
+        <section class="demo-section" id="section-stereo">
+            <h3>6. Stereo Calibration (Educational)</h3>
+            <p>Understanding stereo vision calibration for depth estimation and 3D reconstruction.</p>
+
+            <div class="info-box">
+                <h4>Stereo Calibration Workflow</h4>
+                <p>Stereo calibration determines the geometric relationship between two cameras, enabling depth estimation through triangulation.</p>
+            </div>
+
+            <div class="workflow-steps">
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h5>Individual Camera Calibration</h5>
+                        <p>First, calibrate each camera separately using the method in Section 2. This provides intrinsic parameters (camera matrix, distortion) for each camera.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h5>Synchronized Image Capture</h5>
+                        <p>Capture checkerboard images simultaneously from both cameras. The pattern must be visible to both cameras at the same time in each image pair.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h5>stereoCalibrate()</h5>
+                        <p>Run stereo calibration with detected corners from both views. This computes the rotation matrix (R) and translation vector (T) between cameras, plus optionally refines intrinsics.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h5>stereoRectify()</h5>
+                        <p>Compute rectification transforms that make the image planes coplanar. After rectification, corresponding points lie on the same horizontal scanline, simplifying stereo matching.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h5>Disparity & Depth</h5>
+                        <p>Use StereoBM or StereoSGBM to compute disparity maps. Disparity (difference in x-position between views) is inversely proportional to depth: depth = (baseline * focal_length) / disparity.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block">
+// Stereo calibration pseudocode
+const retval = cv.stereoCalibrate(
+    objectPoints,      // 3D pattern points
+    imagePointsLeft,   // 2D points from left camera
+    imagePointsRight,  // 2D points from right camera
+    cameraMatrixL, distCoeffsL,
+    cameraMatrixR, distCoeffsR,
+    imageSize,
+    R,                 // Output: rotation between cameras
+    T,                 // Output: translation between cameras
+    E,                 // Output: essential matrix
+    F,                 // Output: fundamental matrix
+    flags
+);
+
+// Compute rectification transforms
+cv.stereoRectify(
+    cameraMatrixL, distCoeffsL,
+    cameraMatrixR, distCoeffsR,
+    imageSize, R, T,
+    R1, R2,            // Output: rectification rotations
+    P1, P2,            // Output: projection matrices
+    Q,                 // Output: disparity-to-depth mapping
+    flags
+);</div>
+        </section>
+
+        <!-- Section 7: Structured Light Patterns -->
+        <section class="demo-section" id="section-structured-light">
+            <h3>7. Structured Light Patterns</h3>
+            <p>Generate Gray code patterns for structured light 3D scanning systems.</p>
+
+            <div id="structured-light-available">
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Pattern Resolution</label>
+                        <div class="flex gap-sm items-center">
+                            <input type="number" id="pattern-width" value="1024" min="64" max="4096" step="64" style="width: 100px;">
+                            <span>x</span>
+                            <input type="number" id="pattern-height" value="768" min="64" max="4096" step="64" style="width: 100px;">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="generate-patterns-btn">Generate Gray Code</button>
+                    <button class="btn btn-secondary" id="download-patterns-btn" disabled>Download All</button>
+                </div>
+
+                <div class="info-box">
+                    <h4>3D Scanning Workflow with Structured Light</h4>
+                    <ul>
+                        <li>Project each pattern onto the object sequentially</li>
+                        <li>Capture an image for each projected pattern</li>
+                        <li>Decode the patterns to establish camera-projector correspondence</li>
+                        <li>Triangulate 3D points using camera and projector calibration</li>
+                        <li>Gray code is robust to ambient light variations</li>
+                    </ul>
+                </div>
+
+                <div id="patterns-container" class="pattern-grid"></div>
+            </div>
+
+            <div id="structured-light-unavailable" class="unavailable-notice hidden">
+                <h4>Structured Light Module Not Available</h4>
+                <p>The structured_light module is not included in this OpenCV.js build.</p>
+                <p>Gray code pattern generation requires the full contrib modules.</p>
+            </div>
+        </section>
+
+        <!-- Section 8: Homography Estimation -->
+        <section class="demo-section" id="section-homography">
+            <h3>8. Homography Estimation</h3>
+            <p>Compute the perspective transformation between two planes.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="homography-upload">Upload Image with Planar Pattern</label>
+                    <input type="file" id="homography-upload" accept="image/*">
+                    <label for="homography-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Use Detected Corners</label>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="use-detected-corners" checked>
+                        <label for="use-detected-corners">Auto-detect checkerboard</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Board Size (for auto-detect)</label>
+                    <div class="flex gap-sm items-center">
+                        <input type="number" id="homography-board-width" value="9" min="2" max="20" style="width: 60px;">
+                        <span>x</span>
+                        <input type="number" id="homography-board-height" value="6" min="2" max="20" style="width: 60px;">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="compute-homography-btn" disabled>Compute Homography</button>
+            </div>
+
+            <div class="side-by-side mt-lg">
+                <div class="canvas-container">
+                    <canvas id="homography-input-canvas"></canvas>
+                    <span class="canvas-label">Original with Projected Rectangle</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="homography-output-canvas"></canvas>
+                    <span class="canvas-label">Warped Perspective</span>
+                </div>
+            </div>
+
+            <h5 class="mt-md">Homography Matrix (3x3)</h5>
+            <div class="matrix-display" id="homography-matrix-display">-</div>
+        </section>
+
+        <!-- Function Availability -->
+        <section class="demo-section">
+            <h3>Function Availability</h3>
+            <div id="function-availability" class="param-grid"></div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // State management
+        const state = {
+            checkerboardImage: null,
+            checkerboardMat: null,
+            calibrationImages: [],
+            calibrationCorners: [],
+            calibrationObjectPoints: [],
+            cameraMatrix: null,
+            distCoeffs: null,
+            calibrationResult: null,
+            undistortImage: null,
+            circlesImage: null,
+            pnpImage: null,
+            homographyImage: null
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (p) => {
+                        document.getElementById('loading-progress').style.width = `${p}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    const overlay = document.getElementById('loading-overlay');
+                    overlay.style.opacity = '0';
+                    overlay.style.transition = 'opacity 0.3s ease';
+                    setTimeout(() => overlay.remove(), 300);
+                }, 500);
+
+                // Check function availability
+                checkFunctionAvailability();
+
+                // Initialize all sections
+                initCheckerboardSection();
+                initCalibrationSection();
+                initUndistortSection();
+                initCirclesSection();
+                initPnPSection();
+                initStructuredLightSection();
+                initHomographySection();
+
+                console.log('3D & Calibration demo initialized');
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = `Error: ${error.message}`;
+                console.error('Failed to load OpenCV:', error);
+            }
+        });
+
+        // Check function availability
+        function checkFunctionAvailability() {
+            const functions = [
+                { name: 'findChessboardCorners', module: 'calib3d' },
+                { name: 'cornerSubPix', module: 'imgproc' },
+                { name: 'calibrateCamera', module: 'calib3d' },
+                { name: 'undistort', module: 'calib3d' },
+                { name: 'findCirclesGrid', module: 'calib3d' },
+                { name: 'solvePnP', module: 'calib3d' },
+                { name: 'Rodrigues', module: 'calib3d' },
+                { name: 'projectPoints', module: 'calib3d' },
+                { name: 'findHomography', module: 'calib3d' },
+                { name: 'warpPerspective', module: 'imgproc' },
+                { name: 'stereoCalibrate', module: 'calib3d' },
+                { name: 'stereoRectify', module: 'calib3d' }
+            ];
+
+            const container = document.getElementById('function-availability');
+            container.innerHTML = '';
+
+            functions.forEach(fn => {
+                const available = typeof cv[fn.name] !== 'undefined';
+                const item = document.createElement('div');
+                item.className = 'param-item';
+                item.innerHTML = `
+                    <div class="param-label">${fn.module}</div>
+                    <div class="param-value" style="color: ${available ? 'var(--success)' : 'var(--error)'}">
+                        ${fn.name} ${available ? '✓' : '✗'}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Section 1: Checkerboard Detection
+        function initCheckerboardSection() {
+            const upload = document.getElementById('checkerboard-upload');
+            const detectBtn = document.getElementById('detect-checkerboard-btn');
+            const canvas = document.getElementById('checkerboard-canvas');
+
+            upload.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.checkerboardImage = img;
+
+                    if (state.checkerboardMat) state.checkerboardMat.delete();
+                    state.checkerboardMat = Utils.imageToMat(img);
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    cv.imshow(canvas, state.checkerboardMat);
+
+                    detectBtn.disabled = false;
+                    document.getElementById('checkerboard-status').textContent = 'Ready';
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                }
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!state.checkerboardMat) return;
+
+                const width = parseInt(document.getElementById('board-width').value);
+                const height = parseInt(document.getElementById('board-height').value);
+                const patternSize = new cv.Size(width, height);
+
+                // Build flags
+                let flags = 0;
+                if (document.getElementById('flag-adaptive').checked) flags |= cv.CALIB_CB_ADAPTIVE_THRESH;
+                if (document.getElementById('flag-normalize').checked) flags |= cv.CALIB_CB_NORMALIZE_IMAGE;
+                if (document.getElementById('flag-fast').checked) flags |= cv.CALIB_CB_FAST_CHECK;
+
+                const startTime = performance.now();
+
+                const gray = new cv.Mat();
+                cv.cvtColor(state.checkerboardMat, gray, cv.COLOR_RGBA2GRAY);
+
+                const corners = new cv.Mat();
+                const found = cv.findChessboardCorners(gray, patternSize, corners, flags);
+
+                const result = state.checkerboardMat.clone();
+
+                if (found) {
+                    // Refine corners with sub-pixel accuracy
+                    const criteria = new cv.TermCriteria(
+                        cv.TermCriteria_EPS + cv.TermCriteria_MAX_ITER, 30, 0.001
+                    );
+                    cv.cornerSubPix(gray, corners, new cv.Size(11, 11), new cv.Size(-1, -1), criteria);
+
+                    // Draw corners
+                    cv.drawChessboardCorners(result, patternSize, corners, found);
+
+                    document.getElementById('checkerboard-status').textContent = 'Detected';
+                    document.getElementById('checkerboard-status').style.color = 'var(--success)';
+                    document.getElementById('checkerboard-count').textContent = `${corners.rows}`;
+                } else {
+                    document.getElementById('checkerboard-status').textContent = 'Not Found';
+                    document.getElementById('checkerboard-status').style.color = 'var(--error)';
+                    document.getElementById('checkerboard-count').textContent = '0';
+                }
+
+                const elapsed = (performance.now() - startTime).toFixed(1);
+                document.getElementById('checkerboard-time').textContent = `${elapsed}ms`;
+
+                cv.imshow(canvas, result);
+
+                gray.delete();
+                corners.delete();
+                result.delete();
+            });
+        }
+
+        // Section 2: Camera Calibration
+        function initCalibrationSection() {
+            const upload = document.getElementById('calibration-upload');
+            const calibrateBtn = document.getElementById('run-calibration-btn');
+            const downloadBtn = document.getElementById('download-calibration-btn');
+            const imageContainer = document.getElementById('calibration-images');
+
+            upload.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                // Reset state
+                state.calibrationImages = [];
+                state.calibrationCorners = [];
+                state.calibrationObjectPoints = [];
+                imageContainer.innerHTML = '';
+
+                document.getElementById('images-loaded').textContent = files.length;
+                document.getElementById('patterns-detected').textContent = '0';
+                document.getElementById('calibration-status').textContent = 'Processing...';
+
+                const width = parseInt(document.getElementById('calib-board-width').value);
+                const height = parseInt(document.getElementById('calib-board-height').value);
+                const patternSize = new cv.Size(width, height);
+
+                let detected = 0;
+
+                for (let i = 0; i < files.length; i++) {
+                    try {
+                        const img = await Utils.loadImage(files[i]);
+                        const mat = Utils.imageToMat(img);
+
+                        // Create thumbnail
+                        const thumb = document.createElement('img');
+                        thumb.className = 'image-thumbnail';
+                        thumb.src = URL.createObjectURL(files[i]);
+                        thumb.title = files[i].name;
+                        imageContainer.appendChild(thumb);
+
+                        // Detect corners
+                        const gray = new cv.Mat();
+                        cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+
+                        const corners = new cv.Mat();
+                        const found = cv.findChessboardCorners(
+                            gray, patternSize, corners,
+                            cv.CALIB_CB_ADAPTIVE_THRESH | cv.CALIB_CB_NORMALIZE_IMAGE
+                        );
+
+                        if (found) {
+                            const criteria = new cv.TermCriteria(
+                                cv.TermCriteria_EPS + cv.TermCriteria_MAX_ITER, 30, 0.001
+                            );
+                            cv.cornerSubPix(gray, corners, new cv.Size(11, 11), new cv.Size(-1, -1), criteria);
+
+                            state.calibrationImages.push({ mat, width: img.width, height: img.height });
+                            state.calibrationCorners.push(corners.clone());
+                            thumb.classList.add('detected');
+                            detected++;
+                        } else {
+                            thumb.classList.add('failed');
+                            mat.delete();
+                        }
+
+                        gray.delete();
+                        corners.delete();
+
+                        document.getElementById('patterns-detected').textContent = detected;
+
+                    } catch (err) {
+                        console.error('Error processing image:', err);
+                    }
+                }
+
+                document.getElementById('calibration-status').textContent =
+                    detected >= 10 ? 'Ready to calibrate' : `Need more images (${detected}/10)`;
+                calibrateBtn.disabled = detected < 3;
+            });
+
+            calibrateBtn.addEventListener('click', () => {
+                if (state.calibrationCorners.length < 3) return;
+
+                document.getElementById('calibration-status').textContent = 'Calibrating...';
+
+                const width = parseInt(document.getElementById('calib-board-width').value);
+                const height = parseInt(document.getElementById('calib-board-height').value);
+                const squareSize = parseFloat(document.getElementById('square-size').value);
+
+                // Generate object points (3D points in pattern coordinate space)
+                const objPoints = [];
+                for (let i = 0; i < height; i++) {
+                    for (let j = 0; j < width; j++) {
+                        objPoints.push(j * squareSize, i * squareSize, 0);
+                    }
+                }
+
+                const objectPointsMat = cv.matFromArray(width * height, 1, cv.CV_32FC3, objPoints);
+                const objectPointsVec = new cv.MatVector();
+                const imagePointsVec = new cv.MatVector();
+
+                for (let i = 0; i < state.calibrationCorners.length; i++) {
+                    objectPointsVec.push_back(objectPointsMat);
+                    imagePointsVec.push_back(state.calibrationCorners[i]);
+                }
+
+                // Get image size from first image
+                const imageSize = new cv.Size(
+                    state.calibrationImages[0].width,
+                    state.calibrationImages[0].height
+                );
+
+                // Calibrate
+                state.cameraMatrix = new cv.Mat();
+                state.distCoeffs = new cv.Mat();
+                const rvecs = new cv.MatVector();
+                const tvecs = new cv.MatVector();
+
+                try {
+                    const error = cv.calibrateCamera(
+                        objectPointsVec,
+                        imagePointsVec,
+                        imageSize,
+                        state.cameraMatrix,
+                        state.distCoeffs,
+                        rvecs,
+                        tvecs
+                    );
+
+                    // Display results
+                    const fx = state.cameraMatrix.doubleAt(0, 0).toFixed(2);
+                    const fy = state.cameraMatrix.doubleAt(1, 1).toFixed(2);
+                    const cx = state.cameraMatrix.doubleAt(0, 2).toFixed(2);
+                    const cy = state.cameraMatrix.doubleAt(1, 2).toFixed(2);
+
+                    document.getElementById('fx-value').textContent = fx;
+                    document.getElementById('fy-value').textContent = fy;
+                    document.getElementById('cx-value').textContent = cx;
+                    document.getElementById('cy-value').textContent = cy;
+                    document.getElementById('reproj-error').textContent = error.toFixed(4) + ' px';
+
+                    // Format camera matrix
+                    let matrixStr = '';
+                    for (let i = 0; i < 3; i++) {
+                        matrixStr += '[ ';
+                        for (let j = 0; j < 3; j++) {
+                            matrixStr += state.cameraMatrix.doubleAt(i, j).toFixed(4).padStart(12);
+                            if (j < 2) matrixStr += ', ';
+                        }
+                        matrixStr += ' ]\n';
+                    }
+                    document.getElementById('camera-matrix-display').textContent = matrixStr;
+
+                    // Format distortion coefficients
+                    let distStr = '[ ';
+                    for (let i = 0; i < state.distCoeffs.cols; i++) {
+                        distStr += state.distCoeffs.doubleAt(0, i).toFixed(6);
+                        if (i < state.distCoeffs.cols - 1) distStr += ', ';
+                    }
+                    distStr += ' ]';
+                    document.getElementById('dist-coeffs-display').textContent = distStr;
+
+                    // Store calibration result for export
+                    state.calibrationResult = {
+                        cameraMatrix: Array.from({ length: 9 }, (_, i) =>
+                            state.cameraMatrix.doubleAt(Math.floor(i / 3), i % 3)
+                        ),
+                        distCoeffs: Array.from({ length: state.distCoeffs.cols }, (_, i) =>
+                            state.distCoeffs.doubleAt(0, i)
+                        ),
+                        imageSize: [imageSize.width, imageSize.height],
+                        reprojectionError: error,
+                        numImages: state.calibrationCorners.length
+                    };
+
+                    document.getElementById('calibration-results').classList.remove('hidden');
+                    document.getElementById('calibration-status').textContent = 'Complete';
+                    downloadBtn.disabled = false;
+
+                    // Enable buttons in other sections
+                    document.getElementById('use-calibration-btn').disabled = false;
+                    document.getElementById('use-calib-pnp-btn').disabled = false;
+
+                } catch (err) {
+                    console.error('Calibration error:', err);
+                    document.getElementById('calibration-status').textContent = 'Error: ' + err.message;
+                }
+
+                // Cleanup
+                objectPointsMat.delete();
+                objectPointsVec.delete();
+                imagePointsVec.delete();
+                rvecs.delete();
+                tvecs.delete();
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                if (!state.calibrationResult) return;
+
+                const json = JSON.stringify(state.calibrationResult, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'camera_calibration.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Section 3: Undistortion
+        function initUndistortSection() {
+            const upload = document.getElementById('undistort-upload');
+            const useCalibBtn = document.getElementById('use-calibration-btn');
+            const undistortBtn = document.getElementById('undistort-btn');
+            const distortedCanvas = document.getElementById('distorted-canvas');
+            const undistortedCanvas = document.getElementById('undistorted-canvas');
+
+            upload.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.undistortImage = Utils.imageToMat(img);
+
+                    distortedCanvas.width = img.width;
+                    distortedCanvas.height = img.height;
+                    undistortedCanvas.width = img.width;
+                    undistortedCanvas.height = img.height;
+
+                    cv.imshow(distortedCanvas, state.undistortImage);
+                    undistortBtn.disabled = false;
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                }
+            });
+
+            useCalibBtn.addEventListener('click', () => {
+                if (!state.cameraMatrix || !state.distCoeffs) return;
+
+                // Format camera matrix for input
+                let matrixStr = '';
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        matrixStr += state.cameraMatrix.doubleAt(i, j).toFixed(4);
+                        if (j < 2) matrixStr += ', ';
+                    }
+                    if (i < 2) matrixStr += '\n';
+                }
+                document.getElementById('camera-matrix-input').value = matrixStr;
+
+                // Format distortion coefficients
+                let distStr = '';
+                for (let i = 0; i < state.distCoeffs.cols; i++) {
+                    distStr += state.distCoeffs.doubleAt(0, i).toFixed(6);
+                    if (i < state.distCoeffs.cols - 1) distStr += ', ';
+                }
+                document.getElementById('dist-coeffs-input').value = distStr;
+            });
+
+            undistortBtn.addEventListener('click', () => {
+                if (!state.undistortImage) return;
+
+                try {
+                    // Parse camera matrix
+                    const matrixInput = document.getElementById('camera-matrix-input').value;
+                    const matrixValues = matrixInput.split(/[\s,\n]+/).filter(v => v.trim()).map(parseFloat);
+
+                    if (matrixValues.length !== 9) {
+                        alert('Camera matrix must have 9 values (3x3)');
+                        return;
+                    }
+
+                    const cameraMat = cv.matFromArray(3, 3, cv.CV_64FC1, matrixValues);
+
+                    // Parse distortion coefficients
+                    const distInput = document.getElementById('dist-coeffs-input').value;
+                    const distValues = distInput.split(/[\s,\n]+/).filter(v => v.trim()).map(parseFloat);
+
+                    if (distValues.length < 4) {
+                        alert('Need at least 4 distortion coefficients');
+                        return;
+                    }
+
+                    const distCoeffs = cv.matFromArray(1, distValues.length, cv.CV_64FC1, distValues);
+
+                    // Undistort
+                    const undistorted = new cv.Mat();
+                    cv.undistort(state.undistortImage, undistorted, cameraMat, distCoeffs);
+
+                    cv.imshow(undistortedCanvas, undistorted);
+
+                    undistorted.delete();
+                    cameraMat.delete();
+                    distCoeffs.delete();
+
+                } catch (err) {
+                    console.error('Undistortion error:', err);
+                    alert('Error: ' + err.message);
+                }
+            });
+        }
+
+        // Section 4: Circles Grid Detection
+        function initCirclesSection() {
+            const upload = document.getElementById('circles-upload');
+            const detectBtn = document.getElementById('detect-circles-btn');
+            const canvas = document.getElementById('circles-canvas');
+
+            upload.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.circlesImage = Utils.imageToMat(img);
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    cv.imshow(canvas, state.circlesImage);
+
+                    detectBtn.disabled = false;
+                    document.getElementById('circles-status').textContent = 'Ready';
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                }
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!state.circlesImage) return;
+
+                const width = parseInt(document.getElementById('circles-width').value);
+                const height = parseInt(document.getElementById('circles-height').value);
+                const patternSize = new cv.Size(width, height);
+                const isAsymmetric = document.getElementById('circles-type').value === 'asymmetric';
+
+                const gray = new cv.Mat();
+                cv.cvtColor(state.circlesImage, gray, cv.COLOR_RGBA2GRAY);
+
+                const centers = new cv.Mat();
+                const flags = isAsymmetric ? cv.CALIB_CB_ASYMMETRIC_GRID : cv.CALIB_CB_SYMMETRIC_GRID;
+
+                let found = false;
+                try {
+                    found = cv.findCirclesGrid(gray, patternSize, centers, flags);
+                } catch (err) {
+                    console.error('findCirclesGrid error:', err);
+                }
+
+                const result = state.circlesImage.clone();
+
+                if (found) {
+                    cv.drawChessboardCorners(result, patternSize, centers, found);
+                    document.getElementById('circles-status').textContent = 'Detected';
+                    document.getElementById('circles-status').style.color = 'var(--success)';
+                    document.getElementById('circles-count').textContent = `${centers.rows}`;
+                } else {
+                    document.getElementById('circles-status').textContent = 'Not Found';
+                    document.getElementById('circles-status').style.color = 'var(--error)';
+                    document.getElementById('circles-count').textContent = '0';
+                }
+
+                cv.imshow(canvas, result);
+
+                gray.delete();
+                centers.delete();
+                result.delete();
+            });
+        }
+
+        // Section 5: Pose Estimation (solvePnP)
+        function initPnPSection() {
+            const upload = document.getElementById('pnp-upload');
+            const useCalibBtn = document.getElementById('use-calib-pnp-btn');
+            const estimateBtn = document.getElementById('estimate-pose-btn');
+            const canvas = document.getElementById('pnp-canvas');
+
+            let pnpCameraMatrix = null;
+            let pnpDistCoeffs = null;
+
+            upload.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.pnpImage = Utils.imageToMat(img);
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    cv.imshow(canvas, state.pnpImage);
+
+                    estimateBtn.disabled = false;
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                }
+            });
+
+            useCalibBtn.addEventListener('click', () => {
+                if (state.cameraMatrix && state.distCoeffs) {
+                    pnpCameraMatrix = state.cameraMatrix.clone();
+                    pnpDistCoeffs = state.distCoeffs.clone();
+                    alert('Calibration parameters loaded for pose estimation');
+                }
+            });
+
+            estimateBtn.addEventListener('click', () => {
+                if (!state.pnpImage) return;
+
+                const width = parseInt(document.getElementById('pnp-board-width').value);
+                const height = parseInt(document.getElementById('pnp-board-height').value);
+                const squareSize = parseFloat(document.getElementById('pnp-square-size').value);
+                const axisLength = parseFloat(document.getElementById('axis-length').value);
+                const patternSize = new cv.Size(width, height);
+
+                // Detect checkerboard
+                const gray = new cv.Mat();
+                cv.cvtColor(state.pnpImage, gray, cv.COLOR_RGBA2GRAY);
+
+                const corners = new cv.Mat();
+                const found = cv.findChessboardCorners(
+                    gray, patternSize, corners,
+                    cv.CALIB_CB_ADAPTIVE_THRESH | cv.CALIB_CB_NORMALIZE_IMAGE
+                );
+
+                if (!found) {
+                    alert('Checkerboard not detected');
+                    gray.delete();
+                    corners.delete();
+                    return;
+                }
+
+                // Refine corners
+                const criteria = new cv.TermCriteria(
+                    cv.TermCriteria_EPS + cv.TermCriteria_MAX_ITER, 30, 0.001
+                );
+                cv.cornerSubPix(gray, corners, new cv.Size(11, 11), new cv.Size(-1, -1), criteria);
+
+                // Generate object points
+                const objPoints = [];
+                for (let i = 0; i < height; i++) {
+                    for (let j = 0; j < width; j++) {
+                        objPoints.push(j * squareSize, i * squareSize, 0);
+                    }
+                }
+                const objectPoints = cv.matFromArray(width * height, 1, cv.CV_32FC3, objPoints);
+
+                // Use provided calibration or estimate
+                let camMat, distCoeffs;
+                if (pnpCameraMatrix && pnpDistCoeffs) {
+                    camMat = pnpCameraMatrix;
+                    distCoeffs = pnpDistCoeffs;
+                } else {
+                    // Use approximate intrinsics
+                    const fx = state.pnpImage.cols;
+                    const fy = state.pnpImage.cols;
+                    const cx = state.pnpImage.cols / 2;
+                    const cy = state.pnpImage.rows / 2;
+                    camMat = cv.matFromArray(3, 3, cv.CV_64FC1, [fx, 0, cx, 0, fy, cy, 0, 0, 1]);
+                    distCoeffs = cv.matFromArray(1, 5, cv.CV_64FC1, [0, 0, 0, 0, 0]);
+                }
+
+                // Solve PnP
+                const rvec = new cv.Mat();
+                const tvec = new cv.Mat();
+
+                try {
+                    cv.solvePnP(objectPoints, corners, camMat, distCoeffs, rvec, tvec);
+
+                    // Draw axes
+                    const result = state.pnpImage.clone();
+
+                    // Axis points in object space
+                    const axisPoints = cv.matFromArray(4, 1, cv.CV_32FC3, [
+                        0, 0, 0,                    // Origin
+                        axisLength, 0, 0,           // X axis (red)
+                        0, axisLength, 0,           // Y axis (green)
+                        0, 0, -axisLength           // Z axis (blue, pointing up)
+                    ]);
+
+                    const imagePoints = new cv.Mat();
+                    cv.projectPoints(axisPoints, rvec, tvec, camMat, distCoeffs, imagePoints);
+
+                    // Draw axes
+                    const origin = new cv.Point(
+                        imagePoints.floatAt(0, 0),
+                        imagePoints.floatAt(0, 1)
+                    );
+                    const xEnd = new cv.Point(
+                        imagePoints.floatAt(1, 0),
+                        imagePoints.floatAt(1, 1)
+                    );
+                    const yEnd = new cv.Point(
+                        imagePoints.floatAt(2, 0),
+                        imagePoints.floatAt(2, 1)
+                    );
+                    const zEnd = new cv.Point(
+                        imagePoints.floatAt(3, 0),
+                        imagePoints.floatAt(3, 1)
+                    );
+
+                    cv.line(result, origin, xEnd, new cv.Scalar(255, 0, 0, 255), 3);   // X - Red
+                    cv.line(result, origin, yEnd, new cv.Scalar(0, 255, 0, 255), 3);   // Y - Green
+                    cv.line(result, origin, zEnd, new cv.Scalar(0, 0, 255, 255), 3);   // Z - Blue
+
+                    // Draw detected corners
+                    cv.drawChessboardCorners(result, patternSize, corners, found);
+
+                    cv.imshow(canvas, result);
+
+                    // Display vectors
+                    let rvecStr = `[ ${rvec.doubleAt(0, 0).toFixed(6)}, ${rvec.doubleAt(1, 0).toFixed(6)}, ${rvec.doubleAt(2, 0).toFixed(6)} ]`;
+                    document.getElementById('rvec-display').textContent = rvecStr;
+
+                    let tvecStr = `[ ${tvec.doubleAt(0, 0).toFixed(2)}, ${tvec.doubleAt(1, 0).toFixed(2)}, ${tvec.doubleAt(2, 0).toFixed(2)} ] mm`;
+                    document.getElementById('tvec-display').textContent = tvecStr;
+
+                    // Convert to rotation matrix using Rodrigues
+                    const rmat = new cv.Mat();
+                    cv.Rodrigues(rvec, rmat);
+
+                    let rmatStr = '';
+                    for (let i = 0; i < 3; i++) {
+                        rmatStr += '[ ';
+                        for (let j = 0; j < 3; j++) {
+                            rmatStr += rmat.doubleAt(i, j).toFixed(6).padStart(10);
+                            if (j < 2) rmatStr += ', ';
+                        }
+                        rmatStr += ' ]\n';
+                    }
+                    document.getElementById('rmat-display').textContent = rmatStr;
+
+                    // Cleanup
+                    result.delete();
+                    axisPoints.delete();
+                    imagePoints.delete();
+                    rmat.delete();
+
+                } catch (err) {
+                    console.error('solvePnP error:', err);
+                    alert('Error: ' + err.message);
+                }
+
+                // Cleanup
+                gray.delete();
+                corners.delete();
+                objectPoints.delete();
+                rvec.delete();
+                tvec.delete();
+                if (!pnpCameraMatrix) camMat.delete();
+                if (!pnpDistCoeffs) distCoeffs.delete();
+            });
+        }
+
+        // Section 7: Structured Light
+        function initStructuredLightSection() {
+            const generateBtn = document.getElementById('generate-patterns-btn');
+            const downloadBtn = document.getElementById('download-patterns-btn');
+            const container = document.getElementById('patterns-container');
+
+            // Check if structured_light is available
+            const hasStructuredLight = typeof cv.structured_light_GrayCodePattern !== 'undefined' ||
+                                        typeof cv.GrayCodePattern !== 'undefined';
+
+            if (!hasStructuredLight) {
+                // Show unavailable notice but still allow generating basic patterns
+                document.getElementById('structured-light-unavailable').classList.remove('hidden');
+            }
+
+            let generatedPatterns = [];
+
+            generateBtn.addEventListener('click', () => {
+                const width = parseInt(document.getElementById('pattern-width').value);
+                const height = parseInt(document.getElementById('pattern-height').value);
+
+                container.innerHTML = '';
+                generatedPatterns = [];
+
+                // Generate Gray code patterns manually
+                // Number of patterns needed: ceil(log2(width)) + ceil(log2(height)) + 2 (inverse patterns optional)
+                const numBitsW = Math.ceil(Math.log2(width));
+                const numBitsH = Math.ceil(Math.log2(height));
+
+                // Generate vertical patterns (for horizontal displacement)
+                for (let bit = 0; bit < numBitsW; bit++) {
+                    const pattern = createGrayCodePattern(width, height, bit, true);
+                    generatedPatterns.push({ canvas: pattern, name: `vertical_${bit}` });
+                }
+
+                // Generate horizontal patterns (for vertical displacement)
+                for (let bit = 0; bit < numBitsH; bit++) {
+                    const pattern = createGrayCodePattern(width, height, bit, false);
+                    generatedPatterns.push({ canvas: pattern, name: `horizontal_${bit}` });
+                }
+
+                // Display patterns
+                generatedPatterns.forEach((p, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'pattern-item';
+
+                    const displayCanvas = document.createElement('canvas');
+                    displayCanvas.width = 150;
+                    displayCanvas.height = Math.round(150 * height / width);
+                    const ctx = displayCanvas.getContext('2d');
+                    ctx.drawImage(p.canvas, 0, 0, displayCanvas.width, displayCanvas.height);
+
+                    const label = document.createElement('p');
+                    label.textContent = `Pattern ${index + 1}: ${p.name}`;
+
+                    item.appendChild(displayCanvas);
+                    item.appendChild(label);
+                    container.appendChild(item);
+                });
+
+                downloadBtn.disabled = false;
+            });
+
+            downloadBtn.addEventListener('click', async () => {
+                // Create a zip-like download by generating individual files
+                for (let i = 0; i < generatedPatterns.length; i++) {
+                    const p = generatedPatterns[i];
+                    const link = document.createElement('a');
+                    link.download = `graycode_${p.name}.png`;
+                    link.href = p.canvas.toDataURL('image/png');
+
+                    // Stagger downloads
+                    setTimeout(() => link.click(), i * 100);
+                }
+            });
+        }
+
+        // Helper function to create Gray code pattern
+        function createGrayCodePattern(width, height, bitIndex, isVertical) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const coord = isVertical ? x : y;
+                    const maxCoord = isVertical ? width : height;
+
+                    // Convert to Gray code
+                    const grayCode = coord ^ (coord >> 1);
+
+                    // Get the bit at bitIndex
+                    const bit = (grayCode >> bitIndex) & 1;
+                    const color = bit * 255;
+
+                    const idx = (y * width + x) * 4;
+                    data[idx] = color;
+                    data[idx + 1] = color;
+                    data[idx + 2] = color;
+                    data[idx + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            return canvas;
+        }
+
+        // Section 8: Homography
+        function initHomographySection() {
+            const upload = document.getElementById('homography-upload');
+            const computeBtn = document.getElementById('compute-homography-btn');
+            const inputCanvas = document.getElementById('homography-input-canvas');
+            const outputCanvas = document.getElementById('homography-output-canvas');
+
+            upload.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.homographyImage = Utils.imageToMat(img);
+
+                    inputCanvas.width = img.width;
+                    inputCanvas.height = img.height;
+                    outputCanvas.width = img.width;
+                    outputCanvas.height = img.height;
+
+                    cv.imshow(inputCanvas, state.homographyImage);
+                    computeBtn.disabled = false;
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                }
+            });
+
+            computeBtn.addEventListener('click', () => {
+                if (!state.homographyImage) return;
+
+                const useAutoDetect = document.getElementById('use-detected-corners').checked;
+
+                let srcPoints, dstPoints;
+
+                if (useAutoDetect) {
+                    // Detect checkerboard corners
+                    const width = parseInt(document.getElementById('homography-board-width').value);
+                    const height = parseInt(document.getElementById('homography-board-height').value);
+                    const patternSize = new cv.Size(width, height);
+
+                    const gray = new cv.Mat();
+                    cv.cvtColor(state.homographyImage, gray, cv.COLOR_RGBA2GRAY);
+
+                    const corners = new cv.Mat();
+                    const found = cv.findChessboardCorners(
+                        gray, patternSize, corners,
+                        cv.CALIB_CB_ADAPTIVE_THRESH | cv.CALIB_CB_NORMALIZE_IMAGE
+                    );
+
+                    if (!found) {
+                        alert('Checkerboard not detected. Try adjusting board size.');
+                        gray.delete();
+                        corners.delete();
+                        return;
+                    }
+
+                    // Refine corners
+                    const criteria = new cv.TermCriteria(
+                        cv.TermCriteria_EPS + cv.TermCriteria_MAX_ITER, 30, 0.001
+                    );
+                    cv.cornerSubPix(gray, corners, new cv.Size(11, 11), new cv.Size(-1, -1), criteria);
+
+                    // Use the 4 corner points of the checkerboard
+                    const tl = { x: corners.floatAt(0, 0), y: corners.floatAt(0, 1) };
+                    const tr = { x: corners.floatAt(width - 1, 0), y: corners.floatAt(width - 1, 1) };
+                    const bl = { x: corners.floatAt((height - 1) * width, 0), y: corners.floatAt((height - 1) * width, 1) };
+                    const br = { x: corners.floatAt(height * width - 1, 0), y: corners.floatAt(height * width - 1, 1) };
+
+                    srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                        tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y
+                    ]);
+
+                    // Destination: rectified rectangle
+                    const margin = 50;
+                    const rectWidth = state.homographyImage.cols - 2 * margin;
+                    const rectHeight = state.homographyImage.rows - 2 * margin;
+
+                    dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                        margin, margin,
+                        margin + rectWidth, margin,
+                        margin + rectWidth, margin + rectHeight,
+                        margin, margin + rectHeight
+                    ]);
+
+                    // Draw detected points on input
+                    const result = state.homographyImage.clone();
+                    cv.drawChessboardCorners(result, patternSize, corners, found);
+
+                    // Draw rectangle showing source points
+                    cv.line(result, new cv.Point(tl.x, tl.y), new cv.Point(tr.x, tr.y), new cv.Scalar(0, 255, 255, 255), 2);
+                    cv.line(result, new cv.Point(tr.x, tr.y), new cv.Point(br.x, br.y), new cv.Scalar(0, 255, 255, 255), 2);
+                    cv.line(result, new cv.Point(br.x, br.y), new cv.Point(bl.x, bl.y), new cv.Scalar(0, 255, 255, 255), 2);
+                    cv.line(result, new cv.Point(bl.x, bl.y), new cv.Point(tl.x, tl.y), new cv.Scalar(0, 255, 255, 255), 2);
+
+                    cv.imshow(inputCanvas, result);
+                    result.delete();
+                    gray.delete();
+                    corners.delete();
+
+                } else {
+                    // Manual mode - use image corners as example
+                    const w = state.homographyImage.cols;
+                    const h = state.homographyImage.rows;
+
+                    srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                        w * 0.1, h * 0.1,
+                        w * 0.9, h * 0.15,
+                        w * 0.85, h * 0.9,
+                        w * 0.15, h * 0.85
+                    ]);
+
+                    dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                        0, 0, w, 0, w, h, 0, h
+                    ]);
+                }
+
+                // Compute homography
+                const H = cv.findHomography(srcPoints, dstPoints);
+
+                // Warp perspective
+                const warped = new cv.Mat();
+                cv.warpPerspective(
+                    state.homographyImage, warped, H,
+                    new cv.Size(state.homographyImage.cols, state.homographyImage.rows)
+                );
+
+                cv.imshow(outputCanvas, warped);
+
+                // Display homography matrix
+                let hStr = '';
+                for (let i = 0; i < 3; i++) {
+                    hStr += '[ ';
+                    for (let j = 0; j < 3; j++) {
+                        hStr += H.doubleAt(i, j).toFixed(6).padStart(14);
+                        if (j < 2) hStr += ', ';
+                    }
+                    hStr += ' ]\n';
+                }
+                document.getElementById('homography-matrix-display').textContent = hStr;
+
+                // Cleanup
+                srcPoints.delete();
+                dstPoints.delete();
+                H.delete();
+                warped.delete();
+            });
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.checkerboardMat) state.checkerboardMat.delete();
+            if (state.undistortImage) state.undistortImage.delete();
+            if (state.circlesImage) state.circlesImage.delete();
+            if (state.pnpImage) state.pnpImage.delete();
+            if (state.homographyImage) state.homographyImage.delete();
+            if (state.cameraMatrix) state.cameraMatrix.delete();
+            if (state.distCoeffs) state.distCoeffs.delete();
+
+            state.calibrationImages.forEach(img => img.mat.delete());
+            state.calibrationCorners.forEach(c => c.delete());
+        });
+    </script>
+</body>
+</html>

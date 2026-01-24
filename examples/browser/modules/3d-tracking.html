@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tracking & Extended Detection - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for this demo */
+        .concept-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-md) 0;
+        }
+
+        .concept-diagram h4 {
+            margin-bottom: var(--spacing-md);
+            color: var(--accent-secondary);
+        }
+
+        .pipeline-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            align-items: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        .pipeline-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: 0.85rem;
+        }
+
+        .pipeline-arrow {
+            color: var(--accent-primary);
+            font-size: 1.2rem;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: var(--spacing-md) 0;
+        }
+
+        .feature-list li {
+            padding: var(--spacing-sm) 0;
+            padding-left: var(--spacing-lg);
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--spacing-md) 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: var(--spacing-sm) var(--spacing-md);
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        .comparison-table th {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .comparison-table td {
+            color: var(--text-secondary);
+        }
+
+        .code-example {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin: var(--spacing-md) 0;
+            color: var(--text-secondary);
+        }
+
+        .module-unavailable {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .module-unavailable h5 {
+            color: var(--warning);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .section-category {
+            color: var(--accent-secondary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tracking-visualization {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .tracking-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            text-align: center;
+        }
+
+        .tracking-box .icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .requirement-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .requirement-box h5 {
+            color: var(--info);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .detection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .detection-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .detection-item.detected {
+            border-color: var(--success);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .shape-preview {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shape-preview svg {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">3D Tracking & Extended Detection</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>3D Tracking & Extended Detection</h1>
+            <p>Advanced 3D object tracking and extended object detection methods using rapid, surface_matching, xobjdetect, and dpm modules.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Module Status -->
+        <div id="module-status" class="alert alert-info mb-lg">
+            Checking module availability...
+        </div>
+
+        <!-- 3D TRACKING SECTION -->
+        <h2 class="section-category">3D Tracking</h2>
+
+        <!-- Section 1: RAPID 3D Tracking -->
+        <section class="demo-section" id="rapid-section">
+            <h3>1. RAPID 3D Tracking (rapid module)</h3>
+
+            <div id="rapid-status"></div>
+
+            <div class="concept-diagram">
+                <h4>RAPID Algorithm Concept</h4>
+                <p>RAPID (Real-time Algorithm for Pose and Identification) is a model-based 3D tracking algorithm that uses edge information to track objects in real-time.</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">3D CAD Model</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Edge Projection</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Image Edge Detection</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Edge Matching</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Pose Estimation</span>
+                </div>
+
+                <h4 class="mt-md">How It Works</h4>
+                <ul class="feature-list">
+                    <li>Projects 3D model edges onto the image plane</li>
+                    <li>Searches for corresponding edges in the actual image</li>
+                    <li>Minimizes distance between projected and detected edges</li>
+                    <li>Iteratively refines pose estimate</li>
+                    <li>Works with known 3D models (CAD data required)</li>
+                </ul>
+
+                <div class="requirement-box">
+                    <h5>Requirements</h5>
+                    <p>RAPID tracking requires:</p>
+                    <ul>
+                        <li>3D model of the object (mesh or point cloud)</li>
+                        <li>Initial pose estimate</li>
+                        <li>Camera intrinsic parameters</li>
+                        <li>Good edge contrast on the object</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tracking-visualization">
+                <div class="tracking-box">
+                    <div class="icon">&#128230;</div>
+                    <h5>3D Model Input</h5>
+                    <p class="text-muted">CAD model or 3D scan</p>
+                </div>
+                <div class="tracking-box">
+                    <div class="icon">&#128247;</div>
+                    <h5>Camera Frame</h5>
+                    <p class="text-muted">Real-time video input</p>
+                </div>
+                <div class="tracking-box">
+                    <div class="icon">&#128200;</div>
+                    <h5>6DOF Pose</h5>
+                    <p class="text-muted">Position + Orientation</p>
+                </div>
+            </div>
+
+            <div class="code-example">
+<pre>// RAPID tracking workflow (conceptual)
+// Note: Requires 3D model and camera calibration
+
+// 1. Load 3D model vertices and edges
+const model3D = loadModel('object.obj');
+
+// 2. Initialize pose from previous frame or detection
+let pose = { rotation: [0,0,0], translation: [0,0,0] };
+
+// 3. For each frame:
+function trackFrame(frame) {
+    // Detect edges in frame
+    const edges = cv.Canny(frame, 50, 150);
+
+    // Project model edges using current pose
+    const projectedEdges = projectModel(model3D, pose, cameraMatrix);
+
+    // Find correspondences and update pose
+    pose = rapid.computePose(edges, projectedEdges, pose);
+
+    return pose;
+}</pre>
+            </div>
+        </section>
+
+        <!-- Section 2: Surface Matching -->
+        <section class="demo-section" id="surface-matching-section">
+            <h3>2. Surface Matching (surface_matching module)</h3>
+
+            <div id="surface-matching-status"></div>
+
+            <div class="concept-diagram">
+                <h4>Point Pair Feature (PPF) Matching</h4>
+                <p>Surface matching uses Point Pair Features for 3D object recognition and pose estimation. It's particularly effective for industrial applications like bin picking.</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">3D Point Cloud</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">PPF Computation</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Hash Table</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Voting</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Pose Clustering</span>
+                </div>
+
+                <h4 class="mt-md">Point Pair Features</h4>
+                <p>PPF describes the geometric relationship between two oriented points:</p>
+                <ul class="feature-list">
+                    <li>Distance between the two points</li>
+                    <li>Angle between first normal and connecting line</li>
+                    <li>Angle between second normal and connecting line</li>
+                    <li>Angle between the two normals</li>
+                </ul>
+
+                <div class="requirement-box">
+                    <h5>Use Cases</h5>
+                    <ul>
+                        <li><strong>Bin Picking:</strong> Recognize parts in cluttered bins</li>
+                        <li><strong>Assembly:</strong> Locate components for robotic assembly</li>
+                        <li><strong>Quality Control:</strong> Verify part orientation and position</li>
+                        <li><strong>3D Scanning:</strong> Align multiple scans</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="code-example">
+<pre>// Surface Matching with PPF (conceptual)
+// Requires: cv.ppf_match_3d module
+
+// Training Phase:
+// 1. Load model point cloud with normals
+const modelCloud = loadPointCloud('model.ply');
+
+// 2. Create PPF detector and train
+const detector = new cv.ppf_match_3d.PPF3DDetector(
+    0.025,  // relativeSamplingStep
+    0.05    // relativeDistanceStep
+);
+detector.trainModel(modelCloud);
+
+// Detection Phase:
+// 3. Get scene point cloud (from depth sensor)
+const sceneCloud = capturePointCloud();
+
+// 4. Match model in scene
+const results = detector.match(sceneCloud, 1/5);
+
+// 5. Process results (pose, confidence)
+for (const result of results) {
+    console.log('Pose:', result.pose);
+    console.log('Confidence:', result.numVotes);
+}</pre>
+            </div>
+        </section>
+
+        <!-- Section 3: Template-Based 3D Tracking -->
+        <section class="demo-section" id="template-tracking-section">
+            <h3>3. Template-Based 3D Tracking (Alternative)</h3>
+
+            <p>When advanced 3D modules are unavailable, we can approximate 3D tracking using 2D techniques with homography estimation.</p>
+
+            <div class="demo-controls">
+                <label class="file-input-label">
+                    <input type="file" id="template-image-input" accept="image/*">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Load Template Image
+                </label>
+                <button class="btn btn-primary" id="start-template-tracking">Start Tracking</button>
+                <button class="btn btn-secondary" id="stop-template-tracking">Stop</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="template-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label">Template Tracking (Homography)</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="template-metrics">
+                <div class="metric">
+                    <span class="metric-label">Matches</span>
+                    <span class="metric-value" id="template-matches">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Inliers</span>
+                    <span class="metric-value" id="template-inliers">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="template-fps">-</span>
+                </div>
+            </div>
+
+            <div class="concept-diagram mt-lg">
+                <h4>Homography-Based Pose Estimation</h4>
+                <p>For planar objects, we can decompose the homography matrix to estimate 3D pose:</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">Feature Detection</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Feature Matching</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Homography (RANSAC)</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Pose Decomposition</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">3D Box Overlay</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXTENDED DETECTION SECTION -->
+        <h2 class="section-category mt-lg">Extended Detection</h2>
+
+        <!-- Section 4: WaldBoost Detection -->
+        <section class="demo-section" id="waldboost-section">
+            <h3>4. WaldBoost Detection (xobjdetect module)</h3>
+
+            <div id="waldboost-status"></div>
+
+            <div class="concept-diagram">
+                <h4>WaldBoost Cascade Concept</h4>
+                <p>WaldBoost is an advanced boosting algorithm for object detection that uses Wald's Sequential Probability Ratio Test (SPRT) for early rejection.</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">Image Patch</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">LBP/HOG Features</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Weak Classifiers</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">SPRT Decision</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Accept/Reject</span>
+                </div>
+
+                <h4 class="mt-md">Key Features</h4>
+                <ul class="feature-list">
+                    <li>Faster than traditional AdaBoost cascades</li>
+                    <li>Optimal early rejection using statistical tests</li>
+                    <li>Better accuracy-speed trade-off</li>
+                    <li>Uses ICF (Integral Channel Features)</li>
+                </ul>
+
+                <h4 class="mt-md">WaldBoost vs Haar Cascades</h4>
+                <table class="comparison-table">
+                    <tr>
+                        <th>Feature</th>
+                        <th>WaldBoost</th>
+                        <th>Haar Cascade</th>
+                    </tr>
+                    <tr>
+                        <td>Rejection Strategy</td>
+                        <td>SPRT (optimal)</td>
+                        <td>Fixed thresholds</td>
+                    </tr>
+                    <tr>
+                        <td>Features</td>
+                        <td>ICF, LBP, HOG</td>
+                        <td>Haar-like</td>
+                    </tr>
+                    <tr>
+                        <td>Speed</td>
+                        <td>Generally faster</td>
+                        <td>Fast</td>
+                    </tr>
+                    <tr>
+                        <td>Training</td>
+                        <td>More complex</td>
+                        <td>Simpler</td>
+                    </tr>
+                </table>
+
+                <div class="requirement-box">
+                    <h5>Requirements</h5>
+                    <p>WaldBoost detection requires a pre-trained detector model. Training requires:</p>
+                    <ul>
+                        <li>Positive samples (object images)</li>
+                        <li>Negative samples (background images)</li>
+                        <li>WBDetector training API</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: DPM Detection -->
+        <section class="demo-section" id="dpm-section">
+            <h3>5. DPM Detection (dpm module)</h3>
+
+            <div id="dpm-status"></div>
+
+            <div class="concept-diagram">
+                <h4>Deformable Parts Model (DPM)</h4>
+                <p>DPM is a classic object detection method that models objects as a collection of parts with spatial relationships. It won the PASCAL VOC challenge before deep learning.</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">HOG Pyramid</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Root Filter</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Part Filters</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Deformation Cost</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Final Score</span>
+                </div>
+
+                <h4 class="mt-md">Model Components</h4>
+                <ul class="feature-list">
+                    <li><strong>Root Filter:</strong> Coarse representation of entire object</li>
+                    <li><strong>Part Filters:</strong> High-resolution filters for object parts</li>
+                    <li><strong>Deformation Model:</strong> Quadratic penalty for part displacement</li>
+                    <li><strong>Mixture Components:</strong> Handle different viewpoints/poses</li>
+                </ul>
+
+                <div class="tracking-visualization">
+                    <div class="tracking-box">
+                        <div class="icon">&#128640;</div>
+                        <h5>Root Filter</h5>
+                        <p class="text-muted">Global object shape</p>
+                    </div>
+                    <div class="tracking-box">
+                        <div class="icon">&#128268;</div>
+                        <h5>Part Filters</h5>
+                        <p class="text-muted">Local details</p>
+                    </div>
+                    <div class="tracking-box">
+                        <div class="icon">&#128279;</div>
+                        <h5>Deformation</h5>
+                        <p class="text-muted">Flexible connections</p>
+                    </div>
+                </div>
+
+                <div class="requirement-box">
+                    <h5>DPM Model Files</h5>
+                    <p>Pre-trained DPM models are available for common objects:</p>
+                    <ul>
+                        <li>Person (pedestrian detection)</li>
+                        <li>Car, bicycle, motorbike</li>
+                        <li>Cat, dog, horse</li>
+                        <li>Chair, sofa, table</li>
+                    </ul>
+                    <p class="mt-sm">Models typically come in .xml format from PASCAL VOC training.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Multi-Object Detection -->
+        <section class="demo-section" id="multi-detection-section">
+            <h3>6. Multi-Object Detection</h3>
+
+            <p>Combining multiple detectors to find different object types in a single image.</p>
+
+            <div class="demo-controls">
+                <label class="file-input-label">
+                    <input type="file" id="multi-detect-input" accept="image/*">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Load Image
+                </label>
+                <div class="form-group">
+                    <label for="detector-select">Detectors</label>
+                    <select id="detector-select" multiple style="min-height: 80px;">
+                        <option value="face" selected>Face (Haar)</option>
+                        <option value="eyes">Eyes (Haar)</option>
+                        <option value="body">Full Body (HOG)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="run-multi-detect">Detect All</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="multi-detect-input-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="multi-detect-output-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label">Multi-Object Detection</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="multi-detect-metrics">
+                <div class="metric">
+                    <span class="metric-label">Faces</span>
+                    <span class="metric-value" id="multi-faces">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Eyes</span>
+                    <span class="metric-value" id="multi-eyes">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Bodies</span>
+                    <span class="metric-value" id="multi-bodies">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Time</span>
+                    <span class="metric-value" id="multi-time">-</span>
+                </div>
+            </div>
+
+            <div class="concept-diagram mt-lg">
+                <h4>Non-Maximum Suppression (NMS)</h4>
+                <p>When multiple detectors produce overlapping detections, NMS removes redundant boxes:</p>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">All Detections</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Sort by Confidence</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Compute IoU</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Suppress Overlaps</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">Final Boxes</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Custom Detection Pipeline -->
+        <section class="demo-section" id="custom-pipeline-section">
+            <h3>7. Custom Object Detection Pipeline</h3>
+
+            <p>Educational walkthrough of building a custom object detector using classical computer vision techniques.</p>
+
+            <div class="concept-diagram">
+                <h4>Detection Pipeline Stages</h4>
+
+                <div class="pipeline-steps">
+                    <span class="pipeline-step">1. Image Input</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">2. Preprocessing</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">3. Feature Extraction</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">4. Sliding Window</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">5. Classification</span>
+                    <span class="pipeline-arrow">-></span>
+                    <span class="pipeline-step">6. NMS</span>
+                </div>
+
+                <h4 class="mt-lg">Stage 1: Preprocessing</h4>
+                <div class="code-example">
+<pre>// Convert to grayscale and normalize
+const gray = new cv.Mat();
+cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+// Optional: Histogram equalization for contrast
+cv.equalizeHist(gray, gray);
+
+// Resize to standard size for consistent features
+const standardSize = new cv.Size(64, 128);
+cv.resize(gray, gray, standardSize);</pre>
+                </div>
+
+                <h4 class="mt-md">Stage 2: HOG Feature Extraction</h4>
+                <p>Histogram of Oriented Gradients captures edge orientations and their distribution:</p>
+                <div class="code-example">
+<pre>// HOG descriptor configuration
+const hog = new cv.HOGDescriptor();
+hog.winSize = new cv.Size(64, 128);
+hog.blockSize = new cv.Size(16, 16);
+hog.blockStride = new cv.Size(8, 8);
+hog.cellSize = new cv.Size(8, 8);
+hog.nbins = 9;
+
+// Compute descriptors
+const descriptors = new cv.Mat();
+hog.compute(gray, descriptors);</pre>
+                </div>
+
+                <h4 class="mt-md">Stage 3: Sliding Window</h4>
+                <p>Scan the image at multiple scales and positions:</p>
+                <div class="code-example">
+<pre>// Sliding window parameters
+const windowSize = { width: 64, height: 128 };
+const stride = 8;
+const scales = [1.0, 0.8, 0.6, 0.4];
+
+function* slidingWindow(image, winSize, stride) {
+    for (let y = 0; y <= image.rows - winSize.height; y += stride) {
+        for (let x = 0; x <= image.cols - winSize.width; x += stride) {
+            const roi = image.roi(new cv.Rect(x, y, winSize.width, winSize.height));
+            yield { x, y, window: roi };
+        }
+    }
+}</pre>
+                </div>
+
+                <h4 class="mt-md">Stage 4: Classification</h4>
+                <p>Apply trained classifier (SVM, Random Forest, etc.) to each window:</p>
+                <div class="code-example">
+<pre>// For each window, extract features and classify
+for (const { x, y, window } of slidingWindow(pyramid, winSize, stride)) {
+    const features = extractHOG(window);
+    const score = classifier.predict(features);
+
+    if (score > threshold) {
+        detections.push({
+            x: x * scale,
+            y: y * scale,
+            width: winSize.width * scale,
+            height: winSize.height * scale,
+            confidence: score
+        });
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Training a Custom Detector:</strong> Requires collecting positive/negative samples,
+                extracting features, and training a classifier. This process typically requires thousands
+                of samples and careful validation.
+            </div>
+        </section>
+
+        <!-- Section 8: Contour-Based Detection -->
+        <section class="demo-section" id="contour-detection-section">
+            <h3>8. Contour-Based Object Detection</h3>
+
+            <p>Simple shape detection as an alternative when advanced modules are unavailable.</p>
+
+            <div class="demo-controls">
+                <label class="file-input-label">
+                    <input type="file" id="contour-input" accept="image/*">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Load Image
+                </label>
+                <div class="form-group">
+                    <label>Min Area</label>
+                    <input type="range" id="min-area-slider" min="100" max="10000" value="500" step="100">
+                    <span id="min-area-value">500</span>
+                </div>
+                <div class="form-group">
+                    <label>Shape Filter</label>
+                    <select id="shape-filter">
+                        <option value="all">All Shapes</option>
+                        <option value="rectangles">Rectangles Only</option>
+                        <option value="circles">Circles Only</option>
+                        <option value="triangles">Triangles Only</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="detect-contours">Detect Shapes</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="contour-input-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="contour-output-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label">Detected Shapes</span>
+                </div>
+            </div>
+
+            <div class="detection-grid" id="shape-results">
+                <div class="detection-item" id="rect-result">
+                    <div class="shape-preview">
+                        <svg viewBox="0 0 60 60"><rect x="10" y="15" width="40" height="30" stroke="#6366f1" fill="none" stroke-width="2"/></svg>
+                    </div>
+                    <h5>Rectangles</h5>
+                    <span id="rect-count">0</span> detected
+                </div>
+                <div class="detection-item" id="circle-result">
+                    <div class="shape-preview">
+                        <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="20" stroke="#10b981" fill="none" stroke-width="2"/></svg>
+                    </div>
+                    <h5>Circles</h5>
+                    <span id="circle-count">0</span> detected
+                </div>
+                <div class="detection-item" id="triangle-result">
+                    <div class="shape-preview">
+                        <svg viewBox="0 0 60 60"><polygon points="30,10 10,50 50,50" stroke="#f59e0b" fill="none" stroke-width="2"/></svg>
+                    </div>
+                    <h5>Triangles</h5>
+                    <span id="triangle-count">0</span> detected
+                </div>
+                <div class="detection-item" id="other-result">
+                    <div class="shape-preview">
+                        <svg viewBox="0 0 60 60"><polygon points="30,5 45,20 55,40 30,55 5,40 15,20" stroke="#ef4444" fill="none" stroke-width="2"/></svg>
+                    </div>
+                    <h5>Other Polygons</h5>
+                    <span id="other-count">0</span> detected
+                </div>
+            </div>
+
+            <div class="concept-diagram mt-lg">
+                <h4>Shape Classification Criteria</h4>
+                <table class="comparison-table">
+                    <tr>
+                        <th>Shape</th>
+                        <th>Vertices</th>
+                        <th>Additional Criteria</th>
+                    </tr>
+                    <tr>
+                        <td>Triangle</td>
+                        <td>3</td>
+                        <td>All angles < 180 deg</td>
+                    </tr>
+                    <tr>
+                        <td>Rectangle</td>
+                        <td>4</td>
+                        <td>All angles ~90 deg, aspect ratio check</td>
+                    </tr>
+                    <tr>
+                        <td>Square</td>
+                        <td>4</td>
+                        <td>Rectangle + aspect ratio ~1</td>
+                    </tr>
+                    <tr>
+                        <td>Circle</td>
+                        <td>Many</td>
+                        <td>Circularity > 0.8</td>
+                    </tr>
+                    <tr>
+                        <td>Polygon</td>
+                        <td>5+</td>
+                        <td>Convex or concave</td>
+                    </tr>
+                </table>
+
+                <h4 class="mt-md">Circularity Formula</h4>
+                <div class="code-example">
+<pre>// Circularity = 4 * pi * Area / Perimeter^2
+// Perfect circle = 1.0, other shapes < 1.0
+
+function calculateCircularity(contour) {
+    const area = cv.contourArea(contour);
+    const perimeter = cv.arcLength(contour, true);
+    return (4 * Math.PI * area) / (perimeter * perimeter);
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-lg mb-lg text-center">
+            <p class="text-muted">
+                OpenCV.js 3D Tracking & Extended Detection Demo<br>
+                <small>Some modules require external model files or may not be available in all builds.</small>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // State management
+        const state = {
+            templateImage: null,
+            templateMat: null,
+            templateKeypoints: null,
+            templateDescriptors: null,
+            trackingActive: false,
+            videoStream: null,
+            animationId: null,
+            multiDetectMat: null,
+            contourMat: null,
+            faceCascade: null,
+            eyeCascade: null
+        };
+
+        // Module availability flags
+        const modules = {
+            rapid: false,
+            ppf_match_3d: false,
+            xobjdetect: false,
+            dpm: false,
+            orb: false,
+            cascadeClassifier: false,
+            hogDescriptor: false
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (percent) => {
+                        document.getElementById('loading-progress').style.width = `${percent}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                checkModuleAvailability();
+                initializeDemo();
+
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loading-overlay').remove();
+                    }, 300);
+                }, 500);
+            } catch (error) {
+                console.error('Failed to load OpenCV:', error);
+                document.getElementById('loading-status').textContent = 'Failed to load OpenCV.js';
+            }
+        });
+
+        function checkModuleAvailability() {
+            // Check each module
+            modules.rapid = typeof cv.rapid !== 'undefined';
+            modules.ppf_match_3d = typeof cv.ppf_match_3d !== 'undefined';
+            modules.xobjdetect = typeof cv.xobjdetect !== 'undefined' || typeof cv.WBDetector !== 'undefined';
+            modules.dpm = typeof cv.dpm !== 'undefined' || typeof cv.DPMDetector !== 'undefined';
+            modules.orb = typeof cv.ORB !== 'undefined';
+            modules.cascadeClassifier = typeof cv.CascadeClassifier !== 'undefined';
+            modules.hogDescriptor = typeof cv.HOGDescriptor !== 'undefined';
+
+            // Update module status display
+            updateModuleStatus();
+        }
+
+        function updateModuleStatus() {
+            const statusEl = document.getElementById('module-status');
+            const available = [];
+            const unavailable = [];
+
+            if (modules.rapid) available.push('RAPID');
+            else unavailable.push('RAPID');
+
+            if (modules.ppf_match_3d) available.push('Surface Matching');
+            else unavailable.push('Surface Matching');
+
+            if (modules.xobjdetect) available.push('WaldBoost');
+            else unavailable.push('WaldBoost');
+
+            if (modules.dpm) available.push('DPM');
+            else unavailable.push('DPM');
+
+            if (modules.orb) available.push('ORB');
+            else unavailable.push('ORB');
+
+            if (modules.cascadeClassifier) available.push('Cascade Classifier');
+            else unavailable.push('Cascade Classifier');
+
+            if (modules.hogDescriptor) available.push('HOG Descriptor');
+            else unavailable.push('HOG Descriptor');
+
+            let html = '<strong>Module Availability:</strong><br>';
+            if (available.length > 0) {
+                html += `<span style="color: var(--success);">Available:</span> ${available.join(', ')}<br>`;
+            }
+            if (unavailable.length > 0) {
+                html += `<span style="color: var(--warning);">Unavailable:</span> ${unavailable.join(', ')}`;
+            }
+
+            statusEl.innerHTML = html;
+
+            // Update section statuses
+            updateSectionStatus('rapid-status', modules.rapid, 'cv.rapid');
+            updateSectionStatus('surface-matching-status', modules.ppf_match_3d, 'cv.ppf_match_3d');
+            updateSectionStatus('waldboost-status', modules.xobjdetect, 'cv.xobjdetect');
+            updateSectionStatus('dpm-status', modules.dpm, 'cv.dpm');
+        }
+
+        function updateSectionStatus(elementId, available, moduleName) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            if (available) {
+                el.innerHTML = `<div class="alert alert-success">Module ${moduleName} is available. Interactive demo ready.</div>`;
+            } else {
+                el.innerHTML = `
+                    <div class="module-unavailable">
+                        <h5>Module Not Available</h5>
+                        <p>The ${moduleName} module is not included in this OpenCV.js build.
+                        The educational content below explains the concepts and typical usage.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function initializeDemo() {
+            // Initialize template tracking
+            initTemplateTracking();
+
+            // Initialize multi-object detection
+            initMultiDetection();
+
+            // Initialize contour detection
+            initContourDetection();
+
+            // Setup slider value displays
+            const minAreaSlider = document.getElementById('min-area-slider');
+            minAreaSlider.addEventListener('input', () => {
+                document.getElementById('min-area-value').textContent = minAreaSlider.value;
+            });
+        }
+
+        // ========== Template-Based 3D Tracking ==========
+        function initTemplateTracking() {
+            const templateInput = document.getElementById('template-image-input');
+            const startBtn = document.getElementById('start-template-tracking');
+            const stopBtn = document.getElementById('stop-template-tracking');
+            const canvas = document.getElementById('template-canvas');
+
+            templateInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    state.templateMat = Utils.imageToMat(img);
+
+                    // Extract features from template
+                    if (modules.orb) {
+                        const gray = new cv.Mat();
+                        cv.cvtColor(state.templateMat, gray, cv.COLOR_RGBA2GRAY);
+
+                        const orb = new cv.ORB(500);
+                        state.templateKeypoints = new cv.KeyPointVector();
+                        state.templateDescriptors = new cv.Mat();
+                        orb.detectAndCompute(gray, new cv.Mat(), state.templateKeypoints, state.templateDescriptors);
+
+                        gray.delete();
+                        orb.delete();
+
+                        UIComponents.showToast({
+                            message: `Template loaded: ${state.templateKeypoints.size()} keypoints`,
+                            type: 'success'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load template:', error);
+                    UIComponents.showToast({
+                        message: 'Failed to load template image',
+                        type: 'error'
+                    });
+                }
+            });
+
+            startBtn.addEventListener('click', async () => {
+                if (!state.templateMat || !modules.orb) {
+                    UIComponents.showToast({
+                        message: 'Please load a template image first',
+                        type: 'warning'
+                    });
+                    return;
+                }
+
+                try {
+                    state.videoStream = await Utils.getWebcam();
+                    const video = document.createElement('video');
+                    video.srcObject = state.videoStream;
+                    video.play();
+
+                    video.onloadedmetadata = () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        state.trackingActive = true;
+                        trackTemplate(video, canvas);
+                    };
+                } catch (error) {
+                    console.error('Failed to start webcam:', error);
+                    UIComponents.showToast({
+                        message: 'Failed to access webcam',
+                        type: 'error'
+                    });
+                }
+            });
+
+            stopBtn.addEventListener('click', () => {
+                state.trackingActive = false;
+                if (state.animationId) {
+                    cancelAnimationFrame(state.animationId);
+                }
+                if (state.videoStream) {
+                    Utils.stopWebcam(state.videoStream);
+                    state.videoStream = null;
+                }
+            });
+        }
+
+        function trackTemplate(video, canvas) {
+            if (!state.trackingActive) return;
+
+            const startTime = performance.now();
+            const frame = Utils.captureFrame(video);
+            const gray = new cv.Mat();
+            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+            // Detect features in current frame
+            const orb = new cv.ORB(500);
+            const keypoints = new cv.KeyPointVector();
+            const descriptors = new cv.Mat();
+            orb.detectAndCompute(gray, new cv.Mat(), keypoints, descriptors);
+
+            let matches = 0;
+            let inliers = 0;
+
+            if (descriptors.rows > 0 && state.templateDescriptors.rows > 0) {
+                // Match features
+                const bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+                const matchesVec = new cv.DMatchVector();
+                bf.match(state.templateDescriptors, descriptors, matchesVec);
+
+                matches = matchesVec.size();
+
+                // Filter good matches
+                const goodMatches = [];
+                for (let i = 0; i < matchesVec.size(); i++) {
+                    const match = matchesVec.get(i);
+                    if (match.distance < 50) {
+                        goodMatches.push(match);
+                    }
+                }
+
+                // If enough matches, compute homography
+                if (goodMatches.length >= 4) {
+                    const srcPoints = [];
+                    const dstPoints = [];
+
+                    for (const match of goodMatches) {
+                        const pt1 = state.templateKeypoints.get(match.queryIdx).pt;
+                        const pt2 = keypoints.get(match.trainIdx).pt;
+                        srcPoints.push(pt1.x, pt1.y);
+                        dstPoints.push(pt2.x, pt2.y);
+                    }
+
+                    const srcMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, srcPoints);
+                    const dstMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, dstPoints);
+                    const mask = new cv.Mat();
+
+                    const H = cv.findHomography(srcMat, dstMat, cv.RANSAC, 5.0, mask);
+
+                    // Count inliers
+                    for (let i = 0; i < mask.rows; i++) {
+                        if (mask.data[i] > 0) inliers++;
+                    }
+
+                    // Draw 3D box if good homography found
+                    if (inliers > 10 && H.rows === 3) {
+                        draw3DBox(frame, H, state.templateMat.cols, state.templateMat.rows);
+                    }
+
+                    srcMat.delete();
+                    dstMat.delete();
+                    mask.delete();
+                    H.delete();
+                }
+
+                bf.delete();
+                matchesVec.delete();
+            }
+
+            // Display result
+            cv.imshow(canvas, frame);
+
+            // Update metrics
+            const fps = Math.round(1000 / (performance.now() - startTime));
+            document.getElementById('template-matches').textContent = matches;
+            document.getElementById('template-inliers').textContent = inliers;
+            document.getElementById('template-fps').textContent = fps;
+
+            // Cleanup
+            frame.delete();
+            gray.delete();
+            keypoints.delete();
+            descriptors.delete();
+            orb.delete();
+
+            state.animationId = requestAnimationFrame(() => trackTemplate(video, canvas));
+        }
+
+        function draw3DBox(frame, H, width, height) {
+            // Define template corners
+            const corners = [
+                [0, 0],
+                [width, 0],
+                [width, height],
+                [0, height]
+            ];
+
+            // Transform corners using homography
+            const transformedCorners = corners.map(([x, y]) => {
+                const w = H.doubleAt(2, 0) * x + H.doubleAt(2, 1) * y + H.doubleAt(2, 2);
+                const px = (H.doubleAt(0, 0) * x + H.doubleAt(0, 1) * y + H.doubleAt(0, 2)) / w;
+                const py = (H.doubleAt(1, 0) * x + H.doubleAt(1, 1) * y + H.doubleAt(1, 2)) / w;
+                return { x: Math.round(px), y: Math.round(py) };
+            });
+
+            // Draw outline of detected object
+            const color = new cv.Scalar(0, 255, 0, 255);
+            for (let i = 0; i < 4; i++) {
+                const p1 = transformedCorners[i];
+                const p2 = transformedCorners[(i + 1) % 4];
+                cv.line(frame, new cv.Point(p1.x, p1.y), new cv.Point(p2.x, p2.y), color, 3);
+            }
+
+            // Simulate 3D box by drawing top face (offset upward)
+            const zOffset = 50;
+            const topColor = new cv.Scalar(255, 0, 255, 255);
+            const topCorners = transformedCorners.map(p => ({ x: p.x, y: p.y - zOffset }));
+
+            // Draw top face
+            for (let i = 0; i < 4; i++) {
+                const p1 = topCorners[i];
+                const p2 = topCorners[(i + 1) % 4];
+                cv.line(frame, new cv.Point(p1.x, p1.y), new cv.Point(p2.x, p2.y), topColor, 2);
+            }
+
+            // Draw vertical edges
+            for (let i = 0; i < 4; i++) {
+                cv.line(frame,
+                    new cv.Point(transformedCorners[i].x, transformedCorners[i].y),
+                    new cv.Point(topCorners[i].x, topCorners[i].y),
+                    new cv.Scalar(0, 255, 255, 255), 2);
+            }
+        }
+
+        // ========== Multi-Object Detection ==========
+        function initMultiDetection() {
+            const input = document.getElementById('multi-detect-input');
+            const detectBtn = document.getElementById('run-multi-detect');
+            const inputCanvas = document.getElementById('multi-detect-input-canvas');
+            const outputCanvas = document.getElementById('multi-detect-output-canvas');
+
+            // Load cascade classifiers if available
+            if (modules.cascadeClassifier) {
+                loadCascadeClassifiers();
+            }
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    if (state.multiDetectMat) state.multiDetectMat.delete();
+                    state.multiDetectMat = Utils.imageToMat(img);
+
+                    inputCanvas.width = img.width;
+                    inputCanvas.height = img.height;
+                    outputCanvas.width = img.width;
+                    outputCanvas.height = img.height;
+
+                    cv.imshow(inputCanvas, state.multiDetectMat);
+                } catch (error) {
+                    console.error('Failed to load image:', error);
+                }
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!state.multiDetectMat) {
+                    UIComponents.showToast({ message: 'Please load an image first', type: 'warning' });
+                    return;
+                }
+                runMultiDetection(outputCanvas);
+            });
+        }
+
+        async function loadCascadeClassifiers() {
+            // Note: In a real implementation, you would load actual cascade XML files
+            // For demo purposes, we'll use the built-in HOG people detector if available
+            try {
+                state.faceCascade = new cv.CascadeClassifier();
+                state.eyeCascade = new cv.CascadeClassifier();
+                // Cascade files would be loaded here:
+                // state.faceCascade.load('haarcascade_frontalface_default.xml');
+            } catch (error) {
+                console.warn('Could not initialize cascade classifiers:', error);
+            }
+        }
+
+        function runMultiDetection(canvas) {
+            const startTime = performance.now();
+            const output = state.multiDetectMat.clone();
+            const gray = new cv.Mat();
+            cv.cvtColor(state.multiDetectMat, gray, cv.COLOR_RGBA2GRAY);
+
+            let faceCount = 0;
+            let eyeCount = 0;
+            let bodyCount = 0;
+
+            const selectedDetectors = Array.from(document.getElementById('detector-select').selectedOptions)
+                .map(o => o.value);
+
+            // Face detection (simplified - would use actual cascade in production)
+            if (selectedDetectors.includes('face') && modules.cascadeClassifier) {
+                // Placeholder for face detection
+                // In production, you would load and use actual cascade files
+                faceCount = detectFacesSimulated(output, gray);
+            }
+
+            // Eye detection
+            if (selectedDetectors.includes('eyes') && modules.cascadeClassifier) {
+                eyeCount = 0; // Would detect within face regions
+            }
+
+            // Body detection using HOG
+            if (selectedDetectors.includes('body') && modules.hogDescriptor) {
+                bodyCount = detectBodiesHOG(output, gray);
+            }
+
+            cv.imshow(canvas, output);
+
+            const elapsed = (performance.now() - startTime).toFixed(1);
+
+            document.getElementById('multi-faces').textContent = faceCount;
+            document.getElementById('multi-eyes').textContent = eyeCount;
+            document.getElementById('multi-bodies').textContent = bodyCount;
+            document.getElementById('multi-time').textContent = `${elapsed}ms`;
+
+            gray.delete();
+            output.delete();
+        }
+
+        function detectFacesSimulated(output, gray) {
+            // Simulated face detection for demo
+            // In production, use actual CascadeClassifier with loaded XML
+            // This is a placeholder that shows the concept
+
+            // Draw a sample detection box for demonstration
+            const color = new cv.Scalar(0, 255, 0, 255);
+            // cv.rectangle(output, new cv.Point(100, 100), new cv.Point(200, 200), color, 2);
+
+            return 0; // Would return actual detection count
+        }
+
+        function detectBodiesHOG(output, gray) {
+            if (!modules.hogDescriptor) return 0;
+
+            try {
+                const hog = new cv.HOGDescriptor();
+                hog.setSVMDetector(cv.HOGDescriptor.getDefaultPeopleDetector());
+
+                const found = new cv.RectVector();
+                const weights = new cv.Mat();
+
+                hog.detectMultiScale(gray, found, weights, 0, new cv.Size(8, 8),
+                    new cv.Size(32, 32), 1.05, 2);
+
+                const color = new cv.Scalar(255, 0, 0, 255);
+                for (let i = 0; i < found.size(); i++) {
+                    const rect = found.get(i);
+                    cv.rectangle(output,
+                        new cv.Point(rect.x, rect.y),
+                        new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                        color, 2);
+                }
+
+                const count = found.size();
+                found.delete();
+                weights.delete();
+                hog.delete();
+
+                return count;
+            } catch (error) {
+                console.error('HOG detection failed:', error);
+                return 0;
+            }
+        }
+
+        // ========== Contour-Based Detection ==========
+        function initContourDetection() {
+            const input = document.getElementById('contour-input');
+            const detectBtn = document.getElementById('detect-contours');
+            const inputCanvas = document.getElementById('contour-input-canvas');
+            const outputCanvas = document.getElementById('contour-output-canvas');
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    if (state.contourMat) state.contourMat.delete();
+                    state.contourMat = Utils.imageToMat(img);
+
+                    inputCanvas.width = img.width;
+                    inputCanvas.height = img.height;
+                    outputCanvas.width = img.width;
+                    outputCanvas.height = img.height;
+
+                    cv.imshow(inputCanvas, state.contourMat);
+                } catch (error) {
+                    console.error('Failed to load image:', error);
+                }
+            });
+
+            detectBtn.addEventListener('click', () => {
+                if (!state.contourMat) {
+                    UIComponents.showToast({ message: 'Please load an image first', type: 'warning' });
+                    return;
+                }
+                runContourDetection(outputCanvas);
+            });
+        }
+
+        function runContourDetection(canvas) {
+            const minArea = parseInt(document.getElementById('min-area-slider').value);
+            const shapeFilter = document.getElementById('shape-filter').value;
+
+            const output = state.contourMat.clone();
+            const gray = new cv.Mat();
+            const binary = new cv.Mat();
+            const contours = new cv.MatVector();
+            const hierarchy = new cv.Mat();
+
+            // Preprocess
+            cv.cvtColor(state.contourMat, gray, cv.COLOR_RGBA2GRAY);
+            cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+            cv.Canny(gray, binary, 50, 150);
+
+            // Dilate to connect edges
+            const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+            cv.dilate(binary, binary, kernel);
+
+            // Find contours
+            cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            let rectCount = 0;
+            let circleCount = 0;
+            let triangleCount = 0;
+            let otherCount = 0;
+
+            for (let i = 0; i < contours.size(); i++) {
+                const contour = contours.get(i);
+                const area = cv.contourArea(contour);
+
+                if (area < minArea) continue;
+
+                // Approximate polygon
+                const perimeter = cv.arcLength(contour, true);
+                const approx = new cv.Mat();
+                cv.approxPolyDP(contour, approx, 0.04 * perimeter, true);
+
+                const vertices = approx.rows;
+                const circularity = (4 * Math.PI * area) / (perimeter * perimeter);
+
+                let shapeType = 'other';
+                let color;
+
+                if (vertices === 3) {
+                    shapeType = 'triangle';
+                    triangleCount++;
+                    color = new cv.Scalar(245, 158, 11, 255); // orange
+                } else if (vertices === 4) {
+                    // Check if it's a rectangle (angles close to 90 degrees)
+                    shapeType = 'rectangle';
+                    rectCount++;
+                    color = new cv.Scalar(99, 102, 241, 255); // indigo
+                } else if (vertices > 6 && circularity > 0.7) {
+                    shapeType = 'circle';
+                    circleCount++;
+                    color = new cv.Scalar(16, 185, 129, 255); // green
+                } else {
+                    shapeType = 'other';
+                    otherCount++;
+                    color = new cv.Scalar(239, 68, 68, 255); // red
+                }
+
+                // Apply filter
+                const shouldDraw = shapeFilter === 'all' ||
+                    (shapeFilter === 'rectangles' && shapeType === 'rectangle') ||
+                    (shapeFilter === 'circles' && shapeType === 'circle') ||
+                    (shapeFilter === 'triangles' && shapeType === 'triangle');
+
+                if (shouldDraw) {
+                    cv.drawContours(output, contours, i, color, 2);
+
+                    // Draw center point
+                    const M = cv.moments(contour);
+                    if (M.m00 !== 0) {
+                        const cx = Math.round(M.m10 / M.m00);
+                        const cy = Math.round(M.m01 / M.m00);
+                        cv.circle(output, new cv.Point(cx, cy), 5, color, -1);
+
+                        // Label shape
+                        cv.putText(output, shapeType,
+                            new cv.Point(cx - 30, cy - 10),
+                            cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+                    }
+                }
+
+                approx.delete();
+            }
+
+            cv.imshow(canvas, output);
+
+            // Update counts
+            document.getElementById('rect-count').textContent = rectCount;
+            document.getElementById('circle-count').textContent = circleCount;
+            document.getElementById('triangle-count').textContent = triangleCount;
+            document.getElementById('other-count').textContent = otherCount;
+
+            // Highlight detected items
+            document.getElementById('rect-result').classList.toggle('detected', rectCount > 0);
+            document.getElementById('circle-result').classList.toggle('detected', circleCount > 0);
+            document.getElementById('triangle-result').classList.toggle('detected', triangleCount > 0);
+            document.getElementById('other-result').classList.toggle('detected', otherCount > 0);
+
+            // Cleanup
+            gray.delete();
+            binary.delete();
+            contours.delete();
+            hierarchy.delete();
+            kernel.delete();
+            output.delete();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.videoStream) {
+                Utils.stopWebcam(state.videoStream);
+            }
+            if (state.animationId) {
+                cancelAnimationFrame(state.animationId);
+            }
+
+            // Delete OpenCV objects
+            const matsToDelete = [
+                state.templateMat,
+                state.templateDescriptors,
+                state.multiDetectMat,
+                state.contourMat
+            ];
+
+            matsToDelete.forEach(mat => {
+                if (mat && !mat.isDeleted()) {
+                    try { mat.delete(); } catch (e) { }
+                }
+            });
+
+            if (state.templateKeypoints) {
+                try { state.templateKeypoints.delete(); } catch (e) { }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Segmentation - OpenCV.js Demo</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for segmentation demos */
+        .drawing-canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .drawing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .drawing-tools {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .tool-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .tool-btn:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .tool-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .color-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: var(--spacing-xs);
+            border: 2px solid var(--border-color);
+        }
+
+        .filter-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .filter-result {
+            text-align: center;
+        }
+
+        .filter-result h5 {
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-secondary);
+        }
+
+        .unavailable-notice {
+            padding: var(--spacing-md);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            color: var(--warning);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .parameter-description {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Image Segmentation</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Image Segmentation</h1>
+            <p>Explore segmentation features including superpixels, edge-preserving filters, guided filtering, and interactive segmentation techniques from ximgproc and core modules.</p>
+        </header>
+
+        <!-- Section 1: Superpixels -->
+        <section class="demo-section" id="superpixels-section">
+            <h3>1. Superpixels</h3>
+            <p class="mb-md">Oversegment images into perceptually meaningful regions using SLIC, SEEDS, or LSC algorithms.</p>
+
+            <div id="superpixels-unavailable" class="unavailable-notice hidden">
+                Superpixel algorithms require ximgproc module which may not be available in this build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="superpixel-upload">Upload Image</label>
+                    <input type="file" id="superpixel-upload" accept="image/*">
+                    <label for="superpixel-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="superpixel-algorithm">Algorithm</label>
+                    <select id="superpixel-algorithm">
+                        <option value="SLIC">SLIC</option>
+                        <option value="SLICO">SLICO (Zero Parameter)</option>
+                        <option value="MSLIC">MSLIC (Manifold)</option>
+                        <option value="LSC">LSC</option>
+                        <option value="SEEDS">SEEDS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="superpixel-region-size">Region Size</label>
+                    <div class="range-group">
+                        <input type="range" id="superpixel-region-size" min="10" max="50" value="25" step="5">
+                        <span class="range-value" id="superpixel-region-size-value">25</span>
+                    </div>
+                    <p class="parameter-description">Average superpixel size in pixels</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="superpixel-ruler">Ruler (Smoothness)</label>
+                    <div class="range-group">
+                        <input type="range" id="superpixel-ruler" min="1" max="50" value="10" step="1">
+                        <span class="range-value" id="superpixel-ruler-value">10</span>
+                    </div>
+                    <p class="parameter-description">Compactness factor (higher = more regular shapes)</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="superpixel-iterations">Iterations</label>
+                    <div class="range-group">
+                        <input type="range" id="superpixel-iterations" min="1" max="20" value="10" step="1">
+                        <span class="range-value" id="superpixel-iterations-value">10</span>
+                    </div>
+                    <p class="parameter-description">Number of refinement iterations</p>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="superpixel-show-labels" style="width: auto;">
+                    <label for="superpixel-show-labels" style="margin-bottom: 0;">Show Label Map</label>
+                </div>
+
+                <button class="btn btn-primary" id="superpixel-process">Process</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="superpixel-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="superpixel-output"></canvas>
+                    <span class="canvas-label">Superpixels</span>
+                </div>
+            </div>
+
+            <div class="metrics" id="superpixel-metrics">
+                <div class="metric">
+                    <span class="metric-label">Superpixel Count</span>
+                    <span class="metric-value" id="superpixel-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="superpixel-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Edge-Preserving Filters -->
+        <section class="demo-section" id="edge-preserving-section">
+            <h3>2. Edge-Preserving Filters</h3>
+            <p class="mb-md">Apply filters that smooth images while preserving edges and fine details.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="edge-filter-upload">Upload Image</label>
+                    <input type="file" id="edge-filter-upload" accept="image/*">
+                    <label for="edge-filter-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="edge-filter-type">Filter Type</label>
+                    <select id="edge-filter-type">
+                        <option value="edgePreserving">Edge Preserving Filter</option>
+                        <option value="detailEnhance">Detail Enhance</option>
+                        <option value="pencilSketch">Pencil Sketch</option>
+                        <option value="stylization">Stylization</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edge-sigma-s">Sigma S (Spatial)</label>
+                    <div class="range-group">
+                        <input type="range" id="edge-sigma-s" min="0" max="200" value="60" step="1">
+                        <span class="range-value" id="edge-sigma-s-value">60</span>
+                    </div>
+                    <p class="parameter-description">Spatial sigma - larger values smooth bigger regions</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="edge-sigma-r">Sigma R (Range)</label>
+                    <div class="range-group">
+                        <input type="range" id="edge-sigma-r" min="0" max="1" value="0.4" step="0.05">
+                        <span class="range-value" id="edge-sigma-r-value">0.40</span>
+                    </div>
+                    <p class="parameter-description">Range sigma - larger values blend more color variation</p>
+                </div>
+
+                <button class="btn btn-primary" id="edge-filter-process">Apply Filter</button>
+                <button class="btn btn-secondary" id="edge-filter-compare">Compare All</button>
+            </div>
+
+            <div class="demo-output" id="edge-filter-single">
+                <div class="canvas-container">
+                    <canvas id="edge-filter-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="edge-filter-output"></canvas>
+                    <span class="canvas-label">Output</span>
+                </div>
+            </div>
+
+            <div class="filter-comparison hidden" id="edge-filter-comparison">
+                <div class="filter-result">
+                    <h5>Edge Preserving</h5>
+                    <div class="canvas-container">
+                        <canvas id="edge-cmp-preserve"></canvas>
+                    </div>
+                </div>
+                <div class="filter-result">
+                    <h5>Detail Enhance</h5>
+                    <div class="canvas-container">
+                        <canvas id="edge-cmp-detail"></canvas>
+                    </div>
+                </div>
+                <div class="filter-result">
+                    <h5>Pencil Sketch</h5>
+                    <div class="canvas-container">
+                        <canvas id="edge-cmp-pencil"></canvas>
+                    </div>
+                </div>
+                <div class="filter-result">
+                    <h5>Stylization</h5>
+                    <div class="canvas-container">
+                        <canvas id="edge-cmp-style"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="edge-filter-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Guided Filter -->
+        <section class="demo-section" id="guided-filter-section">
+            <h3>3. Guided Filter</h3>
+            <p class="mb-md">Edge-aware smoothing using a guidance image. Excellent for noise reduction while preserving edges.</p>
+
+            <div id="guided-unavailable" class="unavailable-notice hidden">
+                Guided Filter requires ximgproc module which may not be available in this build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="guided-upload">Upload Image</label>
+                    <input type="file" id="guided-upload" accept="image/*">
+                    <label for="guided-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="guided-radius">Radius</label>
+                    <div class="range-group">
+                        <input type="range" id="guided-radius" min="1" max="16" value="4" step="1">
+                        <span class="range-value" id="guided-radius-value">4</span>
+                    </div>
+                    <p class="parameter-description">Filter radius - larger values for more smoothing</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="guided-eps">Epsilon (Regularization)</label>
+                    <div class="range-group">
+                        <input type="range" id="guided-eps" min="0.001" max="1" value="0.1" step="0.001">
+                        <span class="range-value" id="guided-eps-value">0.100</span>
+                    </div>
+                    <p class="parameter-description">Regularization - smaller values preserve more edges</p>
+                </div>
+
+                <button class="btn btn-primary" id="guided-process">Apply Filter</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="guided-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="guided-output"></canvas>
+                    <span class="canvas-label">Guided Filtered</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="guided-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Domain Transform Filter -->
+        <section class="demo-section" id="dt-filter-section">
+            <h3>4. Domain Transform Filter</h3>
+            <p class="mb-md">Fast edge-preserving filtering using domain transform techniques.</p>
+
+            <div id="dt-unavailable" class="unavailable-notice hidden">
+                Domain Transform Filter requires ximgproc module which may not be available in this build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="dt-upload">Upload Image</label>
+                    <input type="file" id="dt-upload" accept="image/*">
+                    <label for="dt-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="dt-mode">Filter Mode</label>
+                    <select id="dt-mode">
+                        <option value="NC">Normalized Convolution</option>
+                        <option value="RF">Recursive Filtering</option>
+                        <option value="IC">Interpolated Convolution</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dt-sigma-spatial">Sigma Spatial</label>
+                    <div class="range-group">
+                        <input type="range" id="dt-sigma-spatial" min="1" max="100" value="25" step="1">
+                        <span class="range-value" id="dt-sigma-spatial-value">25</span>
+                    </div>
+                    <p class="parameter-description">Spatial extent of filtering</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="dt-sigma-color">Sigma Color</label>
+                    <div class="range-group">
+                        <input type="range" id="dt-sigma-color" min="0.01" max="1" value="0.25" step="0.01">
+                        <span class="range-value" id="dt-sigma-color-value">0.25</span>
+                    </div>
+                    <p class="parameter-description">Color sensitivity</p>
+                </div>
+
+                <button class="btn btn-primary" id="dt-process">Apply Filter</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="dt-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="dt-output"></canvas>
+                    <span class="canvas-label">DT Filtered</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="dt-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Thinning/Skeletonization -->
+        <section class="demo-section" id="thinning-section">
+            <h3>5. Thinning / Skeletonization</h3>
+            <p class="mb-md">Reduce binary shapes to their skeletal representation. Useful for line drawings, text, and shape analysis.</p>
+
+            <div id="thinning-unavailable" class="unavailable-notice hidden">
+                Thinning requires ximgproc module which may not be available in this build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="thinning-upload">Upload Image</label>
+                    <input type="file" id="thinning-upload" accept="image/*">
+                    <label for="thinning-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="thinning-type">Algorithm</label>
+                    <select id="thinning-type">
+                        <option value="ZHANGSUEN">Zhang-Suen</option>
+                        <option value="GUOHALL">Guo-Hall</option>
+                    </select>
+                    <p class="parameter-description">Zhang-Suen is faster, Guo-Hall may preserve more structure</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="thinning-threshold">Binarization Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="thinning-threshold" min="0" max="255" value="127" step="1">
+                        <span class="range-value" id="thinning-threshold-value">127</span>
+                    </div>
+                    <p class="parameter-description">Threshold for converting to binary image</p>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="thinning-invert" style="width: auto;">
+                    <label for="thinning-invert" style="margin-bottom: 0;">Invert Binary</label>
+                </div>
+
+                <button class="btn btn-primary" id="thinning-process">Process</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="thinning-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="thinning-binary"></canvas>
+                    <span class="canvas-label">Binary</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="thinning-output"></canvas>
+                    <span class="canvas-label">Skeleton</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="thinning-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Watershed Segmentation -->
+        <section class="demo-section" id="watershed-section">
+            <h3>6. Watershed Segmentation</h3>
+            <p class="mb-md">Marker-based segmentation using the watershed algorithm. Auto-generates markers from distance transform.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="watershed-upload">Upload Image</label>
+                    <input type="file" id="watershed-upload" accept="image/*">
+                    <label for="watershed-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="watershed-threshold">Marker Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="watershed-threshold" min="0.1" max="0.9" value="0.5" step="0.05">
+                        <span class="range-value" id="watershed-threshold-value">0.50</span>
+                    </div>
+                    <p class="parameter-description">Higher values = fewer, larger regions</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="watershed-blur">Pre-blur Size</label>
+                    <div class="range-group">
+                        <input type="range" id="watershed-blur" min="1" max="15" value="3" step="2">
+                        <span class="range-value" id="watershed-blur-value">3</span>
+                    </div>
+                    <p class="parameter-description">Gaussian blur before processing</p>
+                </div>
+
+                <button class="btn btn-primary" id="watershed-process">Segment</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="watershed-input"></canvas>
+                    <span class="canvas-label">Input</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="watershed-markers"></canvas>
+                    <span class="canvas-label">Markers</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="watershed-output"></canvas>
+                    <span class="canvas-label">Segmented</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Regions Found</span>
+                    <span class="metric-value" id="watershed-regions">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="watershed-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: GrabCut -->
+        <section class="demo-section" id="grabcut-section">
+            <h3>7. GrabCut Interactive Segmentation</h3>
+            <p class="mb-md">Extract foreground from background using an initial rectangle. Draw to refine the segmentation.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="grabcut-upload">Upload Image</label>
+                    <input type="file" id="grabcut-upload" accept="image/*">
+                    <label for="grabcut-upload" class="file-input-label">Choose Image</label>
+                </div>
+
+                <div class="drawing-tools">
+                    <button class="tool-btn active" id="grabcut-rect-tool">
+                        Draw Rectangle
+                    </button>
+                    <button class="tool-btn" id="grabcut-fg-tool">
+                        <span class="color-indicator" style="background: #00ff00;"></span>Foreground
+                    </button>
+                    <button class="tool-btn" id="grabcut-bg-tool">
+                        <span class="color-indicator" style="background: #ff0000;"></span>Background
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label for="grabcut-iterations">GrabCut Iterations</label>
+                    <div class="range-group">
+                        <input type="range" id="grabcut-iterations" min="1" max="10" value="5" step="1">
+                        <span class="range-value" id="grabcut-iterations-value">5</span>
+                    </div>
+                    <p class="parameter-description">More iterations = better results but slower</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="grabcut-brush">Brush Size</label>
+                    <div class="range-group">
+                        <input type="range" id="grabcut-brush" min="5" max="50" value="15" step="1">
+                        <span class="range-value" id="grabcut-brush-value">15</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="grabcut-run">Run GrabCut</button>
+                <button class="btn btn-secondary" id="grabcut-reset">Reset</button>
+            </div>
+
+            <div class="alert alert-info mb-md">
+                <strong>Instructions:</strong> 1) Upload an image. 2) Draw a rectangle around the foreground object.
+                3) Click "Run GrabCut". 4) Optionally refine by marking foreground (green) or background (red) areas, then run again.
+            </div>
+
+            <div class="demo-output">
+                <div class="drawing-canvas-wrapper">
+                    <canvas id="grabcut-input"></canvas>
+                    <canvas id="grabcut-drawing" class="drawing-canvas"></canvas>
+                    <span class="canvas-label">Draw Here</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="grabcut-mask"></canvas>
+                    <span class="canvas-label">Mask</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="grabcut-output"></canvas>
+                    <span class="canvas-label">Result</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="grabcut-time">-</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Load scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // ========================================
+        // State and Globals
+        // ========================================
+        const state = {
+            superpixel: { srcMat: null },
+            edgeFilter: { srcMat: null },
+            guided: { srcMat: null },
+            dt: { srcMat: null },
+            thinning: { srcMat: null },
+            watershed: { srcMat: null },
+            grabcut: {
+                srcMat: null,
+                mask: null,
+                bgdModel: null,
+                fgdModel: null,
+                rect: null,
+                hasRect: false,
+                currentTool: 'rect',
+                isDrawing: false,
+                fgPoints: [],
+                bgPoints: []
+            }
+        };
+
+        // Feature availability flags
+        const features = {
+            superpixelSLIC: false,
+            superpixelLSC: false,
+            superpixelSEEDS: false,
+            guidedFilter: false,
+            dtFilter: false,
+            thinning: false,
+            edgePreserving: false,
+            detailEnhance: false,
+            pencilSketch: false,
+            stylization: false,
+            grabCut: false,
+            watershed: false
+        };
+
+        // ========================================
+        // Initialization
+        // ========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: UIComponents.updateLoadingProgress,
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                checkFeatureAvailability();
+                initializeAllSections();
+                UIComponents.hideLoadingOverlay();
+
+            } catch (error) {
+                UIComponents.updateLoadingStatus('Failed to load OpenCV.js: ' + error.message);
+                console.error(error);
+            }
+        });
+
+        function checkFeatureAvailability() {
+            // Check ximgproc superpixel functions
+            features.superpixelSLIC = typeof cv.createSuperpixelSLIC !== 'undefined';
+            features.superpixelLSC = typeof cv.createSuperpixelLSC !== 'undefined';
+            features.superpixelSEEDS = typeof cv.createSuperpixelSEEDS !== 'undefined';
+
+            // Check ximgproc guided filter
+            features.guidedFilter = typeof cv.ximgproc_guidedFilter !== 'undefined' ||
+                                    typeof cv.guidedFilter !== 'undefined';
+
+            // Check ximgproc DT filter
+            features.dtFilter = typeof cv.ximgproc_createDTFilter !== 'undefined' ||
+                               typeof cv.createDTFilter !== 'undefined';
+
+            // Check ximgproc thinning
+            features.thinning = typeof cv.ximgproc_thinning !== 'undefined' ||
+                               typeof cv.thinning !== 'undefined';
+
+            // Check photo module edge-preserving filters
+            features.edgePreserving = typeof cv.edgePreservingFilter !== 'undefined';
+            features.detailEnhance = typeof cv.detailEnhance !== 'undefined';
+            features.pencilSketch = typeof cv.pencilSketch !== 'undefined';
+            features.stylization = typeof cv.stylization !== 'undefined';
+
+            // Check core segmentation
+            features.grabCut = typeof cv.grabCut !== 'undefined';
+            features.watershed = typeof cv.watershed !== 'undefined';
+
+            console.log('Feature availability:', features);
+
+            // Show/hide unavailability notices
+            if (!features.superpixelSLIC && !features.superpixelLSC && !features.superpixelSEEDS) {
+                document.getElementById('superpixels-unavailable').classList.remove('hidden');
+            }
+            if (!features.guidedFilter) {
+                document.getElementById('guided-unavailable').classList.remove('hidden');
+            }
+            if (!features.dtFilter) {
+                document.getElementById('dt-unavailable').classList.remove('hidden');
+            }
+            if (!features.thinning) {
+                document.getElementById('thinning-unavailable').classList.remove('hidden');
+            }
+        }
+
+        function initializeAllSections() {
+            initSuperpixels();
+            initEdgePreservingFilters();
+            initGuidedFilter();
+            initDTFilter();
+            initThinning();
+            initWatershed();
+            initGrabCut();
+        }
+
+        // ========================================
+        // Helper Functions
+        // ========================================
+        function loadImageToCanvas(file, canvasId, callback) {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.getElementById(canvasId);
+                // Limit size for performance
+                const maxDim = 800;
+                let width = img.width;
+                let height = img.height;
+                if (width > maxDim || height > maxDim) {
+                    const scale = maxDim / Math.max(width, height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                if (callback) callback(canvas, width, height);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function updateRangeDisplay(inputId, valueId, formatter = v => v) {
+            const input = document.getElementById(inputId);
+            const display = document.getElementById(valueId);
+            input.addEventListener('input', () => {
+                display.textContent = formatter(input.value);
+            });
+        }
+
+        function cleanupMat(mat) {
+            if (mat && !mat.isDeleted()) {
+                try {
+                    mat.delete();
+                } catch (e) {
+                    console.warn('Failed to delete mat:', e);
+                }
+            }
+        }
+
+        function cleanupMats(...mats) {
+            mats.forEach(cleanupMat);
+        }
+
+        function measureTime(fn) {
+            const start = performance.now();
+            const result = fn();
+            const time = performance.now() - start;
+            return { result, time: time.toFixed(2) };
+        }
+
+        function generateRandomColor() {
+            return [
+                Math.floor(Math.random() * 256),
+                Math.floor(Math.random() * 256),
+                Math.floor(Math.random() * 256),
+                255
+            ];
+        }
+
+        // ========================================
+        // Section 1: Superpixels
+        // ========================================
+        function initSuperpixels() {
+            updateRangeDisplay('superpixel-region-size', 'superpixel-region-size-value');
+            updateRangeDisplay('superpixel-ruler', 'superpixel-ruler-value');
+            updateRangeDisplay('superpixel-iterations', 'superpixel-iterations-value');
+
+            document.getElementById('superpixel-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'superpixel-input', (canvas) => {
+                    cleanupMat(state.superpixel.srcMat);
+                    state.superpixel.srcMat = cv.imread(canvas);
+                });
+            });
+
+            document.getElementById('superpixel-process').addEventListener('click', processSuperpixels);
+        }
+
+        function processSuperpixels() {
+            if (!state.superpixel.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            const algorithm = document.getElementById('superpixel-algorithm').value;
+            const regionSize = parseInt(document.getElementById('superpixel-region-size').value);
+            const ruler = parseFloat(document.getElementById('superpixel-ruler').value);
+            const iterations = parseInt(document.getElementById('superpixel-iterations').value);
+            const showLabels = document.getElementById('superpixel-show-labels').checked;
+
+            // Fallback if ximgproc superpixels not available
+            if (!features.superpixelSLIC && !features.superpixelLSC && !features.superpixelSEEDS) {
+                // Use simple grid-based pseudo-superpixels as fallback
+                processSuperpixelsFallback(regionSize, showLabels);
+                return;
+            }
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.superpixel.srcMat;
+                    let converted = new cv.Mat();
+                    cv.cvtColor(src, converted, cv.COLOR_RGBA2BGR);
+
+                    let superpixel;
+                    const numSuperpixels = Math.floor((src.rows * src.cols) / (regionSize * regionSize));
+
+                    try {
+                        if (algorithm === 'SEEDS' && features.superpixelSEEDS) {
+                            superpixel = cv.createSuperpixelSEEDS(converted.cols, converted.rows, converted.channels(),
+                                                                   numSuperpixels, 4, 2, 5, true);
+                            superpixel.iterate(converted, iterations);
+                        } else if (algorithm === 'LSC' && features.superpixelLSC) {
+                            superpixel = cv.createSuperpixelLSC(converted, regionSize, ruler);
+                            superpixel.iterate(iterations);
+                        } else if (features.superpixelSLIC) {
+                            // SLIC, SLICO, MSLIC
+                            let slicAlgorithm = cv.SLIC;
+                            if (algorithm === 'SLICO') slicAlgorithm = cv.SLICO;
+                            else if (algorithm === 'MSLIC') slicAlgorithm = cv.MSLIC;
+
+                            superpixel = cv.createSuperpixelSLIC(converted, slicAlgorithm, regionSize, ruler);
+                            superpixel.iterate(iterations);
+                        } else {
+                            throw new Error('No superpixel algorithm available');
+                        }
+
+                        const count = superpixel.getNumberOfSuperpixels();
+                        document.getElementById('superpixel-count').textContent = count;
+
+                        // Get labels
+                        const labels = new cv.Mat();
+                        superpixel.getLabels(labels);
+
+                        // Get contour mask
+                        const contourMask = new cv.Mat();
+                        superpixel.getLabelContourMask(contourMask, false);
+
+                        // Create output
+                        let output = new cv.Mat();
+
+                        if (showLabels) {
+                            // Color-code by label
+                            output = new cv.Mat(src.rows, src.cols, cv.CV_8UC4);
+                            const colors = [];
+                            for (let i = 0; i < count; i++) {
+                                colors.push(generateRandomColor());
+                            }
+
+                            for (let y = 0; y < labels.rows; y++) {
+                                for (let x = 0; x < labels.cols; x++) {
+                                    const label = labels.intAt(y, x);
+                                    const color = colors[label];
+                                    output.ucharPtr(y, x)[0] = color[0];
+                                    output.ucharPtr(y, x)[1] = color[1];
+                                    output.ucharPtr(y, x)[2] = color[2];
+                                    output.ucharPtr(y, x)[3] = 255;
+                                }
+                            }
+                        } else {
+                            // Show boundaries on original image
+                            src.copyTo(output);
+                            for (let y = 0; y < contourMask.rows; y++) {
+                                for (let x = 0; x < contourMask.cols; x++) {
+                                    if (contourMask.ucharAt(y, x) !== 0) {
+                                        output.ucharPtr(y, x)[0] = 0;
+                                        output.ucharPtr(y, x)[1] = 255;
+                                        output.ucharPtr(y, x)[2] = 0;
+                                        output.ucharPtr(y, x)[3] = 255;
+                                    }
+                                }
+                            }
+                        }
+
+                        cv.imshow('superpixel-output', output);
+
+                        cleanupMats(labels, contourMask, output);
+                        superpixel.delete();
+                    } finally {
+                        cleanupMat(converted);
+                    }
+                });
+
+                document.getElementById('superpixel-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('Superpixel error:', error);
+                UIComponents.showToast({ message: 'Superpixel processing failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function processSuperpixelsFallback(regionSize, showLabels) {
+            // Simple grid-based fallback when ximgproc is not available
+            const { time } = measureTime(() => {
+                const src = state.superpixel.srcMat;
+                const output = src.clone();
+
+                const rows = src.rows;
+                const cols = src.cols;
+                let count = 0;
+
+                // Draw grid lines
+                for (let y = 0; y < rows; y += regionSize) {
+                    for (let x = 0; x < cols; x++) {
+                        output.ucharPtr(y, x)[0] = 0;
+                        output.ucharPtr(y, x)[1] = 255;
+                        output.ucharPtr(y, x)[2] = 0;
+                        output.ucharPtr(y, x)[3] = 255;
+                    }
+                    count++;
+                }
+                for (let x = 0; x < cols; x += regionSize) {
+                    for (let y = 0; y < rows; y++) {
+                        output.ucharPtr(y, x)[0] = 0;
+                        output.ucharPtr(y, x)[1] = 255;
+                        output.ucharPtr(y, x)[2] = 0;
+                        output.ucharPtr(y, x)[3] = 255;
+                    }
+                }
+
+                const gridCols = Math.ceil(cols / regionSize);
+                const gridRows = Math.ceil(rows / regionSize);
+                document.getElementById('superpixel-count').textContent = gridCols * gridRows + ' (grid fallback)';
+
+                cv.imshow('superpixel-output', output);
+                cleanupMat(output);
+            });
+
+            document.getElementById('superpixel-time').textContent = time + ' ms';
+            UIComponents.showToast({ message: 'Using grid fallback - ximgproc not available', type: 'info' });
+        }
+
+        // ========================================
+        // Section 2: Edge-Preserving Filters
+        // ========================================
+        function initEdgePreservingFilters() {
+            updateRangeDisplay('edge-sigma-s', 'edge-sigma-s-value');
+            updateRangeDisplay('edge-sigma-r', 'edge-sigma-r-value', v => parseFloat(v).toFixed(2));
+
+            document.getElementById('edge-filter-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'edge-filter-input', (canvas) => {
+                    cleanupMat(state.edgeFilter.srcMat);
+                    state.edgeFilter.srcMat = cv.imread(canvas);
+
+                    // Setup comparison canvases
+                    ['edge-cmp-preserve', 'edge-cmp-detail', 'edge-cmp-pencil', 'edge-cmp-style'].forEach(id => {
+                        const c = document.getElementById(id);
+                        c.width = canvas.width;
+                        c.height = canvas.height;
+                    });
+                });
+            });
+
+            document.getElementById('edge-filter-process').addEventListener('click', () => {
+                document.getElementById('edge-filter-single').classList.remove('hidden');
+                document.getElementById('edge-filter-comparison').classList.add('hidden');
+                applyEdgePreservingFilter();
+            });
+
+            document.getElementById('edge-filter-compare').addEventListener('click', compareAllEdgeFilters);
+        }
+
+        function applyEdgePreservingFilter(outputCanvasId = 'edge-filter-output') {
+            if (!state.edgeFilter.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            const filterType = document.getElementById('edge-filter-type').value;
+            const sigmaS = parseFloat(document.getElementById('edge-sigma-s').value);
+            const sigmaR = parseFloat(document.getElementById('edge-sigma-r').value);
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.edgeFilter.srcMat;
+                    let rgb = new cv.Mat();
+                    cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+
+                    let output = new cv.Mat();
+
+                    try {
+                        switch (filterType) {
+                            case 'edgePreserving':
+                                if (features.edgePreserving) {
+                                    cv.edgePreservingFilter(rgb, output, 1, sigmaS, sigmaR);
+                                } else {
+                                    cv.bilateralFilter(rgb, output, 9, sigmaR * 75, sigmaS);
+                                }
+                                break;
+
+                            case 'detailEnhance':
+                                if (features.detailEnhance) {
+                                    cv.detailEnhance(rgb, output, sigmaS, sigmaR);
+                                } else {
+                                    // Fallback: unsharp mask
+                                    let blurred = new cv.Mat();
+                                    cv.GaussianBlur(rgb, blurred, new cv.Size(0, 0), sigmaS / 10);
+                                    cv.addWeighted(rgb, 1.5, blurred, -0.5, 0, output);
+                                    cleanupMat(blurred);
+                                }
+                                break;
+
+                            case 'pencilSketch':
+                                if (features.pencilSketch) {
+                                    let sketch1 = new cv.Mat();
+                                    let sketch2 = new cv.Mat();
+                                    cv.pencilSketch(rgb, sketch1, sketch2, sigmaS, sigmaR, 0.03);
+                                    cv.cvtColor(sketch1, output, cv.COLOR_GRAY2RGB);
+                                    cleanupMats(sketch1, sketch2);
+                                } else {
+                                    // Fallback: edge detection
+                                    let gray = new cv.Mat();
+                                    cv.cvtColor(rgb, gray, cv.COLOR_RGB2GRAY);
+                                    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+                                    cv.Canny(gray, gray, 50, 150);
+                                    cv.bitwise_not(gray, gray);
+                                    cv.cvtColor(gray, output, cv.COLOR_GRAY2RGB);
+                                    cleanupMat(gray);
+                                }
+                                break;
+
+                            case 'stylization':
+                                if (features.stylization) {
+                                    cv.stylization(rgb, output, sigmaS, sigmaR);
+                                } else {
+                                    // Fallback: bilateral filter
+                                    cv.bilateralFilter(rgb, output, 9, sigmaR * 75, sigmaS);
+                                }
+                                break;
+                        }
+
+                        let rgba = new cv.Mat();
+                        cv.cvtColor(output, rgba, cv.COLOR_RGB2RGBA);
+                        cv.imshow(outputCanvasId, rgba);
+                        cleanupMat(rgba);
+                    } finally {
+                        cleanupMats(rgb, output);
+                    }
+                });
+
+                document.getElementById('edge-filter-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('Edge filter error:', error);
+                UIComponents.showToast({ message: 'Filter processing failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function compareAllEdgeFilters() {
+            if (!state.edgeFilter.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            document.getElementById('edge-filter-single').classList.add('hidden');
+            document.getElementById('edge-filter-comparison').classList.remove('hidden');
+
+            const sigmaS = parseFloat(document.getElementById('edge-sigma-s').value);
+            const sigmaR = parseFloat(document.getElementById('edge-sigma-r').value);
+
+            const src = state.edgeFilter.srcMat;
+            let rgb = new cv.Mat();
+            cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+
+            const filters = [
+                { type: 'edgePreserving', canvas: 'edge-cmp-preserve', fn: () => {
+                    let out = new cv.Mat();
+                    if (features.edgePreserving) cv.edgePreservingFilter(rgb, out, 1, sigmaS, sigmaR);
+                    else cv.bilateralFilter(rgb, out, 9, sigmaR * 75, sigmaS);
+                    return out;
+                }},
+                { type: 'detailEnhance', canvas: 'edge-cmp-detail', fn: () => {
+                    let out = new cv.Mat();
+                    if (features.detailEnhance) cv.detailEnhance(rgb, out, sigmaS, sigmaR);
+                    else {
+                        let blurred = new cv.Mat();
+                        cv.GaussianBlur(rgb, blurred, new cv.Size(0, 0), 3);
+                        cv.addWeighted(rgb, 1.5, blurred, -0.5, 0, out);
+                        cleanupMat(blurred);
+                    }
+                    return out;
+                }},
+                { type: 'pencilSketch', canvas: 'edge-cmp-pencil', fn: () => {
+                    let out = new cv.Mat();
+                    if (features.pencilSketch) {
+                        let s1 = new cv.Mat(), s2 = new cv.Mat();
+                        cv.pencilSketch(rgb, s1, s2, sigmaS, sigmaR, 0.03);
+                        cv.cvtColor(s1, out, cv.COLOR_GRAY2RGB);
+                        cleanupMats(s1, s2);
+                    } else {
+                        let gray = new cv.Mat();
+                        cv.cvtColor(rgb, gray, cv.COLOR_RGB2GRAY);
+                        cv.Canny(gray, gray, 50, 150);
+                        cv.bitwise_not(gray, gray);
+                        cv.cvtColor(gray, out, cv.COLOR_GRAY2RGB);
+                        cleanupMat(gray);
+                    }
+                    return out;
+                }},
+                { type: 'stylization', canvas: 'edge-cmp-style', fn: () => {
+                    let out = new cv.Mat();
+                    if (features.stylization) cv.stylization(rgb, out, sigmaS, sigmaR);
+                    else cv.bilateralFilter(rgb, out, 9, sigmaR * 75, sigmaS);
+                    return out;
+                }}
+            ];
+
+            const start = performance.now();
+
+            filters.forEach(f => {
+                try {
+                    const out = f.fn();
+                    let rgba = new cv.Mat();
+                    cv.cvtColor(out, rgba, cv.COLOR_RGB2RGBA);
+                    cv.imshow(f.canvas, rgba);
+                    cleanupMats(out, rgba);
+                } catch (e) {
+                    console.error(`Error with ${f.type}:`, e);
+                }
+            });
+
+            cleanupMat(rgb);
+            document.getElementById('edge-filter-time').textContent = (performance.now() - start).toFixed(2) + ' ms (all)';
+        }
+
+        // ========================================
+        // Section 3: Guided Filter
+        // ========================================
+        function initGuidedFilter() {
+            updateRangeDisplay('guided-radius', 'guided-radius-value');
+            updateRangeDisplay('guided-eps', 'guided-eps-value', v => parseFloat(v).toFixed(3));
+
+            document.getElementById('guided-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'guided-input', (canvas) => {
+                    cleanupMat(state.guided.srcMat);
+                    state.guided.srcMat = cv.imread(canvas);
+                    document.getElementById('guided-output').width = canvas.width;
+                    document.getElementById('guided-output').height = canvas.height;
+                });
+            });
+
+            document.getElementById('guided-process').addEventListener('click', applyGuidedFilter);
+        }
+
+        function applyGuidedFilter() {
+            if (!state.guided.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            const radius = parseInt(document.getElementById('guided-radius').value);
+            const eps = parseFloat(document.getElementById('guided-eps').value);
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.guided.srcMat;
+                    let output = new cv.Mat();
+
+                    if (features.guidedFilter) {
+                        // Use ximgproc guided filter
+                        let rgb = new cv.Mat();
+                        cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+                        rgb.convertTo(rgb, cv.CV_32F, 1/255);
+
+                        if (typeof cv.ximgproc_guidedFilter !== 'undefined') {
+                            cv.ximgproc_guidedFilter(rgb, rgb, output, radius, eps * eps);
+                        } else {
+                            cv.guidedFilter(rgb, rgb, output, radius, eps * eps);
+                        }
+
+                        output.convertTo(output, cv.CV_8U, 255);
+                        let rgba = new cv.Mat();
+                        cv.cvtColor(output, rgba, cv.COLOR_RGB2RGBA);
+                        cv.imshow('guided-output', rgba);
+                        cleanupMats(rgb, output, rgba);
+                    } else {
+                        // Fallback: bilateral filter as approximation
+                        let rgb = new cv.Mat();
+                        cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+                        cv.bilateralFilter(rgb, output, radius * 2 + 1, eps * 100, radius * 2);
+                        let rgba = new cv.Mat();
+                        cv.cvtColor(output, rgba, cv.COLOR_RGB2RGBA);
+                        cv.imshow('guided-output', rgba);
+                        cleanupMats(rgb, output, rgba);
+                        UIComponents.showToast({ message: 'Using bilateral filter fallback', type: 'info' });
+                    }
+                });
+
+                document.getElementById('guided-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('Guided filter error:', error);
+                UIComponents.showToast({ message: 'Guided filter failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ========================================
+        // Section 4: Domain Transform Filter
+        // ========================================
+        function initDTFilter() {
+            updateRangeDisplay('dt-sigma-spatial', 'dt-sigma-spatial-value');
+            updateRangeDisplay('dt-sigma-color', 'dt-sigma-color-value', v => parseFloat(v).toFixed(2));
+
+            document.getElementById('dt-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'dt-input', (canvas) => {
+                    cleanupMat(state.dt.srcMat);
+                    state.dt.srcMat = cv.imread(canvas);
+                    document.getElementById('dt-output').width = canvas.width;
+                    document.getElementById('dt-output').height = canvas.height;
+                });
+            });
+
+            document.getElementById('dt-process').addEventListener('click', applyDTFilter);
+        }
+
+        function applyDTFilter() {
+            if (!state.dt.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            const mode = document.getElementById('dt-mode').value;
+            const sigmaSpatial = parseFloat(document.getElementById('dt-sigma-spatial').value);
+            const sigmaColor = parseFloat(document.getElementById('dt-sigma-color').value);
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.dt.srcMat;
+                    let output = new cv.Mat();
+
+                    if (features.dtFilter) {
+                        let rgb = new cv.Mat();
+                        cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+                        rgb.convertTo(rgb, cv.CV_32F, 1/255);
+
+                        let modeFlag = 0; // NC
+                        if (mode === 'RF') modeFlag = 1;
+                        else if (mode === 'IC') modeFlag = 2;
+
+                        const createFn = typeof cv.ximgproc_createDTFilter !== 'undefined'
+                            ? cv.ximgproc_createDTFilter : cv.createDTFilter;
+                        const filter = createFn(rgb, sigmaSpatial, sigmaColor, modeFlag, 3);
+                        filter.filter(rgb, output);
+                        filter.delete();
+
+                        output.convertTo(output, cv.CV_8U, 255);
+                        let rgba = new cv.Mat();
+                        cv.cvtColor(output, rgba, cv.COLOR_RGB2RGBA);
+                        cv.imshow('dt-output', rgba);
+                        cleanupMats(rgb, output, rgba);
+                    } else {
+                        // Fallback: bilateral filter
+                        let rgb = new cv.Mat();
+                        cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+                        cv.bilateralFilter(rgb, output, -1, sigmaColor * 100, sigmaSpatial);
+                        let rgba = new cv.Mat();
+                        cv.cvtColor(output, rgba, cv.COLOR_RGB2RGBA);
+                        cv.imshow('dt-output', rgba);
+                        cleanupMats(rgb, output, rgba);
+                        UIComponents.showToast({ message: 'Using bilateral filter fallback', type: 'info' });
+                    }
+                });
+
+                document.getElementById('dt-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('DT filter error:', error);
+                UIComponents.showToast({ message: 'DT filter failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ========================================
+        // Section 5: Thinning/Skeletonization
+        // ========================================
+        function initThinning() {
+            updateRangeDisplay('thinning-threshold', 'thinning-threshold-value');
+
+            document.getElementById('thinning-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'thinning-input', (canvas) => {
+                    cleanupMat(state.thinning.srcMat);
+                    state.thinning.srcMat = cv.imread(canvas);
+                    document.getElementById('thinning-binary').width = canvas.width;
+                    document.getElementById('thinning-binary').height = canvas.height;
+                    document.getElementById('thinning-output').width = canvas.width;
+                    document.getElementById('thinning-output').height = canvas.height;
+                });
+            });
+
+            document.getElementById('thinning-process').addEventListener('click', applyThinning);
+        }
+
+        function applyThinning() {
+            if (!state.thinning.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            const algorithm = document.getElementById('thinning-type').value;
+            const threshold = parseInt(document.getElementById('thinning-threshold').value);
+            const invert = document.getElementById('thinning-invert').checked;
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.thinning.srcMat;
+                    let gray = new cv.Mat();
+                    let binary = new cv.Mat();
+                    let skeleton = new cv.Mat();
+
+                    // Convert to grayscale
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                    // Threshold
+                    cv.threshold(gray, binary, threshold, 255, cv.THRESH_BINARY);
+
+                    if (invert) {
+                        cv.bitwise_not(binary, binary);
+                    }
+
+                    cv.imshow('thinning-binary', binary);
+
+                    if (features.thinning) {
+                        const thinningType = algorithm === 'ZHANGSUEN' ? cv.THINNING_ZHANGSUEN : cv.THINNING_GUOHALL;
+                        const thinFn = typeof cv.ximgproc_thinning !== 'undefined' ? cv.ximgproc_thinning : cv.thinning;
+                        thinFn(binary, skeleton, thinningType);
+                    } else {
+                        // Morphological skeleton fallback
+                        let temp = new cv.Mat();
+                        let eroded = new cv.Mat();
+                        let opening = new cv.Mat();
+                        skeleton = cv.Mat.zeros(binary.rows, binary.cols, cv.CV_8UC1);
+
+                        const kernel = cv.getStructuringElement(cv.MORPH_CROSS, new cv.Size(3, 3));
+                        binary.copyTo(temp);
+
+                        let done = false;
+                        while (!done) {
+                            cv.erode(temp, eroded, kernel);
+                            cv.dilate(eroded, opening, kernel);
+                            cv.subtract(temp, opening, opening);
+                            cv.bitwise_or(skeleton, opening, skeleton);
+                            eroded.copyTo(temp);
+                            done = cv.countNonZero(temp) === 0;
+                        }
+
+                        cleanupMats(temp, eroded, opening);
+                        kernel.delete();
+                        UIComponents.showToast({ message: 'Using morphological skeleton fallback', type: 'info' });
+                    }
+
+                    cv.imshow('thinning-output', skeleton);
+                    cleanupMats(gray, binary, skeleton);
+                });
+
+                document.getElementById('thinning-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('Thinning error:', error);
+                UIComponents.showToast({ message: 'Thinning failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ========================================
+        // Section 6: Watershed Segmentation
+        // ========================================
+        function initWatershed() {
+            updateRangeDisplay('watershed-threshold', 'watershed-threshold-value', v => parseFloat(v).toFixed(2));
+            updateRangeDisplay('watershed-blur', 'watershed-blur-value');
+
+            document.getElementById('watershed-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'watershed-input', (canvas) => {
+                    cleanupMat(state.watershed.srcMat);
+                    state.watershed.srcMat = cv.imread(canvas);
+                    document.getElementById('watershed-markers').width = canvas.width;
+                    document.getElementById('watershed-markers').height = canvas.height;
+                    document.getElementById('watershed-output').width = canvas.width;
+                    document.getElementById('watershed-output').height = canvas.height;
+                });
+            });
+
+            document.getElementById('watershed-process').addEventListener('click', applyWatershed);
+        }
+
+        function applyWatershed() {
+            if (!state.watershed.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            if (!features.watershed) {
+                UIComponents.showToast({ message: 'Watershed not available in this build', type: 'error' });
+                return;
+            }
+
+            const thresholdRatio = parseFloat(document.getElementById('watershed-threshold').value);
+            const blurSize = parseInt(document.getElementById('watershed-blur').value);
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.watershed.srcMat;
+
+                    // Convert to BGR for watershed
+                    let bgr = new cv.Mat();
+                    cv.cvtColor(src, bgr, cv.COLOR_RGBA2BGR);
+
+                    // Blur
+                    let blurred = new cv.Mat();
+                    cv.GaussianBlur(bgr, blurred, new cv.Size(blurSize, blurSize), 0);
+
+                    // Grayscale and threshold
+                    let gray = new cv.Mat();
+                    cv.cvtColor(blurred, gray, cv.COLOR_BGR2GRAY);
+
+                    let thresh = new cv.Mat();
+                    cv.threshold(gray, thresh, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+
+                    // Morphological opening (remove noise)
+                    let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
+                    let opening = new cv.Mat();
+                    cv.morphologyEx(thresh, opening, cv.MORPH_OPEN, kernel, new cv.Point(-1, -1), 2);
+
+                    // Sure background (dilated)
+                    let sureBg = new cv.Mat();
+                    cv.dilate(opening, sureBg, kernel, new cv.Point(-1, -1), 3);
+
+                    // Distance transform for sure foreground
+                    let dist = new cv.Mat();
+                    cv.distanceTransform(opening, dist, cv.DIST_L2, 5);
+
+                    // Threshold distance transform
+                    let sureFg = new cv.Mat();
+                    let minMax = cv.minMaxLoc(dist);
+                    cv.threshold(dist, sureFg, thresholdRatio * minMax.maxVal, 255, cv.THRESH_BINARY);
+                    sureFg.convertTo(sureFg, cv.CV_8U);
+
+                    // Unknown region
+                    let unknown = new cv.Mat();
+                    cv.subtract(sureBg, sureFg, unknown);
+
+                    // Label markers
+                    let markers = new cv.Mat();
+                    cv.connectedComponents(sureFg, markers);
+
+                    // Add 1 to all labels so background is 1 instead of 0
+                    for (let i = 0; i < markers.rows; i++) {
+                        for (let j = 0; j < markers.cols; j++) {
+                            markers.intPtr(i, j)[0] = markers.intPtr(i, j)[0] + 1;
+                        }
+                    }
+
+                    // Mark unknown region as 0
+                    for (let i = 0; i < unknown.rows; i++) {
+                        for (let j = 0; j < unknown.cols; j++) {
+                            if (unknown.ucharAt(i, j) === 255) {
+                                markers.intPtr(i, j)[0] = 0;
+                            }
+                        }
+                    }
+
+                    // Get unique marker count
+                    let uniqueMarkers = new Set();
+                    for (let i = 0; i < markers.rows; i++) {
+                        for (let j = 0; j < markers.cols; j++) {
+                            uniqueMarkers.add(markers.intPtr(i, j)[0]);
+                        }
+                    }
+                    document.getElementById('watershed-regions').textContent = uniqueMarkers.size - 1;
+
+                    // Apply watershed
+                    cv.watershed(bgr, markers);
+
+                    // Visualize markers
+                    let markerVis = new cv.Mat(markers.rows, markers.cols, cv.CV_8UC4);
+                    const colors = {};
+                    for (let i = 0; i < markers.rows; i++) {
+                        for (let j = 0; j < markers.cols; j++) {
+                            const m = markers.intPtr(i, j)[0];
+                            if (m === -1) {
+                                // Boundary
+                                markerVis.ucharPtr(i, j)[0] = 255;
+                                markerVis.ucharPtr(i, j)[1] = 0;
+                                markerVis.ucharPtr(i, j)[2] = 0;
+                                markerVis.ucharPtr(i, j)[3] = 255;
+                            } else {
+                                if (!colors[m]) {
+                                    colors[m] = generateRandomColor();
+                                }
+                                markerVis.ucharPtr(i, j)[0] = colors[m][0];
+                                markerVis.ucharPtr(i, j)[1] = colors[m][1];
+                                markerVis.ucharPtr(i, j)[2] = colors[m][2];
+                                markerVis.ucharPtr(i, j)[3] = 255;
+                            }
+                        }
+                    }
+                    cv.imshow('watershed-markers', markerVis);
+
+                    // Create output with boundaries overlaid
+                    let output = src.clone();
+                    for (let i = 0; i < markers.rows; i++) {
+                        for (let j = 0; j < markers.cols; j++) {
+                            if (markers.intPtr(i, j)[0] === -1) {
+                                output.ucharPtr(i, j)[0] = 255;
+                                output.ucharPtr(i, j)[1] = 0;
+                                output.ucharPtr(i, j)[2] = 0;
+                                output.ucharPtr(i, j)[3] = 255;
+                            }
+                        }
+                    }
+                    cv.imshow('watershed-output', output);
+
+                    cleanupMats(bgr, blurred, gray, thresh, kernel, opening, sureBg, dist, sureFg, unknown, markers, markerVis, output);
+                });
+
+                document.getElementById('watershed-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('Watershed error:', error);
+                UIComponents.showToast({ message: 'Watershed failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        // ========================================
+        // Section 7: GrabCut
+        // ========================================
+        function initGrabCut() {
+            updateRangeDisplay('grabcut-iterations', 'grabcut-iterations-value');
+            updateRangeDisplay('grabcut-brush', 'grabcut-brush-value');
+
+            document.getElementById('grabcut-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                loadImageToCanvas(file, 'grabcut-input', (canvas) => {
+                    cleanupGrabCutState();
+                    state.grabcut.srcMat = cv.imread(canvas);
+
+                    // Setup drawing canvas
+                    const drawingCanvas = document.getElementById('grabcut-drawing');
+                    drawingCanvas.width = canvas.width;
+                    drawingCanvas.height = canvas.height;
+                    clearDrawingCanvas();
+
+                    // Setup output canvases
+                    document.getElementById('grabcut-mask').width = canvas.width;
+                    document.getElementById('grabcut-mask').height = canvas.height;
+                    document.getElementById('grabcut-output').width = canvas.width;
+                    document.getElementById('grabcut-output').height = canvas.height;
+
+                    // Reset state
+                    state.grabcut.hasRect = false;
+                    state.grabcut.rect = null;
+                    state.grabcut.fgPoints = [];
+                    state.grabcut.bgPoints = [];
+                });
+            });
+
+            // Tool selection
+            document.getElementById('grabcut-rect-tool').addEventListener('click', () => selectTool('rect'));
+            document.getElementById('grabcut-fg-tool').addEventListener('click', () => selectTool('fg'));
+            document.getElementById('grabcut-bg-tool').addEventListener('click', () => selectTool('bg'));
+
+            // Drawing events
+            const drawingCanvas = document.getElementById('grabcut-drawing');
+            drawingCanvas.addEventListener('mousedown', grabcutMouseDown);
+            drawingCanvas.addEventListener('mousemove', grabcutMouseMove);
+            drawingCanvas.addEventListener('mouseup', grabcutMouseUp);
+            drawingCanvas.addEventListener('mouseleave', grabcutMouseUp);
+
+            document.getElementById('grabcut-run').addEventListener('click', runGrabCut);
+            document.getElementById('grabcut-reset').addEventListener('click', resetGrabCut);
+        }
+
+        function cleanupGrabCutState() {
+            cleanupMat(state.grabcut.srcMat);
+            cleanupMat(state.grabcut.mask);
+            cleanupMat(state.grabcut.bgdModel);
+            cleanupMat(state.grabcut.fgdModel);
+            state.grabcut.srcMat = null;
+            state.grabcut.mask = null;
+            state.grabcut.bgdModel = null;
+            state.grabcut.fgdModel = null;
+        }
+
+        function selectTool(tool) {
+            state.grabcut.currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('grabcut-' + tool + '-tool').classList.add('active');
+        }
+
+        function clearDrawingCanvas() {
+            const canvas = document.getElementById('grabcut-drawing');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function grabcutMouseDown(e) {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            state.grabcut.isDrawing = true;
+            state.grabcut.startX = x;
+            state.grabcut.startY = y;
+
+            if (state.grabcut.currentTool !== 'rect') {
+                const canvas = document.getElementById('grabcut-drawing');
+                const ctx = canvas.getContext('2d');
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+        }
+
+        function grabcutMouseMove(e) {
+            if (!state.grabcut.isDrawing) return;
+
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const canvas = document.getElementById('grabcut-drawing');
+            const ctx = canvas.getContext('2d');
+
+            if (state.grabcut.currentTool === 'rect') {
+                // Redraw rectangle
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Redraw existing marks
+                redrawMarks(ctx);
+
+                // Draw current rectangle
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    state.grabcut.startX,
+                    state.grabcut.startY,
+                    x - state.grabcut.startX,
+                    y - state.grabcut.startY
+                );
+                ctx.setLineDash([]);
+            } else {
+                // Draw brush stroke
+                const brushSize = parseInt(document.getElementById('grabcut-brush').value);
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = state.grabcut.currentTool === 'fg' ? '#00ff00' : '#ff0000';
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                // Store point
+                const points = state.grabcut.currentTool === 'fg' ? state.grabcut.fgPoints : state.grabcut.bgPoints;
+                points.push({ x, y, size: brushSize });
+            }
+        }
+
+        function grabcutMouseUp(e) {
+            if (!state.grabcut.isDrawing) return;
+            state.grabcut.isDrawing = false;
+
+            if (state.grabcut.currentTool === 'rect' && e.type === 'mouseup') {
+                const rect = e.target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                state.grabcut.rect = {
+                    x: Math.min(state.grabcut.startX, x),
+                    y: Math.min(state.grabcut.startY, y),
+                    width: Math.abs(x - state.grabcut.startX),
+                    height: Math.abs(y - state.grabcut.startY)
+                };
+                state.grabcut.hasRect = true;
+            }
+        }
+
+        function redrawMarks(ctx) {
+            // Redraw foreground marks
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineCap = 'round';
+            state.grabcut.fgPoints.forEach(p => {
+                ctx.lineWidth = p.size;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Redraw background marks
+            ctx.strokeStyle = '#ff0000';
+            state.grabcut.bgPoints.forEach(p => {
+                ctx.lineWidth = p.size;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Redraw rectangle if exists
+            if (state.grabcut.hasRect && state.grabcut.rect) {
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    state.grabcut.rect.x,
+                    state.grabcut.rect.y,
+                    state.grabcut.rect.width,
+                    state.grabcut.rect.height
+                );
+                ctx.setLineDash([]);
+            }
+        }
+
+        function runGrabCut() {
+            if (!state.grabcut.srcMat) {
+                UIComponents.showToast({ message: 'Please upload an image first', type: 'warning' });
+                return;
+            }
+
+            if (!state.grabcut.hasRect || !state.grabcut.rect) {
+                UIComponents.showToast({ message: 'Please draw a rectangle around the foreground object', type: 'warning' });
+                return;
+            }
+
+            if (!features.grabCut) {
+                UIComponents.showToast({ message: 'GrabCut not available in this build', type: 'error' });
+                return;
+            }
+
+            const iterations = parseInt(document.getElementById('grabcut-iterations').value);
+
+            try {
+                const { time } = measureTime(() => {
+                    const src = state.grabcut.srcMat;
+                    let bgr = new cv.Mat();
+                    cv.cvtColor(src, bgr, cv.COLOR_RGBA2BGR);
+
+                    // Initialize or reuse mask and models
+                    if (!state.grabcut.mask || state.grabcut.mask.rows !== src.rows) {
+                        cleanupMat(state.grabcut.mask);
+                        cleanupMat(state.grabcut.bgdModel);
+                        cleanupMat(state.grabcut.fgdModel);
+
+                        state.grabcut.mask = new cv.Mat(src.rows, src.cols, cv.CV_8UC1, new cv.Scalar(cv.GC_BGD));
+                        state.grabcut.bgdModel = new cv.Mat();
+                        state.grabcut.fgdModel = new cv.Mat();
+                    }
+
+                    // Create rect
+                    const r = state.grabcut.rect;
+                    const rect = new cv.Rect(
+                        Math.round(r.x),
+                        Math.round(r.y),
+                        Math.round(r.width),
+                        Math.round(r.height)
+                    );
+
+                    // Apply user marks to mask
+                    const mask = state.grabcut.mask;
+
+                    // Mark foreground points
+                    state.grabcut.fgPoints.forEach(p => {
+                        const radius = Math.round(p.size / 2);
+                        for (let dy = -radius; dy <= radius; dy++) {
+                            for (let dx = -radius; dx <= radius; dx++) {
+                                const px = Math.round(p.x + dx);
+                                const py = Math.round(p.y + dy);
+                                if (px >= 0 && px < mask.cols && py >= 0 && py < mask.rows) {
+                                    if (dx * dx + dy * dy <= radius * radius) {
+                                        mask.ucharPtr(py, px)[0] = cv.GC_FGD;
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Mark background points
+                    state.grabcut.bgPoints.forEach(p => {
+                        const radius = Math.round(p.size / 2);
+                        for (let dy = -radius; dy <= radius; dy++) {
+                            for (let dx = -radius; dx <= radius; dx++) {
+                                const px = Math.round(p.x + dx);
+                                const py = Math.round(p.y + dy);
+                                if (px >= 0 && px < mask.cols && py >= 0 && py < mask.rows) {
+                                    if (dx * dx + dy * dy <= radius * radius) {
+                                        mask.ucharPtr(py, px)[0] = cv.GC_BGD;
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Determine mode
+                    const mode = (state.grabcut.fgPoints.length > 0 || state.grabcut.bgPoints.length > 0)
+                        ? cv.GC_INIT_WITH_MASK
+                        : cv.GC_INIT_WITH_RECT;
+
+                    // Run GrabCut
+                    cv.grabCut(bgr, mask, rect, state.grabcut.bgdModel, state.grabcut.fgdModel, iterations, mode);
+
+                    // Create binary mask
+                    let mask2 = new cv.Mat();
+                    for (let i = 0; i < mask.rows; i++) {
+                        for (let j = 0; j < mask.cols; j++) {
+                            const val = mask.ucharAt(i, j);
+                            // GC_FGD = 1, GC_PR_FGD = 3
+                            mask.ucharPtr(i, j)[0] = (val === cv.GC_FGD || val === cv.GC_PR_FGD) ? 1 : 0;
+                        }
+                    }
+
+                    // Visualize mask
+                    let maskVis = new cv.Mat();
+                    mask.convertTo(maskVis, cv.CV_8UC1, 255);
+                    cv.imshow('grabcut-mask', maskVis);
+
+                    // Create output
+                    let output = new cv.Mat();
+                    src.copyTo(output);
+
+                    // Apply mask to output
+                    for (let i = 0; i < output.rows; i++) {
+                        for (let j = 0; j < output.cols; j++) {
+                            if (mask.ucharAt(i, j) === 0) {
+                                // Darken background
+                                output.ucharPtr(i, j)[0] = Math.round(output.ucharPtr(i, j)[0] * 0.3);
+                                output.ucharPtr(i, j)[1] = Math.round(output.ucharPtr(i, j)[1] * 0.3);
+                                output.ucharPtr(i, j)[2] = Math.round(output.ucharPtr(i, j)[2] * 0.3);
+                            }
+                        }
+                    }
+
+                    cv.imshow('grabcut-output', output);
+
+                    // Reset mask for next iteration
+                    for (let i = 0; i < state.grabcut.mask.rows; i++) {
+                        for (let j = 0; j < state.grabcut.mask.cols; j++) {
+                            const val = state.grabcut.mask.ucharAt(i, j);
+                            state.grabcut.mask.ucharPtr(i, j)[0] = val === 1 ? cv.GC_FGD :
+                                (val === 0 ? cv.GC_BGD : state.grabcut.mask.ucharAt(i, j));
+                        }
+                    }
+
+                    cleanupMats(bgr, maskVis, output);
+                });
+
+                document.getElementById('grabcut-time').textContent = time + ' ms';
+
+            } catch (error) {
+                console.error('GrabCut error:', error);
+                UIComponents.showToast({ message: 'GrabCut failed: ' + error.message, type: 'error' });
+            }
+        }
+
+        function resetGrabCut() {
+            if (!state.grabcut.srcMat) return;
+
+            clearDrawingCanvas();
+            state.grabcut.hasRect = false;
+            state.grabcut.rect = null;
+            state.grabcut.fgPoints = [];
+            state.grabcut.bgPoints = [];
+
+            cleanupMat(state.grabcut.mask);
+            cleanupMat(state.grabcut.bgdModel);
+            cleanupMat(state.grabcut.fgdModel);
+            state.grabcut.mask = null;
+            state.grabcut.bgdModel = null;
+            state.grabcut.fgdModel = null;
+
+            // Clear output canvases
+            const maskCanvas = document.getElementById('grabcut-mask');
+            const outputCanvas = document.getElementById('grabcut-output');
+            maskCanvas.getContext('2d').clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            outputCanvas.getContext('2d').clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+
+            selectTool('rect');
+            UIComponents.showToast({ message: 'GrabCut reset', type: 'info' });
+        }
+
+        // ========================================
+        // Cleanup on page unload
+        // ========================================
+        window.addEventListener('beforeunload', () => {
+            cleanupMat(state.superpixel.srcMat);
+            cleanupMat(state.edgeFilter.srcMat);
+            cleanupMat(state.guided.srcMat);
+            cleanupMat(state.dt.srcMat);
+            cleanupMat(state.thinning.srcMat);
+            cleanupMat(state.watershed.srcMat);
+            cleanupGrabCutState();
+        });
+    </script>
+</body>
+</html>

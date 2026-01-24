@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line Detection - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for line detection demo */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .color-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-sm);
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.8rem;
+        }
+
+        .color-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        @media (max-width: 900px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .speed-comparison {
+            display: flex;
+            gap: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .speed-bar {
+            flex: 1;
+        }
+
+        .speed-bar-fill {
+            height: 8px;
+            background: var(--accent-gradient);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .match-line {
+            stroke-dasharray: 5, 3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Line Detection</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Line Detection</h1>
+            <p>Detect lines and circles using Hough transforms and advanced line segment detectors from ximgproc module.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Section 1: Standard Hough Line Transform -->
+        <section class="demo-section" id="section-hough">
+            <h3>1. Standard Hough Line Transform</h3>
+            <p class="mb-md">Detect infinite lines using the classical Hough Transform (cv.HoughLines). Lines are represented in polar coordinates (rho, theta).</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="hough-upload">Upload Image</label>
+                    <input type="file" id="hough-upload" accept="image/*" style="display:none">
+                    <label for="hough-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="hough-process" disabled>Detect Lines</button>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="hough-rho">Rho (distance resolution)</label>
+                    <div class="range-group">
+                        <input type="range" id="hough-rho" min="0.5" max="5" step="0.5" value="1">
+                        <span class="range-value" id="hough-rho-val">1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="hough-theta">Theta (angle resolution, deg)</label>
+                    <div class="range-group">
+                        <input type="range" id="hough-theta" min="0.5" max="5" step="0.5" value="1">
+                        <span class="range-value" id="hough-theta-val">1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="hough-threshold">Threshold (accumulator)</label>
+                    <div class="range-group">
+                        <input type="range" id="hough-threshold" min="20" max="300" step="10" value="100">
+                        <span class="range-value" id="hough-threshold-val">100</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="hough-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="hough-output"></canvas>
+                    <span class="canvas-label">Detected Lines</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Lines Detected</span>
+                    <span class="metric-value" id="hough-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="hough-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Probabilistic Hough Transform -->
+        <section class="demo-section" id="section-houghp">
+            <h3>2. Probabilistic Hough Transform</h3>
+            <p class="mb-md">Detect line segments (with endpoints) using cv.HoughLinesP. More efficient and returns actual segment coordinates.</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="houghp-upload">Upload Image</label>
+                    <input type="file" id="houghp-upload" accept="image/*" style="display:none">
+                    <label for="houghp-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="houghp-process" disabled>Detect Segments</button>
+                <div class="form-group">
+                    <label for="houghp-color-mode">Color Mode</label>
+                    <select id="houghp-color-mode">
+                        <option value="angle">Color by Angle</option>
+                        <option value="length">Color by Length</option>
+                        <option value="random">Random Colors</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="houghp-rho">Rho</label>
+                    <div class="range-group">
+                        <input type="range" id="houghp-rho" min="0.5" max="5" step="0.5" value="1">
+                        <span class="range-value" id="houghp-rho-val">1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="houghp-theta">Theta (deg)</label>
+                    <div class="range-group">
+                        <input type="range" id="houghp-theta" min="0.5" max="5" step="0.5" value="1">
+                        <span class="range-value" id="houghp-theta-val">1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="houghp-threshold">Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="houghp-threshold" min="10" max="200" step="5" value="50">
+                        <span class="range-value" id="houghp-threshold-val">50</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="houghp-minlength">Min Line Length</label>
+                    <div class="range-group">
+                        <input type="range" id="houghp-minlength" min="10" max="200" step="5" value="50">
+                        <span class="range-value" id="houghp-minlength-val">50</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="houghp-maxgap">Max Line Gap</label>
+                    <div class="range-group">
+                        <input type="range" id="houghp-maxgap" min="1" max="50" step="1" value="10">
+                        <span class="range-value" id="houghp-maxgap-val">10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="houghp-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="houghp-output"></canvas>
+                    <span class="canvas-label">Detected Segments</span>
+                </div>
+            </div>
+
+            <div class="color-legend" id="houghp-legend">
+                <div class="color-item"><span class="color-swatch" style="background: #ff0000;"></span> Horizontal</div>
+                <div class="color-item"><span class="color-swatch" style="background: #00ff00;"></span> 45 degrees</div>
+                <div class="color-item"><span class="color-swatch" style="background: #0000ff;"></span> Vertical</div>
+                <div class="color-item"><span class="color-swatch" style="background: #ff00ff;"></span> 135 degrees</div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Segments Detected</span>
+                    <span class="metric-value" id="houghp-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="houghp-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Length</span>
+                    <span class="metric-value" id="houghp-length">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: LSD Line Segment Detector -->
+        <section class="demo-section" id="section-lsd">
+            <h3>3. LSD Line Segment Detector (ximgproc)</h3>
+            <p class="mb-md">Advanced line segment detector using the LSD algorithm. Provides high-quality detections without parameter tuning.</p>
+
+            <div class="alert alert-info" id="lsd-availability" style="display:none;">
+                LSD detector is not available in this OpenCV.js build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="lsd-upload">Upload Image</label>
+                    <input type="file" id="lsd-upload" accept="image/*" style="display:none">
+                    <label for="lsd-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="lsd-process" disabled>Detect Lines</button>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="lsd-scale">Scale</label>
+                    <div class="range-group">
+                        <input type="range" id="lsd-scale" min="0.4" max="1.0" step="0.1" value="0.8">
+                        <span class="range-value" id="lsd-scale-val">0.8</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="lsd-sigma">Sigma Scale</label>
+                    <div class="range-group">
+                        <input type="range" id="lsd-sigma" min="0.4" max="1.0" step="0.1" value="0.6">
+                        <span class="range-value" id="lsd-sigma-val">0.6</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="lsd-quant">Quant</label>
+                    <div class="range-group">
+                        <input type="range" id="lsd-quant" min="1" max="4" step="0.5" value="2">
+                        <span class="range-value" id="lsd-quant-val">2</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="lsd-angth">Angle Threshold (deg)</label>
+                    <div class="range-group">
+                        <input type="range" id="lsd-angth" min="10" max="45" step="1" value="22.5">
+                        <span class="range-value" id="lsd-angth-val">22.5</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="lsd-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="lsd-output"></canvas>
+                    <span class="canvas-label">LSD Detected Lines</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Segments Detected</span>
+                    <span class="metric-value" id="lsd-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="lsd-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Length</span>
+                    <span class="metric-value" id="lsd-length">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Fast Line Detector -->
+        <section class="demo-section" id="section-fld">
+            <h3>4. Fast Line Detector (ximgproc)</h3>
+            <p class="mb-md">Optimized line segment detector with Canny-based edge detection. Generally faster than LSD.</p>
+
+            <div class="alert alert-info" id="fld-availability" style="display:none;">
+                Fast Line Detector is not available in this OpenCV.js build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="fld-upload">Upload Image</label>
+                    <input type="file" id="fld-upload" accept="image/*" style="display:none">
+                    <label for="fld-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="fld-process" disabled>Detect Lines</button>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="fld-length">Length Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="fld-length" min="5" max="50" step="1" value="10">
+                        <span class="range-value" id="fld-length-val">10</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fld-distance">Distance Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="fld-distance" min="1" max="10" step="0.5" value="1.41">
+                        <span class="range-value" id="fld-distance-val">1.41</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fld-canny1">Canny Threshold 1</label>
+                    <div class="range-group">
+                        <input type="range" id="fld-canny1" min="10" max="200" step="5" value="50">
+                        <span class="range-value" id="fld-canny1-val">50</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fld-canny2">Canny Threshold 2</label>
+                    <div class="range-group">
+                        <input type="range" id="fld-canny2" min="50" max="300" step="5" value="50">
+                        <span class="range-value" id="fld-canny2-val">50</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fld-aperture">Canny Aperture</label>
+                    <select id="fld-aperture">
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="7">7</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <label for="fld-merge" style="margin-bottom: 0;">Merge Lines</label>
+                    <div class="toggle" id="fld-merge" role="switch" aria-checked="false"></div>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="fld-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="fld-output"></canvas>
+                    <span class="canvas-label">FLD Detected Lines</span>
+                </div>
+            </div>
+
+            <div class="speed-comparison" id="fld-speed-compare" style="display:none;">
+                <div class="speed-bar">
+                    <div class="mb-sm">LSD: <span id="fld-lsd-time">-</span></div>
+                    <div class="speed-bar-fill" id="fld-lsd-bar" style="width: 0%;"></div>
+                </div>
+                <div class="speed-bar">
+                    <div class="mb-sm">FLD: <span id="fld-fld-time">-</span></div>
+                    <div class="speed-bar-fill" id="fld-fld-bar" style="width: 0%; background: var(--success);"></div>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Segments Detected</span>
+                    <span class="metric-value" id="fld-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="fld-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Length</span>
+                    <span class="metric-value" id="fld-length-total">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Edge Drawing -->
+        <section class="demo-section" id="section-ed">
+            <h3>5. Edge Drawing (ximgproc)</h3>
+            <p class="mb-md">Edge Drawing algorithm for detecting edges and line segments with a different approach than gradient-based methods.</p>
+
+            <div class="alert alert-info" id="ed-availability" style="display:none;">
+                Edge Drawing is not available in this OpenCV.js build.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="ed-upload">Upload Image</label>
+                    <input type="file" id="ed-upload" accept="image/*" style="display:none">
+                    <label for="ed-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="ed-process" disabled>Detect Edges</button>
+                <div class="form-group">
+                    <label for="ed-mode">Display Mode</label>
+                    <select id="ed-mode">
+                        <option value="edges">Edges Only</option>
+                        <option value="lines">Line Segments</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="ed-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="ed-output"></canvas>
+                    <span class="canvas-label">Edge Drawing Result</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Edges/Lines</span>
+                    <span class="metric-value" id="ed-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="ed-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Line Matching -->
+        <section class="demo-section" id="section-matching">
+            <h3>6. Line Matching</h3>
+            <p class="mb-md">Match line segments between two images using line descriptors. Useful for scene matching and tracking.</p>
+
+            <div class="alert alert-info" id="matching-availability" style="display:none;">
+                BinaryDescriptor (line_descriptor) is not available. Using basic geometric matching instead.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="matching-upload1">Image 1</label>
+                    <input type="file" id="matching-upload1" accept="image/*" style="display:none">
+                    <label for="matching-upload1" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Image 1
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="matching-upload2">Image 2</label>
+                    <input type="file" id="matching-upload2" accept="image/*" style="display:none">
+                    <label for="matching-upload2" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Image 2
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="matching-process" disabled>Match Lines</button>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="matching-threshold">Match Threshold</label>
+                    <div class="range-group">
+                        <input type="range" id="matching-threshold" min="0.1" max="1" step="0.05" value="0.5">
+                        <span class="range-value" id="matching-threshold-val">0.5</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="matching-maxmatches">Max Matches</label>
+                    <div class="range-group">
+                        <input type="range" id="matching-maxmatches" min="5" max="50" step="5" value="20">
+                        <span class="range-value" id="matching-maxmatches-val">20</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comparison-container">
+                <div class="canvas-container">
+                    <canvas id="matching-input1"></canvas>
+                    <span class="canvas-label">Image 1</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="matching-input2"></canvas>
+                    <span class="canvas-label">Image 2</span>
+                </div>
+            </div>
+
+            <div class="canvas-container mt-md">
+                <canvas id="matching-output"></canvas>
+                <span class="canvas-label">Line Matches</span>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Lines Image 1</span>
+                    <span class="metric-value" id="matching-count1">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Lines Image 2</span>
+                    <span class="metric-value" id="matching-count2">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Matches Found</span>
+                    <span class="metric-value" id="matching-matches">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="matching-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Circle Detection (Hough Circles) -->
+        <section class="demo-section" id="section-circles">
+            <h3>7. Circle Detection (Hough Circles)</h3>
+            <p class="mb-md">Detect circles in images using the Hough Circle Transform (cv.HoughCircles).</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="circles-upload">Upload Image</label>
+                    <input type="file" id="circles-upload" accept="image/*" style="display:none">
+                    <label for="circles-upload" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Choose Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="circles-process" disabled>Detect Circles</button>
+            </div>
+
+            <div class="param-grid mb-md">
+                <div class="form-group">
+                    <label for="circles-dp">DP (inverse ratio)</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-dp" min="1" max="3" step="0.5" value="1">
+                        <span class="range-value" id="circles-dp-val">1</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="circles-mindist">Min Distance</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-mindist" min="10" max="100" step="5" value="30">
+                        <span class="range-value" id="circles-mindist-val">30</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="circles-param1">Param1 (Canny high)</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-param1" min="50" max="300" step="10" value="100">
+                        <span class="range-value" id="circles-param1-val">100</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="circles-param2">Param2 (accumulator)</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-param2" min="10" max="100" step="5" value="30">
+                        <span class="range-value" id="circles-param2-val">30</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="circles-minradius">Min Radius</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-minradius" min="0" max="100" step="5" value="0">
+                        <span class="range-value" id="circles-minradius-val">0</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="circles-maxradius">Max Radius</label>
+                    <div class="range-group">
+                        <input type="range" id="circles-maxradius" min="0" max="500" step="10" value="0">
+                        <span class="range-value" id="circles-maxradius-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="circles-input"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="circles-output"></canvas>
+                    <span class="canvas-label">Detected Circles</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Circles Detected</span>
+                    <span class="metric-value" id="circles-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="circles-time">-</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Load OpenCV.js and utilities -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Store loaded images for each section
+        const state = {
+            hough: { mat: null },
+            houghp: { mat: null },
+            lsd: { mat: null },
+            fld: { mat: null },
+            ed: { mat: null },
+            matching: { mat1: null, mat2: null },
+            circles: { mat: null }
+        };
+
+        // Feature availability flags
+        const features = {
+            lsd: false,
+            fld: false,
+            ed: false,
+            lineDescriptor: false
+        };
+
+        // Initialize the page
+        async function init() {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (percent) => {
+                        document.getElementById('loading-progress').style.width = `${percent}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Check feature availability
+                checkFeatureAvailability();
+
+                // Setup all sections
+                setupHoughSection();
+                setupHoughPSection();
+                setupLSDSection();
+                setupFLDSection();
+                setupEDSection();
+                setupMatchingSection();
+                setupCirclesSection();
+
+                // Hide loading overlay
+                UIComponents.hideLoadingOverlay();
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = `Error: ${error.message}`;
+                console.error('Failed to load OpenCV:', error);
+            }
+        }
+
+        function checkFeatureAvailability() {
+            // Check for LSD
+            features.lsd = typeof cv.createLineSegmentDetector !== 'undefined';
+            if (!features.lsd) {
+                document.getElementById('lsd-availability').style.display = 'block';
+            }
+
+            // Check for FLD
+            features.fld = typeof cv.createFastLineDetector !== 'undefined';
+            if (!features.fld) {
+                document.getElementById('fld-availability').style.display = 'block';
+            }
+
+            // Check for Edge Drawing
+            features.ed = typeof cv.createEdgeDrawing !== 'undefined' || typeof cv.EdgeDrawing !== 'undefined';
+            if (!features.ed) {
+                document.getElementById('ed-availability').style.display = 'block';
+            }
+
+            // Check for BinaryDescriptor
+            features.lineDescriptor = typeof cv.BinaryDescriptor !== 'undefined';
+            if (!features.lineDescriptor) {
+                document.getElementById('matching-availability').style.display = 'block';
+            }
+
+            console.log('Feature availability:', features);
+        }
+
+        // Helper: Setup range slider with value display
+        function setupSlider(sliderId, valueId, callback) {
+            const slider = document.getElementById(sliderId);
+            const valueEl = document.getElementById(valueId);
+
+            slider.addEventListener('input', () => {
+                valueEl.textContent = slider.value;
+                if (callback) callback(parseFloat(slider.value));
+            });
+        }
+
+        // Helper: Load image from file input
+        function loadImageFromInput(input, callback) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => callback(img);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Helper: Display mat on canvas
+        function displayMat(mat, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            canvas.width = mat.cols;
+            canvas.height = mat.rows;
+            cv.imshow(canvas, mat);
+        }
+
+        // Helper: Convert image to mat
+        function imageToMat(img) {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            return cv.imread(canvas);
+        }
+
+        // Helper: Get grayscale version
+        function getGray(mat) {
+            const gray = new cv.Mat();
+            if (mat.channels() === 4) {
+                cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+            } else if (mat.channels() === 3) {
+                cv.cvtColor(mat, gray, cv.COLOR_RGB2GRAY);
+            } else {
+                mat.copyTo(gray);
+            }
+            return gray;
+        }
+
+        // Helper: HSV to RGB conversion
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            const i = Math.floor(h * 6);
+            const f = h * 6 - i;
+            const p = v * (1 - s);
+            const q = v * (1 - f * s);
+            const t = v * (1 - (1 - f) * s);
+
+            switch (i % 6) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+            }
+
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        // Helper: Get color based on angle
+        function getColorByAngle(angle) {
+            // Normalize angle to 0-1 range
+            const normalizedAngle = (angle % 180) / 180;
+            return hsvToRgb(normalizedAngle, 1, 1);
+        }
+
+        // Helper: Get color based on length (normalized)
+        function getColorByLength(length, maxLength) {
+            const normalized = Math.min(length / maxLength, 1);
+            return hsvToRgb(0.3 - normalized * 0.3, 1, 1); // Green to red
+        }
+
+        // ==================== Section 1: Standard Hough Lines ====================
+        function setupHoughSection() {
+            const upload = document.getElementById('hough-upload');
+            const processBtn = document.getElementById('hough-process');
+
+            setupSlider('hough-rho', 'hough-rho-val');
+            setupSlider('hough-theta', 'hough-theta-val');
+            setupSlider('hough-threshold', 'hough-threshold-val');
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.hough.mat) state.hough.mat.delete();
+                    state.hough.mat = imageToMat(img);
+                    displayMat(state.hough.mat, 'hough-input');
+                    processBtn.disabled = false;
+                });
+            });
+
+            processBtn.addEventListener('click', processHough);
+
+            // Auto-process on parameter change
+            ['hough-rho', 'hough-theta', 'hough-threshold'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (state.hough.mat) processHough();
+                });
+            });
+        }
+
+        function processHough() {
+            if (!state.hough.mat) return;
+
+            const rho = parseFloat(document.getElementById('hough-rho').value);
+            const theta = parseFloat(document.getElementById('hough-theta').value) * Math.PI / 180;
+            const threshold = parseInt(document.getElementById('hough-threshold').value);
+
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.hough.mat);
+                const edges = new cv.Mat();
+                cv.Canny(gray, edges, 50, 150);
+
+                const lines = new cv.Mat();
+                cv.HoughLines(edges, lines, rho, theta, threshold);
+
+                // Draw lines on output
+                const output = state.hough.mat.clone();
+                const lineCount = lines.rows;
+
+                for (let i = 0; i < lineCount; i++) {
+                    const rho = lines.data32F[i * 2];
+                    const theta = lines.data32F[i * 2 + 1];
+                    const a = Math.cos(theta);
+                    const b = Math.sin(theta);
+                    const x0 = a * rho;
+                    const y0 = b * rho;
+
+                    const pt1 = new cv.Point(Math.round(x0 + 2000 * (-b)), Math.round(y0 + 2000 * a));
+                    const pt2 = new cv.Point(Math.round(x0 - 2000 * (-b)), Math.round(y0 - 2000 * a));
+
+                    const color = new cv.Scalar(0, 255, 0, 255);
+                    cv.line(output, pt1, pt2, color, 2, cv.LINE_AA);
+                }
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'hough-output');
+
+                // Update metrics
+                document.getElementById('hough-count').textContent = lineCount;
+                document.getElementById('hough-time').textContent = `${processingTime}ms`;
+
+                // Cleanup
+                gray.delete();
+                edges.delete();
+                lines.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('Hough transform error:', error);
+                document.getElementById('hough-count').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 2: Probabilistic Hough Lines ====================
+        function setupHoughPSection() {
+            const upload = document.getElementById('houghp-upload');
+            const processBtn = document.getElementById('houghp-process');
+
+            setupSlider('houghp-rho', 'houghp-rho-val');
+            setupSlider('houghp-theta', 'houghp-theta-val');
+            setupSlider('houghp-threshold', 'houghp-threshold-val');
+            setupSlider('houghp-minlength', 'houghp-minlength-val');
+            setupSlider('houghp-maxgap', 'houghp-maxgap-val');
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.houghp.mat) state.houghp.mat.delete();
+                    state.houghp.mat = imageToMat(img);
+                    displayMat(state.houghp.mat, 'houghp-input');
+                    processBtn.disabled = false;
+                });
+            });
+
+            processBtn.addEventListener('click', processHoughP);
+
+            // Auto-process on parameter change
+            ['houghp-rho', 'houghp-theta', 'houghp-threshold', 'houghp-minlength', 'houghp-maxgap'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (state.houghp.mat) processHoughP();
+                });
+            });
+
+            document.getElementById('houghp-color-mode').addEventListener('change', () => {
+                if (state.houghp.mat) processHoughP();
+            });
+        }
+
+        function processHoughP() {
+            if (!state.houghp.mat) return;
+
+            const rho = parseFloat(document.getElementById('houghp-rho').value);
+            const theta = parseFloat(document.getElementById('houghp-theta').value) * Math.PI / 180;
+            const threshold = parseInt(document.getElementById('houghp-threshold').value);
+            const minLength = parseInt(document.getElementById('houghp-minlength').value);
+            const maxGap = parseInt(document.getElementById('houghp-maxgap').value);
+            const colorMode = document.getElementById('houghp-color-mode').value;
+
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.houghp.mat);
+                const edges = new cv.Mat();
+                cv.Canny(gray, edges, 50, 150);
+
+                const lines = new cv.Mat();
+                cv.HoughLinesP(edges, lines, rho, theta, threshold, minLength, maxGap);
+
+                // Draw segments on output
+                const output = state.houghp.mat.clone();
+                const segmentCount = lines.rows;
+                let totalLength = 0;
+                let maxLength = 0;
+
+                // First pass: calculate max length for color scaling
+                const segments = [];
+                for (let i = 0; i < segmentCount; i++) {
+                    const x1 = lines.data32S[i * 4];
+                    const y1 = lines.data32S[i * 4 + 1];
+                    const x2 = lines.data32S[i * 4 + 2];
+                    const y2 = lines.data32S[i * 4 + 3];
+                    const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                    segments.push({ x1, y1, x2, y2, length, angle });
+                    totalLength += length;
+                    maxLength = Math.max(maxLength, length);
+                }
+
+                // Second pass: draw with colors
+                segments.forEach(seg => {
+                    let color;
+                    if (colorMode === 'angle') {
+                        const rgb = getColorByAngle(seg.angle + 90);
+                        color = new cv.Scalar(rgb[0], rgb[1], rgb[2], 255);
+                    } else if (colorMode === 'length') {
+                        const rgb = getColorByLength(seg.length, maxLength);
+                        color = new cv.Scalar(rgb[0], rgb[1], rgb[2], 255);
+                    } else {
+                        color = new cv.Scalar(
+                            Math.random() * 255,
+                            Math.random() * 255,
+                            Math.random() * 255,
+                            255
+                        );
+                    }
+
+                    cv.line(output,
+                        new cv.Point(seg.x1, seg.y1),
+                        new cv.Point(seg.x2, seg.y2),
+                        color, 2, cv.LINE_AA);
+                });
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'houghp-output');
+
+                // Update metrics
+                document.getElementById('houghp-count').textContent = segmentCount;
+                document.getElementById('houghp-time').textContent = `${processingTime}ms`;
+                document.getElementById('houghp-length').textContent = `${Math.round(totalLength)}px`;
+
+                // Update legend visibility
+                const legend = document.getElementById('houghp-legend');
+                legend.style.display = colorMode === 'angle' ? 'flex' : 'none';
+
+                // Cleanup
+                gray.delete();
+                edges.delete();
+                lines.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('HoughP transform error:', error);
+                document.getElementById('houghp-count').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 3: LSD Line Segment Detector ====================
+        function setupLSDSection() {
+            const upload = document.getElementById('lsd-upload');
+            const processBtn = document.getElementById('lsd-process');
+
+            setupSlider('lsd-scale', 'lsd-scale-val');
+            setupSlider('lsd-sigma', 'lsd-sigma-val');
+            setupSlider('lsd-quant', 'lsd-quant-val');
+            setupSlider('lsd-angth', 'lsd-angth-val');
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.lsd.mat) state.lsd.mat.delete();
+                    state.lsd.mat = imageToMat(img);
+                    displayMat(state.lsd.mat, 'lsd-input');
+                    processBtn.disabled = !features.lsd;
+                });
+            });
+
+            processBtn.addEventListener('click', processLSD);
+
+            // Auto-process on parameter change
+            ['lsd-scale', 'lsd-sigma', 'lsd-quant', 'lsd-angth'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (state.lsd.mat && features.lsd) processLSD();
+                });
+            });
+        }
+
+        function processLSD() {
+            if (!state.lsd.mat || !features.lsd) return;
+
+            const scale = parseFloat(document.getElementById('lsd-scale').value);
+            const sigmaScale = parseFloat(document.getElementById('lsd-sigma').value);
+            const quant = parseFloat(document.getElementById('lsd-quant').value);
+            const angTh = parseFloat(document.getElementById('lsd-angth').value);
+
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.lsd.mat);
+
+                // Create LSD detector
+                const lsd = cv.createLineSegmentDetector(
+                    cv.LSD_REFINE_STD,
+                    scale,
+                    sigmaScale,
+                    quant,
+                    angTh
+                );
+
+                const lines = new cv.Mat();
+                lsd.detect(gray, lines);
+
+                // Draw segments
+                const output = state.lsd.mat.clone();
+                let totalLength = 0;
+                const segmentCount = lines.rows;
+
+                for (let i = 0; i < segmentCount; i++) {
+                    const x1 = lines.data32F[i * 4];
+                    const y1 = lines.data32F[i * 4 + 1];
+                    const x2 = lines.data32F[i * 4 + 2];
+                    const y2 = lines.data32F[i * 4 + 3];
+
+                    const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    totalLength += length;
+
+                    const color = new cv.Scalar(0, 255, 0, 255);
+                    cv.line(output,
+                        new cv.Point(Math.round(x1), Math.round(y1)),
+                        new cv.Point(Math.round(x2), Math.round(y2)),
+                        color, 2, cv.LINE_AA);
+                }
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'lsd-output');
+
+                // Update metrics
+                document.getElementById('lsd-count').textContent = segmentCount;
+                document.getElementById('lsd-time').textContent = `${processingTime}ms`;
+                document.getElementById('lsd-length').textContent = `${Math.round(totalLength)}px`;
+
+                // Cleanup
+                gray.delete();
+                lines.delete();
+                output.delete();
+                lsd.delete();
+
+            } catch (error) {
+                console.error('LSD error:', error);
+                document.getElementById('lsd-count').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 4: Fast Line Detector ====================
+        function setupFLDSection() {
+            const upload = document.getElementById('fld-upload');
+            const processBtn = document.getElementById('fld-process');
+            const mergeToggle = document.getElementById('fld-merge');
+
+            setupSlider('fld-length', 'fld-length-val');
+            setupSlider('fld-distance', 'fld-distance-val');
+            setupSlider('fld-canny1', 'fld-canny1-val');
+            setupSlider('fld-canny2', 'fld-canny2-val');
+
+            mergeToggle.addEventListener('click', () => {
+                mergeToggle.classList.toggle('active');
+                if (state.fld.mat && features.fld) processFLD();
+            });
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.fld.mat) state.fld.mat.delete();
+                    state.fld.mat = imageToMat(img);
+                    displayMat(state.fld.mat, 'fld-input');
+                    processBtn.disabled = !features.fld;
+                });
+            });
+
+            processBtn.addEventListener('click', processFLD);
+
+            // Auto-process on parameter change
+            ['fld-length', 'fld-distance', 'fld-canny1', 'fld-canny2', 'fld-aperture'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (state.fld.mat && features.fld) processFLD();
+                });
+            });
+        }
+
+        function processFLD() {
+            if (!state.fld.mat || !features.fld) return;
+
+            const lengthThreshold = parseInt(document.getElementById('fld-length').value);
+            const distanceThreshold = parseFloat(document.getElementById('fld-distance').value);
+            const cannyTh1 = parseInt(document.getElementById('fld-canny1').value);
+            const cannyTh2 = parseInt(document.getElementById('fld-canny2').value);
+            const apertureSize = parseInt(document.getElementById('fld-aperture').value);
+            const doMerge = document.getElementById('fld-merge').classList.contains('active');
+
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.fld.mat);
+
+                // Create FLD detector
+                const fld = cv.createFastLineDetector(
+                    lengthThreshold,
+                    distanceThreshold,
+                    cannyTh1,
+                    cannyTh2,
+                    apertureSize,
+                    doMerge
+                );
+
+                const lines = new cv.Mat();
+                fld.detect(gray, lines);
+
+                // Draw segments
+                const output = state.fld.mat.clone();
+                let totalLength = 0;
+                const segmentCount = lines.rows;
+
+                for (let i = 0; i < segmentCount; i++) {
+                    const x1 = lines.data32F[i * 4];
+                    const y1 = lines.data32F[i * 4 + 1];
+                    const x2 = lines.data32F[i * 4 + 2];
+                    const y2 = lines.data32F[i * 4 + 3];
+
+                    const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    totalLength += length;
+
+                    const color = new cv.Scalar(255, 100, 0, 255);
+                    cv.line(output,
+                        new cv.Point(Math.round(x1), Math.round(y1)),
+                        new cv.Point(Math.round(x2), Math.round(y2)),
+                        color, 2, cv.LINE_AA);
+                }
+
+                const fldTime = performance.now() - startTime;
+
+                displayMat(output, 'fld-output');
+
+                // Update metrics
+                document.getElementById('fld-count').textContent = segmentCount;
+                document.getElementById('fld-time').textContent = `${fldTime.toFixed(2)}ms`;
+                document.getElementById('fld-length-total').textContent = `${Math.round(totalLength)}px`;
+
+                // Compare with LSD if available
+                if (features.lsd) {
+                    const lsdStart = performance.now();
+                    const lsd = cv.createLineSegmentDetector();
+                    const lsdLines = new cv.Mat();
+                    lsd.detect(gray, lsdLines);
+                    const lsdTime = performance.now() - lsdStart;
+                    lsdLines.delete();
+                    lsd.delete();
+
+                    // Show speed comparison
+                    const speedCompare = document.getElementById('fld-speed-compare');
+                    speedCompare.style.display = 'flex';
+
+                    document.getElementById('fld-lsd-time').textContent = `${lsdTime.toFixed(2)}ms`;
+                    document.getElementById('fld-fld-time').textContent = `${fldTime.toFixed(2)}ms`;
+
+                    const maxTime = Math.max(lsdTime, fldTime);
+                    document.getElementById('fld-lsd-bar').style.width = `${(lsdTime / maxTime) * 100}%`;
+                    document.getElementById('fld-fld-bar').style.width = `${(fldTime / maxTime) * 100}%`;
+                }
+
+                // Cleanup
+                gray.delete();
+                lines.delete();
+                output.delete();
+                fld.delete();
+
+            } catch (error) {
+                console.error('FLD error:', error);
+                document.getElementById('fld-count').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 5: Edge Drawing ====================
+        function setupEDSection() {
+            const upload = document.getElementById('ed-upload');
+            const processBtn = document.getElementById('ed-process');
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.ed.mat) state.ed.mat.delete();
+                    state.ed.mat = imageToMat(img);
+                    displayMat(state.ed.mat, 'ed-input');
+                    processBtn.disabled = !features.ed;
+                });
+            });
+
+            processBtn.addEventListener('click', processED);
+
+            document.getElementById('ed-mode').addEventListener('change', () => {
+                if (state.ed.mat && features.ed) processED();
+            });
+        }
+
+        function processED() {
+            if (!state.ed.mat || !features.ed) return;
+
+            const mode = document.getElementById('ed-mode').value;
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.ed.mat);
+                const output = state.ed.mat.clone();
+
+                let edgeCount = 0;
+
+                // Try to use Edge Drawing if available
+                if (typeof cv.createEdgeDrawing !== 'undefined') {
+                    const ed = cv.createEdgeDrawing();
+                    ed.detectEdges(gray);
+
+                    if (mode === 'edges' || mode === 'both') {
+                        const edgeImage = new cv.Mat();
+                        ed.getEdgeImage(edgeImage);
+                        // Overlay edges on output
+                        for (let i = 0; i < edgeImage.rows; i++) {
+                            for (let j = 0; j < edgeImage.cols; j++) {
+                                if (edgeImage.ucharAt(i, j) > 0) {
+                                    output.ucharPtr(i, j)[0] = 0;
+                                    output.ucharPtr(i, j)[1] = 255;
+                                    output.ucharPtr(i, j)[2] = 255;
+                                }
+                            }
+                        }
+                        edgeImage.delete();
+                    }
+
+                    if (mode === 'lines' || mode === 'both') {
+                        ed.detectLines();
+                        const lines = new cv.Mat();
+                        ed.getLines(lines);
+
+                        for (let i = 0; i < lines.rows; i++) {
+                            const x1 = lines.data32F[i * 4];
+                            const y1 = lines.data32F[i * 4 + 1];
+                            const x2 = lines.data32F[i * 4 + 2];
+                            const y2 = lines.data32F[i * 4 + 3];
+
+                            const color = new cv.Scalar(255, 0, 255, 255);
+                            cv.line(output,
+                                new cv.Point(Math.round(x1), Math.round(y1)),
+                                new cv.Point(Math.round(x2), Math.round(y2)),
+                                color, 2, cv.LINE_AA);
+                        }
+                        edgeCount = lines.rows;
+                        lines.delete();
+                    }
+
+                    ed.delete();
+                } else {
+                    // Fallback: use Canny edges
+                    const edges = new cv.Mat();
+                    cv.Canny(gray, edges, 50, 150);
+
+                    // Convert edges to color for visualization
+                    const colorEdges = new cv.Mat();
+                    cv.cvtColor(edges, colorEdges, cv.COLOR_GRAY2RGBA);
+
+                    // Count edge pixels
+                    edgeCount = cv.countNonZero(edges);
+
+                    // Overlay on output
+                    for (let i = 0; i < edges.rows; i++) {
+                        for (let j = 0; j < edges.cols; j++) {
+                            if (edges.ucharAt(i, j) > 0) {
+                                output.ucharPtr(i, j)[0] = 0;
+                                output.ucharPtr(i, j)[1] = 255;
+                                output.ucharPtr(i, j)[2] = 255;
+                            }
+                        }
+                    }
+
+                    edges.delete();
+                    colorEdges.delete();
+                }
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'ed-output');
+
+                // Update metrics
+                document.getElementById('ed-count').textContent = edgeCount;
+                document.getElementById('ed-time').textContent = `${processingTime}ms`;
+
+                // Cleanup
+                gray.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('Edge Drawing error:', error);
+                document.getElementById('ed-count').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 6: Line Matching ====================
+        function setupMatchingSection() {
+            const upload1 = document.getElementById('matching-upload1');
+            const upload2 = document.getElementById('matching-upload2');
+            const processBtn = document.getElementById('matching-process');
+
+            setupSlider('matching-threshold', 'matching-threshold-val');
+            setupSlider('matching-maxmatches', 'matching-maxmatches-val');
+
+            upload1.addEventListener('change', () => {
+                loadImageFromInput(upload1, (img) => {
+                    if (state.matching.mat1) state.matching.mat1.delete();
+                    state.matching.mat1 = imageToMat(img);
+                    displayMat(state.matching.mat1, 'matching-input1');
+                    updateMatchingButton();
+                });
+            });
+
+            upload2.addEventListener('change', () => {
+                loadImageFromInput(upload2, (img) => {
+                    if (state.matching.mat2) state.matching.mat2.delete();
+                    state.matching.mat2 = imageToMat(img);
+                    displayMat(state.matching.mat2, 'matching-input2');
+                    updateMatchingButton();
+                });
+            });
+
+            function updateMatchingButton() {
+                processBtn.disabled = !(state.matching.mat1 && state.matching.mat2);
+            }
+
+            processBtn.addEventListener('click', processMatching);
+        }
+
+        function processMatching() {
+            if (!state.matching.mat1 || !state.matching.mat2) return;
+
+            const threshold = parseFloat(document.getElementById('matching-threshold').value);
+            const maxMatches = parseInt(document.getElementById('matching-maxmatches').value);
+
+            const startTime = performance.now();
+
+            try {
+                const gray1 = getGray(state.matching.mat1);
+                const gray2 = getGray(state.matching.mat2);
+
+                // Detect lines in both images using HoughLinesP
+                const edges1 = new cv.Mat();
+                const edges2 = new cv.Mat();
+                cv.Canny(gray1, edges1, 50, 150);
+                cv.Canny(gray2, edges2, 50, 150);
+
+                const lines1 = new cv.Mat();
+                const lines2 = new cv.Mat();
+                cv.HoughLinesP(edges1, lines1, 1, Math.PI / 180, 50, 30, 10);
+                cv.HoughLinesP(edges2, lines2, 1, Math.PI / 180, 50, 30, 10);
+
+                const count1 = lines1.rows;
+                const count2 = lines2.rows;
+
+                // Extract line features (angle and length)
+                const features1 = [];
+                const features2 = [];
+
+                for (let i = 0; i < count1; i++) {
+                    const x1 = lines1.data32S[i * 4];
+                    const y1 = lines1.data32S[i * 4 + 1];
+                    const x2 = lines1.data32S[i * 4 + 2];
+                    const y2 = lines1.data32S[i * 4 + 3];
+                    const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+                    features1.push({ x1, y1, x2, y2, length, angle, cx: (x1 + x2) / 2, cy: (y1 + y2) / 2 });
+                }
+
+                for (let i = 0; i < count2; i++) {
+                    const x1 = lines2.data32S[i * 4];
+                    const y1 = lines2.data32S[i * 4 + 1];
+                    const x2 = lines2.data32S[i * 4 + 2];
+                    const y2 = lines2.data32S[i * 4 + 3];
+                    const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+                    features2.push({ x1, y1, x2, y2, length, angle, cx: (x1 + x2) / 2, cy: (y1 + y2) / 2 });
+                }
+
+                // Simple geometric matching based on angle and length similarity
+                const matches = [];
+                const used2 = new Set();
+
+                for (let i = 0; i < features1.length && matches.length < maxMatches; i++) {
+                    let bestMatch = -1;
+                    let bestScore = threshold;
+
+                    for (let j = 0; j < features2.length; j++) {
+                        if (used2.has(j)) continue;
+
+                        // Normalize angle difference
+                        let angleDiff = Math.abs(features1[i].angle - features2[j].angle);
+                        if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                        angleDiff /= Math.PI;
+
+                        // Normalize length difference
+                        const maxLen = Math.max(features1[i].length, features2[j].length);
+                        const lenDiff = Math.abs(features1[i].length - features2[j].length) / maxLen;
+
+                        // Combined score (lower is better)
+                        const score = (angleDiff + lenDiff) / 2;
+
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestMatch = j;
+                        }
+                    }
+
+                    if (bestMatch >= 0) {
+                        matches.push({ i, j: bestMatch, score: bestScore });
+                        used2.add(bestMatch);
+                    }
+                }
+
+                // Create combined visualization
+                const width1 = state.matching.mat1.cols;
+                const height1 = state.matching.mat1.rows;
+                const width2 = state.matching.mat2.cols;
+                const height2 = state.matching.mat2.rows;
+
+                const combinedWidth = width1 + width2;
+                const combinedHeight = Math.max(height1, height2);
+                const output = new cv.Mat(combinedHeight, combinedWidth, cv.CV_8UC4, new cv.Scalar(0, 0, 0, 255));
+
+                // Copy images
+                const roi1 = output.roi(new cv.Rect(0, 0, width1, height1));
+                state.matching.mat1.copyTo(roi1);
+                roi1.delete();
+
+                const roi2 = output.roi(new cv.Rect(width1, 0, width2, height2));
+                state.matching.mat2.copyTo(roi2);
+                roi2.delete();
+
+                // Draw lines on image 1
+                features1.forEach((f, idx) => {
+                    const color = new cv.Scalar(100, 100, 255, 255);
+                    cv.line(output, new cv.Point(f.x1, f.y1), new cv.Point(f.x2, f.y2), color, 2);
+                });
+
+                // Draw lines on image 2
+                features2.forEach((f, idx) => {
+                    const color = new cv.Scalar(100, 100, 255, 255);
+                    cv.line(output, new cv.Point(f.x1 + width1, f.y1), new cv.Point(f.x2 + width1, f.y2), color, 2);
+                });
+
+                // Draw matches
+                matches.forEach((m, idx) => {
+                    const f1 = features1[m.i];
+                    const f2 = features2[m.j];
+
+                    const rgb = hsvToRgb(idx / matches.length, 1, 1);
+                    const color = new cv.Scalar(rgb[0], rgb[1], rgb[2], 255);
+
+                    // Draw connecting line between centers
+                    cv.line(output,
+                        new cv.Point(Math.round(f1.cx), Math.round(f1.cy)),
+                        new cv.Point(Math.round(f2.cx + width1), Math.round(f2.cy)),
+                        color, 1, cv.LINE_AA);
+
+                    // Draw circles at match points
+                    cv.circle(output, new cv.Point(Math.round(f1.cx), Math.round(f1.cy)), 5, color, -1);
+                    cv.circle(output, new cv.Point(Math.round(f2.cx + width1), Math.round(f2.cy)), 5, color, -1);
+                });
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'matching-output');
+
+                // Update metrics
+                document.getElementById('matching-count1').textContent = count1;
+                document.getElementById('matching-count2').textContent = count2;
+                document.getElementById('matching-matches').textContent = matches.length;
+                document.getElementById('matching-time').textContent = `${processingTime}ms`;
+
+                // Cleanup
+                gray1.delete();
+                gray2.delete();
+                edges1.delete();
+                edges2.delete();
+                lines1.delete();
+                lines2.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('Line matching error:', error);
+                document.getElementById('matching-matches').textContent = 'Error';
+            }
+        }
+
+        // ==================== Section 7: Hough Circles ====================
+        function setupCirclesSection() {
+            const upload = document.getElementById('circles-upload');
+            const processBtn = document.getElementById('circles-process');
+
+            setupSlider('circles-dp', 'circles-dp-val');
+            setupSlider('circles-mindist', 'circles-mindist-val');
+            setupSlider('circles-param1', 'circles-param1-val');
+            setupSlider('circles-param2', 'circles-param2-val');
+            setupSlider('circles-minradius', 'circles-minradius-val');
+            setupSlider('circles-maxradius', 'circles-maxradius-val');
+
+            upload.addEventListener('change', () => {
+                loadImageFromInput(upload, (img) => {
+                    if (state.circles.mat) state.circles.mat.delete();
+                    state.circles.mat = imageToMat(img);
+                    displayMat(state.circles.mat, 'circles-input');
+                    processBtn.disabled = false;
+                });
+            });
+
+            processBtn.addEventListener('click', processCircles);
+
+            // Auto-process on parameter change
+            ['circles-dp', 'circles-mindist', 'circles-param1', 'circles-param2',
+             'circles-minradius', 'circles-maxradius'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (state.circles.mat) processCircles();
+                });
+            });
+        }
+
+        function processCircles() {
+            if (!state.circles.mat) return;
+
+            const dp = parseFloat(document.getElementById('circles-dp').value);
+            const minDist = parseInt(document.getElementById('circles-mindist').value);
+            const param1 = parseInt(document.getElementById('circles-param1').value);
+            const param2 = parseInt(document.getElementById('circles-param2').value);
+            const minRadius = parseInt(document.getElementById('circles-minradius').value);
+            const maxRadius = parseInt(document.getElementById('circles-maxradius').value);
+
+            const startTime = performance.now();
+
+            try {
+                const gray = getGray(state.circles.mat);
+
+                // Apply slight blur to reduce noise
+                cv.medianBlur(gray, gray, 5);
+
+                const circles = new cv.Mat();
+                cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT, dp, minDist, param1, param2, minRadius, maxRadius);
+
+                // Draw circles
+                const output = state.circles.mat.clone();
+                const circleCount = circles.cols;
+
+                for (let i = 0; i < circleCount; i++) {
+                    const x = circles.data32F[i * 3];
+                    const y = circles.data32F[i * 3 + 1];
+                    const radius = circles.data32F[i * 3 + 2];
+
+                    const center = new cv.Point(Math.round(x), Math.round(y));
+
+                    // Draw circle outline
+                    cv.circle(output, center, Math.round(radius), new cv.Scalar(0, 255, 0, 255), 2, cv.LINE_AA);
+                    // Draw center point
+                    cv.circle(output, center, 3, new cv.Scalar(255, 0, 0, 255), -1);
+                }
+
+                const processingTime = (performance.now() - startTime).toFixed(2);
+
+                displayMat(output, 'circles-output');
+
+                // Update metrics
+                document.getElementById('circles-count').textContent = circleCount;
+                document.getElementById('circles-time').textContent = `${processingTime}ms`;
+
+                // Cleanup
+                gray.delete();
+                circles.delete();
+                output.delete();
+
+            } catch (error) {
+                console.error('Hough circles error:', error);
+                document.getElementById('circles-count').textContent = 'Error';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

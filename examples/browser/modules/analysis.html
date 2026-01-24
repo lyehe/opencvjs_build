@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Analysis - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for analysis demos */
+        .hash-visual {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: var(--spacing-sm);
+        }
+
+        .hash-bit {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .hash-bit.on {
+            background: var(--accent-primary);
+        }
+
+        .hash-bit.off {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+        }
+
+        .hash-hex {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+            word-break: break-all;
+            background: var(--bg-input);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-sm);
+        }
+
+        .similarity-bar {
+            height: 24px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .similarity-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            transition: width var(--transition-normal);
+        }
+
+        .similarity-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .quality-score {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        .quality-score.excellent {
+            color: var(--success);
+        }
+
+        .quality-score.good {
+            color: #22c55e;
+        }
+
+        .quality-score.fair {
+            color: var(--warning);
+        }
+
+        .quality-score.poor {
+            color: var(--error);
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 4px;
+            margin-top: var(--spacing-md);
+        }
+
+        .color-swatch {
+            flex: 1;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 4px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: var(--spacing-sm);
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .stats-table td {
+            font-family: monospace;
+            color: var(--text-primary);
+        }
+
+        .channel-r { color: #ef4444; }
+        .channel-g { color: #10b981; }
+        .channel-b { color: #3b82f6; }
+        .channel-a { color: #9898a8; }
+
+        .histogram-canvas {
+            width: 100%;
+            height: 120px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .info-box {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-primary);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .dual-upload {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        @media (max-width: 768px) {
+            .dual-upload {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-zone.has-image {
+            border-style: solid;
+            border-color: var(--success);
+        }
+
+        .upload-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .retina-output {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        @media (max-width: 900px) {
+            .retina-output {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .noise-display {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .noise-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: monospace;
+            color: var(--accent-secondary);
+        }
+
+        .noise-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .module-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            margin-left: var(--spacing-sm);
+        }
+
+        .module-status.available {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .module-status.unavailable {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Image Analysis</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Image Analysis</h1>
+            <p>Advanced image analysis using img_hash, quality, and bioinspired modules for perceptual hashing, quality assessment, and bio-inspired processing.</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-status">Loading OpenCV.js...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Section 1: Image Hashing -->
+        <section class="demo-section" id="section-hashing">
+            <h3>
+                Image Hashing (img_hash)
+                <span class="module-status" id="hash-status">Checking...</span>
+            </h3>
+
+            <div class="info-box">
+                <strong>About Image Hashing:</strong> Perceptual hashing creates compact fingerprints of images that are similar for visually similar images. This is useful for finding duplicates, detecting near-identical images, or content-based image retrieval.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="hash-algorithm">Hash Algorithm</label>
+                    <select id="hash-algorithm">
+                        <option value="pHash">pHash (Perceptual Hash)</option>
+                        <option value="averageHash">Average Hash</option>
+                        <option value="blockMeanHash">Block Mean Hash</option>
+                        <option value="colorMomentHash">Color Moment Hash</option>
+                        <option value="marrHildrethHash">Marr-Hildreth Hash</option>
+                        <option value="radialVarianceHash">Radial Variance Hash</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="dual-upload">
+                <div>
+                    <h4>Image 1</h4>
+                    <div class="upload-zone" id="hash-zone1">
+                        <input type="file" id="hash-input1" accept="image/*" style="display:none">
+                        <p>Click or drag to upload first image</p>
+                        <img id="hash-preview1" class="upload-preview hidden">
+                    </div>
+                    <div class="hash-hex" id="hash-value1" style="display:none"></div>
+                </div>
+                <div>
+                    <h4>Image 2 (optional for comparison)</h4>
+                    <div class="upload-zone" id="hash-zone2">
+                        <input type="file" id="hash-input2" accept="image/*" style="display:none">
+                        <p>Click or drag to upload second image</p>
+                        <img id="hash-preview2" class="upload-preview hidden">
+                    </div>
+                    <div class="hash-hex" id="hash-value2" style="display:none"></div>
+                </div>
+            </div>
+
+            <div id="hash-results" class="mt-lg hidden">
+                <h4>Hash Comparison Results</h4>
+                <div class="similarity-bar">
+                    <div class="similarity-fill" id="similarity-fill"></div>
+                    <span class="similarity-label" id="similarity-label">0%</span>
+                </div>
+                <div class="metrics mt-md">
+                    <div class="metric">
+                        <span class="metric-label">Hamming Distance</span>
+                        <span class="metric-value" id="hamming-distance">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Similarity</span>
+                        <span class="metric-value" id="hash-similarity">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Hash Time</span>
+                        <span class="metric-value" id="hash-time">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Image Quality Assessment -->
+        <section class="demo-section" id="section-quality">
+            <h3>
+                Image Quality Assessment (quality)
+                <span class="module-status" id="quality-status">Checking...</span>
+            </h3>
+
+            <div class="info-box">
+                <strong>About Quality Metrics:</strong>
+                <ul style="margin: var(--spacing-sm) 0 0 var(--spacing-lg);">
+                    <li><strong>PSNR</strong> (Peak Signal-to-Noise Ratio): Measures pixel-level accuracy. Higher is better (30-50 dB typical).</li>
+                    <li><strong>SSIM</strong> (Structural Similarity Index): Measures perceived quality. Range 0-1, with 1 being identical.</li>
+                    <li><strong>GMSD</strong> (Gradient Magnitude Similarity Deviation): Measures structural distortions via gradients.</li>
+                    <li><strong>BRISQUE</strong> (No-reference): Estimates quality without needing a reference image.</li>
+                </ul>
+            </div>
+
+            <div class="dual-upload">
+                <div>
+                    <h4>Reference Image (Original)</h4>
+                    <div class="upload-zone" id="quality-zone-ref">
+                        <input type="file" id="quality-input-ref" accept="image/*" style="display:none">
+                        <p>Upload the original/reference image</p>
+                        <img id="quality-preview-ref" class="upload-preview hidden">
+                    </div>
+                </div>
+                <div>
+                    <h4>Test Image (Distorted)</h4>
+                    <div class="upload-zone" id="quality-zone-test">
+                        <input type="file" id="quality-input-test" accept="image/*" style="display:none">
+                        <p>Upload the test/distorted image</p>
+                        <img id="quality-preview-test" class="upload-preview hidden">
+                    </div>
+                </div>
+            </div>
+
+            <div id="quality-results" class="mt-lg hidden">
+                <h4>Quality Assessment Results</h4>
+                <div class="demo-output" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="card text-center">
+                        <div class="card-title">PSNR</div>
+                        <div class="quality-score" id="psnr-score">-</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">dB</div>
+                    </div>
+                    <div class="card text-center">
+                        <div class="card-title">SSIM</div>
+                        <div class="quality-score" id="ssim-score">-</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">0-1 scale</div>
+                    </div>
+                    <div class="card text-center">
+                        <div class="card-title">GMSD</div>
+                        <div class="quality-score" id="gmsd-score">-</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">lower is better</div>
+                    </div>
+                    <div class="card text-center">
+                        <div class="card-title">BRISQUE</div>
+                        <div class="quality-score" id="brisque-score">-</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">no-reference</div>
+                    </div>
+                </div>
+                <div class="metrics mt-md">
+                    <div class="metric">
+                        <span class="metric-label">Assessment Time</span>
+                        <span class="metric-value" id="quality-time">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Quality Maps -->
+        <section class="demo-section" id="section-quality-maps">
+            <h3>Quality Maps Visualization</h3>
+
+            <div class="info-box">
+                <strong>About Quality Maps:</strong> Visualize where quality differs between reference and test images. Brighter areas in the SSIM map indicate higher quality (more similarity). This helps identify problematic regions in compressed or processed images.
+            </div>
+
+            <div class="demo-output" id="quality-map-output" style="display:none;">
+                <div class="canvas-container">
+                    <canvas id="canvas-ssim-map"></canvas>
+                    <span class="canvas-label">SSIM Quality Map</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="canvas-diff-map"></canvas>
+                    <span class="canvas-label">Difference Map</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="canvas-error-map"></canvas>
+                    <span class="canvas-label">Error Heatmap</span>
+                </div>
+            </div>
+            <p id="quality-map-placeholder" class="text-center text-secondary">Upload reference and test images above to see quality maps.</p>
+        </section>
+
+        <!-- Section 4: Retina Simulation -->
+        <section class="demo-section" id="section-retina">
+            <h3>
+                Retina Simulation (bioinspired)
+                <span class="module-status" id="retina-status">Checking...</span>
+            </h3>
+
+            <div class="info-box">
+                <strong>About Retina Simulation:</strong> The bioinspired Retina module simulates human retina processing:
+                <ul style="margin: var(--spacing-sm) 0 0 var(--spacing-lg);">
+                    <li><strong>Parvo Channel:</strong> Processes fine details and color (parvocellular pathway)</li>
+                    <li><strong>Magno Channel:</strong> Processes motion and contrast (magnocellular pathway)</li>
+                </ul>
+                This can be used for motion detection, image enhancement, and understanding human visual perception.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="retina-input" accept="image/*" style="display:none">
+                    <label for="retina-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="retina-process" disabled>Process with Retina</button>
+            </div>
+
+            <div class="retina-output" id="retina-output" style="display:none;">
+                <div class="canvas-container">
+                    <canvas id="canvas-retina-input"></canvas>
+                    <span class="canvas-label">Input Image</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="canvas-retina-parvo"></canvas>
+                    <span class="canvas-label">Parvo (Detail/Color)</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="canvas-retina-magno"></canvas>
+                    <span class="canvas-label">Magno (Motion/Contrast)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Color Analysis -->
+        <section class="demo-section" id="section-color">
+            <h3>Color Analysis</h3>
+
+            <div class="info-box">
+                <strong>About Color Analysis:</strong> Extract dominant colors using k-means clustering, visualize color distribution with histograms, and compute color statistics for each channel.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="color-input" accept="image/*" style="display:none">
+                    <label for="color-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="color-count">Number of Colors</label>
+                    <select id="color-count">
+                        <option value="3">3 colors</option>
+                        <option value="5" selected>5 colors</option>
+                        <option value="8">8 colors</option>
+                        <option value="10">10 colors</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="color-analyze" disabled>Analyze Colors</button>
+            </div>
+
+            <div id="color-output" style="display:none;">
+                <div class="demo-output">
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="canvas-color-input"></canvas>
+                            <span class="canvas-label">Input Image</span>
+                        </div>
+                        <h4 class="mt-md">Dominant Colors</h4>
+                        <div class="color-palette" id="color-palette"></div>
+                    </div>
+                    <div>
+                        <h4>Color Histogram</h4>
+                        <canvas id="canvas-color-histogram" class="histogram-canvas"></canvas>
+
+                        <h4 class="mt-md">Channel Statistics</h4>
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Channel</th>
+                                    <th>Mean</th>
+                                    <th>Std Dev</th>
+                                    <th>Min</th>
+                                    <th>Max</th>
+                                </tr>
+                            </thead>
+                            <tbody id="color-stats-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Image Statistics -->
+        <section class="demo-section" id="section-stats">
+            <h3>Image Statistics</h3>
+
+            <div class="info-box">
+                <strong>About Image Statistics:</strong> Comprehensive statistical analysis including dimensions, color depth, pixel distribution, and entropy (measure of information/complexity in the image).
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="stats-input" accept="image/*" style="display:none">
+                    <label for="stats-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="stats-analyze" disabled>Compute Statistics</button>
+            </div>
+
+            <div id="stats-output" style="display:none;">
+                <div class="demo-output">
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="canvas-stats-input"></canvas>
+                            <span class="canvas-label">Input Image</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Image Properties</h4>
+                        <table class="stats-table">
+                            <tbody id="stats-properties">
+                            </tbody>
+                        </table>
+
+                        <h4 class="mt-lg">Histogram</h4>
+                        <canvas id="canvas-stats-histogram" class="histogram-canvas"></canvas>
+
+                        <h4 class="mt-lg">Channel Statistics</h4>
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Channel</th>
+                                    <th>Mean</th>
+                                    <th>Std Dev</th>
+                                    <th>Min</th>
+                                    <th>Max</th>
+                                    <th>Entropy</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-channels">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Noise Estimation -->
+        <section class="demo-section" id="section-noise">
+            <h3>Noise Estimation</h3>
+
+            <div class="info-box">
+                <strong>About Noise Estimation:</strong> Estimate the noise level (sigma) in an image using statistical methods. This helps determine appropriate denoising parameters or assess image quality. The noise pattern visualization shows the estimated noise characteristics.
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <input type="file" id="noise-input" accept="image/*" style="display:none">
+                    <label for="noise-input" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="noise-estimate" disabled>Estimate Noise</button>
+            </div>
+
+            <div id="noise-output" style="display:none;">
+                <div class="demo-output">
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="canvas-noise-input"></canvas>
+                            <span class="canvas-label">Input Image</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="noise-display">
+                            <div>
+                                <div class="noise-value" id="noise-sigma">-</div>
+                                <div class="noise-label">Estimated Sigma</div>
+                            </div>
+                            <div style="flex:1;">
+                                <div id="noise-interpretation" class="text-secondary"></div>
+                            </div>
+                        </div>
+                        <div class="canvas-container mt-lg">
+                            <canvas id="canvas-noise-pattern"></canvas>
+                            <span class="canvas-label">Estimated Noise Pattern</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Module availability flags
+        let hasImgHash = false;
+        let hasQuality = false;
+        let hasBioinspired = false;
+
+        // Stored images/mats for processing
+        let hashMat1 = null;
+        let hashMat2 = null;
+        let qualityRefMat = null;
+        let qualityTestMat = null;
+        let retinaMat = null;
+        let colorMat = null;
+        let statsMat = null;
+        let noiseMat = null;
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: (p) => {
+                        document.getElementById('loading-progress').style.width = `${p}%`;
+                    },
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                // Check module availability
+                checkModuleAvailability();
+
+                // Setup event handlers
+                setupHashingSection();
+                setupQualitySection();
+                setupRetinaSection();
+                setupColorSection();
+                setupStatsSection();
+                setupNoiseSection();
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }, 500);
+
+            } catch (error) {
+                document.getElementById('loading-status').textContent = 'Error: ' + error.message;
+                console.error('OpenCV load error:', error);
+            }
+        });
+
+        function checkModuleAvailability() {
+            // Check img_hash module
+            hasImgHash = typeof cv.img_hash_PHash !== 'undefined' ||
+                         typeof cv.PHash !== 'undefined' ||
+                         typeof cv.pHash !== 'undefined';
+            updateModuleStatus('hash-status', hasImgHash);
+
+            // Check quality module
+            hasQuality = typeof cv.quality_QualityPSNR !== 'undefined' ||
+                         typeof cv.QualityPSNR !== 'undefined' ||
+                         typeof cv.PSNR !== 'undefined';
+            updateModuleStatus('quality-status', hasQuality);
+
+            // Check bioinspired module
+            hasBioinspired = typeof cv.bioinspired_Retina !== 'undefined' ||
+                             typeof cv.Retina !== 'undefined';
+            updateModuleStatus('retina-status', hasBioinspired);
+
+            console.log('Module availability:', { hasImgHash, hasQuality, hasBioinspired });
+        }
+
+        function updateModuleStatus(elementId, available) {
+            const el = document.getElementById(elementId);
+            if (available) {
+                el.className = 'module-status available';
+                el.textContent = 'Available';
+            } else {
+                el.className = 'module-status unavailable';
+                el.textContent = 'Not Available';
+            }
+        }
+
+        // ==================== HASHING SECTION ====================
+        function setupHashingSection() {
+            const zone1 = document.getElementById('hash-zone1');
+            const zone2 = document.getElementById('hash-zone2');
+            const input1 = document.getElementById('hash-input1');
+            const input2 = document.getElementById('hash-input2');
+            const preview1 = document.getElementById('hash-preview1');
+            const preview2 = document.getElementById('hash-preview2');
+
+            zone1.onclick = () => input1.click();
+            zone2.onclick = () => input2.click();
+
+            input1.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    preview1.src = img.src;
+                    preview1.classList.remove('hidden');
+                    zone1.classList.add('has-image');
+                    if (hashMat1) hashMat1.delete();
+                    hashMat1 = Utils.imageToMat(img);
+                    computeHashes();
+                }
+            };
+
+            input2.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    preview2.src = img.src;
+                    preview2.classList.remove('hidden');
+                    zone2.classList.add('has-image');
+                    if (hashMat2) hashMat2.delete();
+                    hashMat2 = Utils.imageToMat(img);
+                    computeHashes();
+                }
+            };
+
+            document.getElementById('hash-algorithm').onchange = computeHashes;
+        }
+
+        function computeHashes() {
+            if (!hashMat1) return;
+
+            const algorithm = document.getElementById('hash-algorithm').value;
+            const startTime = performance.now();
+
+            try {
+                // Compute hash for image 1
+                const hash1 = computeHash(hashMat1, algorithm);
+                document.getElementById('hash-value1').style.display = 'block';
+                document.getElementById('hash-value1').textContent = 'Hash: ' + matToHex(hash1);
+
+                if (hashMat2) {
+                    // Compute hash for image 2
+                    const hash2 = computeHash(hashMat2, algorithm);
+                    document.getElementById('hash-value2').style.display = 'block';
+                    document.getElementById('hash-value2').textContent = 'Hash: ' + matToHex(hash2);
+
+                    // Compare hashes
+                    const distance = computeHashDistance(hash1, hash2);
+                    const maxDistance = hash1.cols * hash1.rows * 8; // Max possible Hamming distance
+                    const similarity = Math.max(0, 100 - (distance / maxDistance * 100));
+
+                    document.getElementById('hash-results').classList.remove('hidden');
+                    document.getElementById('similarity-fill').style.width = similarity + '%';
+                    document.getElementById('similarity-label').textContent = similarity.toFixed(1) + '% Similar';
+                    document.getElementById('hamming-distance').textContent = distance;
+                    document.getElementById('hash-similarity').textContent = similarity.toFixed(1) + '%';
+
+                    hash2.delete();
+                } else {
+                    document.getElementById('hash-results').classList.add('hidden');
+                    document.getElementById('hash-value2').style.display = 'none';
+                }
+
+                const elapsed = performance.now() - startTime;
+                document.getElementById('hash-time').textContent = elapsed.toFixed(2) + 'ms';
+
+                hash1.delete();
+            } catch (err) {
+                console.error('Hash computation error:', err);
+                document.getElementById('hash-value1').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        function computeHash(mat, algorithm) {
+            const gray = new cv.Mat();
+            if (mat.channels() > 1) {
+                cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+            } else {
+                mat.copyTo(gray);
+            }
+
+            const hash = new cv.Mat();
+
+            // Use fallback hash computation since img_hash may not be available
+            if (!hasImgHash) {
+                // Implement simple perceptual hash manually
+                const resized = new cv.Mat();
+                cv.resize(gray, resized, new cv.Size(8, 8), 0, 0, cv.INTER_AREA);
+
+                // Compute DCT-like average
+                let sum = 0;
+                for (let i = 0; i < 64; i++) {
+                    sum += resized.data[i];
+                }
+                const avg = sum / 64;
+
+                // Create binary hash based on average
+                const hashData = new Uint8Array(8);
+                for (let i = 0; i < 8; i++) {
+                    let byte = 0;
+                    for (let j = 0; j < 8; j++) {
+                        if (resized.data[i * 8 + j] > avg) {
+                            byte |= (1 << (7 - j));
+                        }
+                    }
+                    hashData[i] = byte;
+                }
+
+                cv.Mat.zeros(1, 8, cv.CV_8UC1).copyTo(hash);
+                for (let i = 0; i < 8; i++) {
+                    hash.data[i] = hashData[i];
+                }
+
+                resized.delete();
+            } else {
+                // Use OpenCV img_hash module
+                try {
+                    switch (algorithm) {
+                        case 'pHash':
+                            if (cv.img_hash_pHash) cv.img_hash_pHash(gray, hash);
+                            else if (cv.pHash) cv.pHash(gray, hash);
+                            break;
+                        case 'averageHash':
+                            if (cv.img_hash_averageHash) cv.img_hash_averageHash(gray, hash);
+                            else if (cv.averageHash) cv.averageHash(gray, hash);
+                            break;
+                        case 'blockMeanHash':
+                            if (cv.img_hash_blockMeanHash) cv.img_hash_blockMeanHash(gray, hash);
+                            else if (cv.blockMeanHash) cv.blockMeanHash(gray, hash);
+                            break;
+                        case 'colorMomentHash':
+                            if (cv.img_hash_colorMomentHash) cv.img_hash_colorMomentHash(mat, hash);
+                            else if (cv.colorMomentHash) cv.colorMomentHash(mat, hash);
+                            break;
+                        default:
+                            // Fallback to average hash
+                            if (cv.img_hash_averageHash) cv.img_hash_averageHash(gray, hash);
+                            else if (cv.averageHash) cv.averageHash(gray, hash);
+                    }
+                } catch (e) {
+                    console.warn('img_hash failed, using fallback:', e);
+                    // Use fallback
+                    const resized = new cv.Mat();
+                    cv.resize(gray, resized, new cv.Size(8, 8), 0, 0, cv.INTER_AREA);
+                    let sum = 0;
+                    for (let i = 0; i < 64; i++) sum += resized.data[i];
+                    const avg = sum / 64;
+                    cv.Mat.zeros(1, 8, cv.CV_8UC1).copyTo(hash);
+                    for (let i = 0; i < 8; i++) {
+                        let byte = 0;
+                        for (let j = 0; j < 8; j++) {
+                            if (resized.data[i * 8 + j] > avg) byte |= (1 << (7 - j));
+                        }
+                        hash.data[i] = byte;
+                    }
+                    resized.delete();
+                }
+            }
+
+            gray.delete();
+            return hash;
+        }
+
+        function computeHashDistance(hash1, hash2) {
+            let distance = 0;
+            const len = Math.min(hash1.data.length, hash2.data.length);
+            for (let i = 0; i < len; i++) {
+                let xor = hash1.data[i] ^ hash2.data[i];
+                while (xor) {
+                    distance += xor & 1;
+                    xor >>= 1;
+                }
+            }
+            return distance;
+        }
+
+        function matToHex(mat) {
+            let hex = '';
+            for (let i = 0; i < mat.data.length; i++) {
+                hex += mat.data[i].toString(16).padStart(2, '0');
+            }
+            return hex.toUpperCase();
+        }
+
+        // ==================== QUALITY SECTION ====================
+        function setupQualitySection() {
+            const zoneRef = document.getElementById('quality-zone-ref');
+            const zoneTest = document.getElementById('quality-zone-test');
+            const inputRef = document.getElementById('quality-input-ref');
+            const inputTest = document.getElementById('quality-input-test');
+            const previewRef = document.getElementById('quality-preview-ref');
+            const previewTest = document.getElementById('quality-preview-test');
+
+            zoneRef.onclick = () => inputRef.click();
+            zoneTest.onclick = () => inputTest.click();
+
+            inputRef.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    previewRef.src = img.src;
+                    previewRef.classList.remove('hidden');
+                    zoneRef.classList.add('has-image');
+                    if (qualityRefMat) qualityRefMat.delete();
+                    qualityRefMat = Utils.imageToMat(img);
+                    computeQuality();
+                }
+            };
+
+            inputTest.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    previewTest.src = img.src;
+                    previewTest.classList.remove('hidden');
+                    zoneTest.classList.add('has-image');
+                    if (qualityTestMat) qualityTestMat.delete();
+                    qualityTestMat = Utils.imageToMat(img);
+                    computeQuality();
+                }
+            };
+        }
+
+        function computeQuality() {
+            if (!qualityRefMat || !qualityTestMat) return;
+
+            const startTime = performance.now();
+
+            try {
+                // Resize test image to match reference if needed
+                let testResized = qualityTestMat;
+                if (qualityRefMat.rows !== qualityTestMat.rows || qualityRefMat.cols !== qualityTestMat.cols) {
+                    testResized = new cv.Mat();
+                    cv.resize(qualityTestMat, testResized, new cv.Size(qualityRefMat.cols, qualityRefMat.rows));
+                }
+
+                // Convert to same type
+                let ref = qualityRefMat;
+                let test = testResized;
+
+                if (ref.channels() !== test.channels()) {
+                    if (ref.channels() > test.channels()) {
+                        const temp = new cv.Mat();
+                        cv.cvtColor(test, temp, cv.COLOR_GRAY2RGBA);
+                        if (testResized !== qualityTestMat) testResized.delete();
+                        testResized = temp;
+                        test = temp;
+                    }
+                }
+
+                // Compute PSNR
+                const psnr = computePSNR(ref, test);
+                const psnrEl = document.getElementById('psnr-score');
+                psnrEl.textContent = psnr.toFixed(2);
+                psnrEl.className = 'quality-score ' + getQualityClass(psnr, 'psnr');
+
+                // Compute SSIM
+                const { ssim, ssimMap } = computeSSIM(ref, test);
+                const ssimEl = document.getElementById('ssim-score');
+                ssimEl.textContent = ssim.toFixed(4);
+                ssimEl.className = 'quality-score ' + getQualityClass(ssim, 'ssim');
+
+                // Compute GMSD (simplified)
+                const gmsd = computeGMSD(ref, test);
+                const gmsdEl = document.getElementById('gmsd-score');
+                gmsdEl.textContent = gmsd.toFixed(4);
+                gmsdEl.className = 'quality-score ' + getQualityClass(gmsd, 'gmsd');
+
+                // BRISQUE placeholder (requires trained model)
+                const brisqueEl = document.getElementById('brisque-score');
+                brisqueEl.textContent = 'N/A';
+                brisqueEl.className = 'quality-score';
+
+                // Show results
+                document.getElementById('quality-results').classList.remove('hidden');
+
+                // Render quality maps
+                renderQualityMaps(ref, test, ssimMap);
+
+                if (testResized !== qualityTestMat) testResized.delete();
+                if (ssimMap) ssimMap.delete();
+
+                const elapsed = performance.now() - startTime;
+                document.getElementById('quality-time').textContent = elapsed.toFixed(2) + 'ms';
+
+            } catch (err) {
+                console.error('Quality computation error:', err);
+            }
+        }
+
+        function computePSNR(ref, test) {
+            const diff = new cv.Mat();
+            cv.absdiff(ref, test, diff);
+
+            const diffFloat = new cv.Mat();
+            diff.convertTo(diffFloat, cv.CV_32F);
+
+            const squared = new cv.Mat();
+            cv.multiply(diffFloat, diffFloat, squared);
+
+            const mse = cv.mean(squared);
+            const mseVal = (mse[0] + mse[1] + mse[2]) / 3;
+
+            diff.delete();
+            diffFloat.delete();
+            squared.delete();
+
+            if (mseVal === 0) return 100; // Identical images
+            return 10 * Math.log10((255 * 255) / mseVal);
+        }
+
+        function computeSSIM(ref, test) {
+            // Convert to grayscale
+            const refGray = new cv.Mat();
+            const testGray = new cv.Mat();
+
+            if (ref.channels() > 1) {
+                cv.cvtColor(ref, refGray, cv.COLOR_RGBA2GRAY);
+            } else {
+                ref.copyTo(refGray);
+            }
+
+            if (test.channels() > 1) {
+                cv.cvtColor(test, testGray, cv.COLOR_RGBA2GRAY);
+            } else {
+                test.copyTo(testGray);
+            }
+
+            // Convert to float
+            const refFloat = new cv.Mat();
+            const testFloat = new cv.Mat();
+            refGray.convertTo(refFloat, cv.CV_32F);
+            testGray.convertTo(testFloat, cv.CV_32F);
+
+            // Constants
+            const C1 = 6.5025; // (0.01 * 255)^2
+            const C2 = 58.5225; // (0.03 * 255)^2
+
+            // Compute means
+            const mu1 = new cv.Mat();
+            const mu2 = new cv.Mat();
+            cv.GaussianBlur(refFloat, mu1, new cv.Size(11, 11), 1.5);
+            cv.GaussianBlur(testFloat, mu2, new cv.Size(11, 11), 1.5);
+
+            const mu1Sq = new cv.Mat();
+            const mu2Sq = new cv.Mat();
+            const mu1Mu2 = new cv.Mat();
+            cv.multiply(mu1, mu1, mu1Sq);
+            cv.multiply(mu2, mu2, mu2Sq);
+            cv.multiply(mu1, mu2, mu1Mu2);
+
+            // Compute variances
+            const sigma1Sq = new cv.Mat();
+            const sigma2Sq = new cv.Mat();
+            const sigma12 = new cv.Mat();
+
+            const refSq = new cv.Mat();
+            const testSq = new cv.Mat();
+            const refTest = new cv.Mat();
+            cv.multiply(refFloat, refFloat, refSq);
+            cv.multiply(testFloat, testFloat, testSq);
+            cv.multiply(refFloat, testFloat, refTest);
+
+            cv.GaussianBlur(refSq, sigma1Sq, new cv.Size(11, 11), 1.5);
+            cv.GaussianBlur(testSq, sigma2Sq, new cv.Size(11, 11), 1.5);
+            cv.GaussianBlur(refTest, sigma12, new cv.Size(11, 11), 1.5);
+
+            cv.subtract(sigma1Sq, mu1Sq, sigma1Sq);
+            cv.subtract(sigma2Sq, mu2Sq, sigma2Sq);
+            cv.subtract(sigma12, mu1Mu2, sigma12);
+
+            // Compute SSIM
+            const t1 = new cv.Mat();
+            const t2 = new cv.Mat();
+            const t3 = new cv.Mat();
+            const ssimMap = new cv.Mat();
+
+            // (2*mu1*mu2 + C1)
+            cv.addWeighted(mu1Mu2, 2, mu1Sq, 0, C1, t1);
+            cv.subtract(t1, mu1Sq, t1);
+            cv.add(t1, mu1Mu2, t1);
+
+            // (2*sigma12 + C2)
+            cv.addWeighted(sigma12, 2, sigma12, 0, C2, t2);
+
+            // (mu1^2 + mu2^2 + C1)
+            cv.add(mu1Sq, mu2Sq, t3);
+            cv.add(t3, new cv.Mat(t3.rows, t3.cols, t3.type(), new cv.Scalar(C1)), t3);
+
+            // (sigma1^2 + sigma2^2 + C2)
+            const t4 = new cv.Mat();
+            cv.add(sigma1Sq, sigma2Sq, t4);
+            cv.add(t4, new cv.Mat(t4.rows, t4.cols, t4.type(), new cv.Scalar(C2)), t4);
+
+            // Numerator and denominator
+            const num = new cv.Mat();
+            const den = new cv.Mat();
+            cv.multiply(t1, t2, num);
+            cv.multiply(t3, t4, den);
+
+            cv.divide(num, den, ssimMap);
+
+            // Compute mean SSIM
+            const meanSSIM = cv.mean(ssimMap);
+
+            // Cleanup
+            refGray.delete(); testGray.delete();
+            refFloat.delete(); testFloat.delete();
+            mu1.delete(); mu2.delete();
+            mu1Sq.delete(); mu2Sq.delete(); mu1Mu2.delete();
+            sigma1Sq.delete(); sigma2Sq.delete(); sigma12.delete();
+            refSq.delete(); testSq.delete(); refTest.delete();
+            t1.delete(); t2.delete(); t3.delete(); t4.delete();
+            num.delete(); den.delete();
+
+            return { ssim: meanSSIM[0], ssimMap };
+        }
+
+        function computeGMSD(ref, test) {
+            // Simplified GMSD computation
+            const refGray = new cv.Mat();
+            const testGray = new cv.Mat();
+
+            if (ref.channels() > 1) {
+                cv.cvtColor(ref, refGray, cv.COLOR_RGBA2GRAY);
+            } else {
+                ref.copyTo(refGray);
+            }
+
+            if (test.channels() > 1) {
+                cv.cvtColor(test, testGray, cv.COLOR_RGBA2GRAY);
+            } else {
+                test.copyTo(testGray);
+            }
+
+            // Compute gradients
+            const refGradX = new cv.Mat();
+            const refGradY = new cv.Mat();
+            const testGradX = new cv.Mat();
+            const testGradY = new cv.Mat();
+
+            cv.Sobel(refGray, refGradX, cv.CV_32F, 1, 0);
+            cv.Sobel(refGray, refGradY, cv.CV_32F, 0, 1);
+            cv.Sobel(testGray, testGradX, cv.CV_32F, 1, 0);
+            cv.Sobel(testGray, testGradY, cv.CV_32F, 0, 1);
+
+            // Compute gradient magnitude
+            const refMag = new cv.Mat();
+            const testMag = new cv.Mat();
+            cv.magnitude(refGradX, refGradY, refMag);
+            cv.magnitude(testGradX, testGradY, testMag);
+
+            // GMS
+            const C = 170; // Constant
+            const num = new cv.Mat();
+            const den = new cv.Mat();
+            const gms = new cv.Mat();
+
+            cv.multiply(refMag, testMag, num);
+            cv.addWeighted(num, 2, num, 0, C, num);
+
+            const refMagSq = new cv.Mat();
+            const testMagSq = new cv.Mat();
+            cv.multiply(refMag, refMag, refMagSq);
+            cv.multiply(testMag, testMag, testMagSq);
+            cv.add(refMagSq, testMagSq, den);
+            cv.add(den, new cv.Mat(den.rows, den.cols, den.type(), new cv.Scalar(C)), den);
+
+            cv.divide(num, den, gms);
+
+            // Compute standard deviation (GMSD)
+            const meanGMS = cv.mean(gms);
+            const diff = new cv.Mat();
+            cv.subtract(gms, new cv.Mat(gms.rows, gms.cols, gms.type(), new cv.Scalar(meanGMS[0])), diff);
+            cv.multiply(diff, diff, diff);
+            const variance = cv.mean(diff);
+            const gmsd = Math.sqrt(variance[0]);
+
+            // Cleanup
+            refGray.delete(); testGray.delete();
+            refGradX.delete(); refGradY.delete();
+            testGradX.delete(); testGradY.delete();
+            refMag.delete(); testMag.delete();
+            num.delete(); den.delete(); gms.delete();
+            refMagSq.delete(); testMagSq.delete();
+            diff.delete();
+
+            return gmsd;
+        }
+
+        function getQualityClass(value, metric) {
+            switch (metric) {
+                case 'psnr':
+                    if (value >= 40) return 'excellent';
+                    if (value >= 30) return 'good';
+                    if (value >= 20) return 'fair';
+                    return 'poor';
+                case 'ssim':
+                    if (value >= 0.95) return 'excellent';
+                    if (value >= 0.85) return 'good';
+                    if (value >= 0.70) return 'fair';
+                    return 'poor';
+                case 'gmsd':
+                    if (value <= 0.05) return 'excellent';
+                    if (value <= 0.10) return 'good';
+                    if (value <= 0.15) return 'fair';
+                    return 'poor';
+                default:
+                    return '';
+            }
+        }
+
+        function renderQualityMaps(ref, test, ssimMap) {
+            document.getElementById('quality-map-output').style.display = 'grid';
+            document.getElementById('quality-map-placeholder').style.display = 'none';
+
+            // SSIM Map
+            if (ssimMap) {
+                const ssimVis = new cv.Mat();
+                ssimMap.convertTo(ssimVis, cv.CV_8U, 255);
+                cv.applyColorMap(ssimVis, ssimVis, cv.COLORMAP_JET);
+                cv.imshow('canvas-ssim-map', ssimVis);
+                ssimVis.delete();
+            }
+
+            // Difference Map
+            const diff = new cv.Mat();
+            cv.absdiff(ref, test, diff);
+            cv.imshow('canvas-diff-map', diff);
+
+            // Error Heatmap
+            const diffGray = new cv.Mat();
+            if (diff.channels() > 1) {
+                cv.cvtColor(diff, diffGray, cv.COLOR_RGBA2GRAY);
+            } else {
+                diff.copyTo(diffGray);
+            }
+            const heatmap = new cv.Mat();
+            cv.normalize(diffGray, diffGray, 0, 255, cv.NORM_MINMAX);
+            cv.applyColorMap(diffGray, heatmap, cv.COLORMAP_HOT);
+            cv.imshow('canvas-error-map', heatmap);
+
+            diff.delete();
+            diffGray.delete();
+            heatmap.delete();
+        }
+
+        // ==================== RETINA SECTION ====================
+        function setupRetinaSection() {
+            const input = document.getElementById('retina-input');
+            const processBtn = document.getElementById('retina-process');
+
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (retinaMat) retinaMat.delete();
+                    retinaMat = Utils.imageToMat(img);
+                    processBtn.disabled = false;
+                }
+            };
+
+            processBtn.onclick = processRetina;
+        }
+
+        function processRetina() {
+            if (!retinaMat) return;
+
+            document.getElementById('retina-output').style.display = 'grid';
+
+            // Show input
+            cv.imshow('canvas-retina-input', retinaMat);
+
+            if (!hasBioinspired) {
+                // Simulate retina processing with standard OpenCV
+                simulateRetina(retinaMat);
+            } else {
+                // Use actual bioinspired module
+                try {
+                    const retina = cv.bioinspired_Retina.create(
+                        new cv.Size(retinaMat.cols, retinaMat.rows)
+                    );
+
+                    retina.run(retinaMat);
+
+                    const parvo = new cv.Mat();
+                    const magno = new cv.Mat();
+
+                    retina.getParvo(parvo);
+                    retina.getMagno(magno);
+
+                    cv.imshow('canvas-retina-parvo', parvo);
+                    cv.imshow('canvas-retina-magno', magno);
+
+                    parvo.delete();
+                    magno.delete();
+                    retina.delete();
+                } catch (e) {
+                    console.warn('Bioinspired module error, using simulation:', e);
+                    simulateRetina(retinaMat);
+                }
+            }
+        }
+
+        function simulateRetina(mat) {
+            // Parvo simulation (detail enhancement)
+            const parvo = new cv.Mat();
+            const blur = new cv.Mat();
+            cv.GaussianBlur(mat, blur, new cv.Size(15, 15), 3);
+            cv.addWeighted(mat, 1.5, blur, -0.5, 0, parvo);
+            cv.imshow('canvas-retina-parvo', parvo);
+
+            // Magno simulation (edge/motion detection)
+            const gray = new cv.Mat();
+            const magno = new cv.Mat();
+            if (mat.channels() > 1) {
+                cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+            } else {
+                mat.copyTo(gray);
+            }
+            cv.Laplacian(gray, magno, cv.CV_8U);
+            cv.imshow('canvas-retina-magno', magno);
+
+            parvo.delete();
+            blur.delete();
+            gray.delete();
+            magno.delete();
+        }
+
+        // ==================== COLOR SECTION ====================
+        function setupColorSection() {
+            const input = document.getElementById('color-input');
+            const analyzeBtn = document.getElementById('color-analyze');
+
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (colorMat) colorMat.delete();
+                    colorMat = Utils.imageToMat(img);
+                    analyzeBtn.disabled = false;
+                }
+            };
+
+            analyzeBtn.onclick = analyzeColors;
+        }
+
+        function analyzeColors() {
+            if (!colorMat) return;
+
+            document.getElementById('color-output').style.display = 'block';
+
+            // Show input
+            cv.imshow('canvas-color-input', colorMat);
+
+            // Extract dominant colors using k-means
+            const k = parseInt(document.getElementById('color-count').value);
+            const dominantColors = extractDominantColors(colorMat, k);
+            displayColorPalette(dominantColors);
+
+            // Draw histogram
+            Utils.drawHistogram(colorMat, document.getElementById('canvas-color-histogram'), 'all');
+
+            // Compute channel statistics
+            computeColorStats(colorMat);
+        }
+
+        function extractDominantColors(mat, k) {
+            // Reshape image to list of pixels
+            const rgb = new cv.Mat();
+            cv.cvtColor(mat, rgb, cv.COLOR_RGBA2RGB);
+
+            const data = new cv.Mat(rgb.rows * rgb.cols, 3, cv.CV_32F);
+            let idx = 0;
+            for (let i = 0; i < rgb.rows; i++) {
+                for (let j = 0; j < rgb.cols; j++) {
+                    data.floatPtr(idx, 0)[0] = rgb.ucharAt(i, j * 3);
+                    data.floatPtr(idx, 1)[0] = rgb.ucharAt(i, j * 3 + 1);
+                    data.floatPtr(idx, 2)[0] = rgb.ucharAt(i, j * 3 + 2);
+                    idx++;
+                }
+            }
+
+            // Apply k-means
+            const labels = new cv.Mat();
+            const centers = new cv.Mat();
+            const criteria = new cv.TermCriteria(cv.TermCriteria_EPS + cv.TermCriteria_MAX_ITER, 10, 1.0);
+
+            cv.kmeans(data, k, labels, criteria, 3, cv.KMEANS_PP_CENTERS, centers);
+
+            // Extract colors
+            const colors = [];
+            for (let i = 0; i < k; i++) {
+                colors.push({
+                    r: Math.round(centers.floatAt(i, 0)),
+                    g: Math.round(centers.floatAt(i, 1)),
+                    b: Math.round(centers.floatAt(i, 2))
+                });
+            }
+
+            // Count pixels per cluster
+            const counts = new Array(k).fill(0);
+            for (let i = 0; i < labels.rows; i++) {
+                counts[labels.intAt(i, 0)]++;
+            }
+            const total = labels.rows;
+
+            colors.forEach((c, i) => {
+                c.percentage = (counts[i] / total * 100).toFixed(1);
+            });
+
+            // Sort by percentage
+            colors.sort((a, b) => b.percentage - a.percentage);
+
+            rgb.delete();
+            data.delete();
+            labels.delete();
+            centers.delete();
+
+            return colors;
+        }
+
+        function displayColorPalette(colors) {
+            const palette = document.getElementById('color-palette');
+            palette.innerHTML = '';
+
+            colors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                swatch.innerHTML = `<span>${color.percentage}%</span>`;
+                swatch.title = `RGB(${color.r}, ${color.g}, ${color.b})`;
+                palette.appendChild(swatch);
+            });
+        }
+
+        function computeColorStats(mat) {
+            const channels = new cv.MatVector();
+            cv.split(mat, channels);
+
+            const tbody = document.getElementById('color-stats-body');
+            tbody.innerHTML = '';
+
+            const channelNames = ['R', 'G', 'B', 'A'];
+            const channelClasses = ['channel-r', 'channel-g', 'channel-b', 'channel-a'];
+
+            for (let i = 0; i < Math.min(channels.size(), 4); i++) {
+                const ch = channels.get(i);
+                const meanStd = new cv.Mat();
+                const mean = new cv.Mat();
+                cv.meanStdDev(ch, mean, meanStd);
+
+                let min = 255, max = 0;
+                for (let j = 0; j < ch.data.length; j++) {
+                    if (ch.data[j] < min) min = ch.data[j];
+                    if (ch.data[j] > max) max = ch.data[j];
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="${channelClasses[i]}">${channelNames[i]}</td>
+                    <td>${mean.doubleAt(0, 0).toFixed(2)}</td>
+                    <td>${meanStd.doubleAt(0, 0).toFixed(2)}</td>
+                    <td>${min}</td>
+                    <td>${max}</td>
+                `;
+                tbody.appendChild(tr);
+
+                meanStd.delete();
+                mean.delete();
+            }
+
+            for (let i = 0; i < channels.size(); i++) {
+                channels.get(i).delete();
+            }
+            channels.delete();
+        }
+
+        // ==================== STATS SECTION ====================
+        function setupStatsSection() {
+            const input = document.getElementById('stats-input');
+            const analyzeBtn = document.getElementById('stats-analyze');
+
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (statsMat) statsMat.delete();
+                    statsMat = Utils.imageToMat(img);
+                    analyzeBtn.disabled = false;
+                }
+            };
+
+            analyzeBtn.onclick = analyzeStats;
+        }
+
+        function analyzeStats() {
+            if (!statsMat) return;
+
+            document.getElementById('stats-output').style.display = 'block';
+
+            // Show input
+            cv.imshow('canvas-stats-input', statsMat);
+
+            // Image properties
+            const propsBody = document.getElementById('stats-properties');
+            propsBody.innerHTML = `
+                <tr><th>Width</th><td>${statsMat.cols}px</td></tr>
+                <tr><th>Height</th><td>${statsMat.rows}px</td></tr>
+                <tr><th>Channels</th><td>${statsMat.channels()}</td></tr>
+                <tr><th>Depth</th><td>${getDepthName(statsMat.depth())}</td></tr>
+                <tr><th>Total Pixels</th><td>${(statsMat.rows * statsMat.cols).toLocaleString()}</td></tr>
+                <tr><th>Total Size</th><td>${Utils.formatBytes(statsMat.data.length)}</td></tr>
+            `;
+
+            // Draw histogram
+            Utils.drawHistogram(statsMat, document.getElementById('canvas-stats-histogram'), 'all');
+
+            // Channel statistics with entropy
+            const channels = new cv.MatVector();
+            cv.split(statsMat, channels);
+
+            const tbody = document.getElementById('stats-channels');
+            tbody.innerHTML = '';
+
+            const channelNames = ['R', 'G', 'B', 'A'];
+            const channelClasses = ['channel-r', 'channel-g', 'channel-b', 'channel-a'];
+
+            for (let i = 0; i < Math.min(channels.size(), 4); i++) {
+                const ch = channels.get(i);
+                const meanMat = new cv.Mat();
+                const stdMat = new cv.Mat();
+                cv.meanStdDev(ch, meanMat, stdMat);
+
+                let min = 255, max = 0;
+                const histogram = new Array(256).fill(0);
+                for (let j = 0; j < ch.data.length; j++) {
+                    const val = ch.data[j];
+                    histogram[val]++;
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                }
+
+                // Compute entropy
+                const total = ch.data.length;
+                let entropy = 0;
+                for (let j = 0; j < 256; j++) {
+                    if (histogram[j] > 0) {
+                        const p = histogram[j] / total;
+                        entropy -= p * Math.log2(p);
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="${channelClasses[i]}">${channelNames[i]}</td>
+                    <td>${meanMat.doubleAt(0, 0).toFixed(2)}</td>
+                    <td>${stdMat.doubleAt(0, 0).toFixed(2)}</td>
+                    <td>${min}</td>
+                    <td>${max}</td>
+                    <td>${entropy.toFixed(3)} bits</td>
+                `;
+                tbody.appendChild(tr);
+
+                meanMat.delete();
+                stdMat.delete();
+            }
+
+            for (let i = 0; i < channels.size(); i++) {
+                channels.get(i).delete();
+            }
+            channels.delete();
+        }
+
+        function getDepthName(depth) {
+            const names = {
+                [cv.CV_8U]: 'CV_8U (8-bit unsigned)',
+                [cv.CV_8S]: 'CV_8S (8-bit signed)',
+                [cv.CV_16U]: 'CV_16U (16-bit unsigned)',
+                [cv.CV_16S]: 'CV_16S (16-bit signed)',
+                [cv.CV_32S]: 'CV_32S (32-bit signed)',
+                [cv.CV_32F]: 'CV_32F (32-bit float)',
+                [cv.CV_64F]: 'CV_64F (64-bit float)'
+            };
+            return names[depth] || `Unknown (${depth})`;
+        }
+
+        // ==================== NOISE SECTION ====================
+        function setupNoiseSection() {
+            const input = document.getElementById('noise-input');
+            const estimateBtn = document.getElementById('noise-estimate');
+
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (noiseMat) noiseMat.delete();
+                    noiseMat = Utils.imageToMat(img);
+                    estimateBtn.disabled = false;
+                }
+            };
+
+            estimateBtn.onclick = estimateNoise;
+        }
+
+        function estimateNoise() {
+            if (!noiseMat) return;
+
+            document.getElementById('noise-output').style.display = 'block';
+
+            // Show input
+            cv.imshow('canvas-noise-input', noiseMat);
+
+            // Convert to grayscale
+            const gray = new cv.Mat();
+            if (noiseMat.channels() > 1) {
+                cv.cvtColor(noiseMat, gray, cv.COLOR_RGBA2GRAY);
+            } else {
+                noiseMat.copyTo(gray);
+            }
+
+            // Estimate noise using Laplacian method
+            const laplacian = new cv.Mat();
+            cv.Laplacian(gray, laplacian, cv.CV_64F);
+
+            // Compute median absolute deviation
+            const absLap = new cv.Mat();
+            cv.convertScaleAbs(laplacian, absLap);
+
+            // Get all values and sort
+            const values = [];
+            for (let i = 0; i < absLap.data.length; i++) {
+                values.push(absLap.data[i]);
+            }
+            values.sort((a, b) => a - b);
+            const median = values[Math.floor(values.length / 2)];
+
+            // Sigma estimation (robust noise estimation)
+            // sigma = median * sqrt(pi/2) / 6
+            const sigma = median * Math.sqrt(Math.PI / 2) / 6;
+
+            // Display results
+            document.getElementById('noise-sigma').textContent = sigma.toFixed(2);
+
+            const interpretation = document.getElementById('noise-interpretation');
+            if (sigma < 5) {
+                interpretation.innerHTML = '<strong style="color:var(--success)">Low noise</strong> - Image has very little noise, typical of high-quality captures or noise-reduced images.';
+            } else if (sigma < 15) {
+                interpretation.innerHTML = '<strong style="color:var(--warning)">Moderate noise</strong> - Some noise present, common in standard camera photos or lightly compressed images.';
+            } else {
+                interpretation.innerHTML = '<strong style="color:var(--error)">High noise</strong> - Significant noise detected, may benefit from denoising. Common in low-light photos or heavily compressed images.';
+            }
+
+            // Visualize noise pattern
+            visualizeNoise(gray, sigma);
+
+            gray.delete();
+            laplacian.delete();
+            absLap.delete();
+        }
+
+        function visualizeNoise(gray, sigma) {
+            // Apply bilateral filter to get denoised version
+            const denoised = new cv.Mat();
+            cv.bilateralFilter(gray, denoised, 9, sigma * 2, sigma * 2);
+
+            // Compute difference (noise pattern)
+            const noise = new cv.Mat();
+            cv.absdiff(gray, denoised, noise);
+
+            // Enhance for visualization
+            cv.normalize(noise, noise, 0, 255, cv.NORM_MINMAX);
+
+            // Apply colormap
+            const colorNoise = new cv.Mat();
+            cv.applyColorMap(noise, colorNoise, cv.COLORMAP_INFERNO);
+
+            cv.imshow('canvas-noise-pattern', colorNoise);
+
+            denoised.delete();
+            noise.delete();
+            colorNoise.delete();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (hashMat1) hashMat1.delete();
+            if (hashMat2) hashMat2.delete();
+            if (qualityRefMat) qualityRefMat.delete();
+            if (qualityTestMat) qualityTestMat.delete();
+            if (retinaMat) retinaMat.delete();
+            if (colorMat) colorMat.delete();
+            if (statsMat) statsMat.delete();
+            if (noiseMat) noiseMat.delete();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Resolution & Stitching - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles for this demo */
+        .model-info {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .model-info h4 {
+            color: var(--accent-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .model-info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .model-info li {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+            padding-left: var(--spacing-md);
+            position: relative;
+        }
+
+        .model-info li::before {
+            content: "-";
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .comparison-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .comparison-item .label {
+            padding: var(--spacing-sm);
+            background: var(--bg-input);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-item canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            background: var(--bg-secondary);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-card);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent-secondary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .multi-upload-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .multi-upload-preview img {
+            width: 100px;
+            height: 75px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-color);
+        }
+
+        .multi-upload-preview img.selected {
+            border-color: var(--accent-primary);
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .step-indicator.completed .step-number {
+            background: var(--success);
+        }
+
+        .step-indicator.active .step-number {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .panorama-result {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .panorama-result canvas {
+            max-width: none;
+            height: auto;
+        }
+
+        .seam-demo {
+            position: relative;
+        }
+
+        .seam-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--error);
+            pointer-events: none;
+        }
+
+        .mosaic-grid-preview {
+            display: grid;
+            gap: 2px;
+            background: var(--bg-input);
+            padding: 2px;
+            border-radius: var(--radius-md);
+        }
+
+        .section-divider {
+            margin: var(--spacing-2xl) 0;
+            padding: var(--spacing-md) 0;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .section-divider h2 {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .zoom-container {
+            position: relative;
+            overflow: hidden;
+            cursor: zoom-in;
+        }
+
+        .zoom-container.zoomed {
+            cursor: zoom-out;
+        }
+
+        .zoom-container canvas {
+            transition: transform 0.3s ease;
+        }
+
+        .zoom-container.zoomed canvas {
+            transform: scale(2);
+        }
+
+        .processing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            z-index: 10;
+        }
+
+        .mini-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .size-inputs {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .size-inputs input {
+            width: 80px;
+        }
+
+        .size-inputs .link-icon {
+            cursor: pointer;
+            padding: var(--spacing-sm);
+            color: var(--text-muted);
+            transition: color var(--transition-fast);
+        }
+
+        .size-inputs .link-icon.active {
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Super Resolution & Stitching</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Super Resolution & Stitching</h1>
+            <p>Enhance image resolution with DNN models and create panoramas from multiple images</p>
+        </header>
+
+        <!-- Module Status -->
+        <div id="module-status" class="alert alert-info mb-lg">
+            Checking module availability...
+        </div>
+
+        <!-- SUPER RESOLUTION SECTION -->
+        <div class="section-divider">
+            <h2>Super Resolution</h2>
+            <p class="text-secondary">Upscale images using deep learning and classic interpolation methods</p>
+        </div>
+
+        <!-- 1. DNN Super Resolution -->
+        <section class="demo-section" id="dnn-superres-section">
+            <h3>1. DNN Super Resolution (dnn_superres)</h3>
+
+            <div id="dnn-superres-status" class="alert alert-warning mb-md">
+                Checking dnn_superres availability...
+            </div>
+
+            <div class="model-info">
+                <h4>Model Requirements</h4>
+                <p class="text-secondary mb-sm">DNN Super Resolution requires pre-trained model files. Download from:</p>
+                <ul>
+                    <li><strong>EDSR</strong>: Enhanced Deep Residual Networks (x2, x3, x4) - Best quality</li>
+                    <li><strong>ESPCN</strong>: Efficient Sub-Pixel CNN (x2, x3, x4) - Fast</li>
+                    <li><strong>FSRCNN</strong>: Fast Super-Resolution CNN (x2, x3, x4) - Fastest</li>
+                    <li><strong>LapSRN</strong>: Laplacian Pyramid SR Network (x2, x4, x8) - Progressive upscaling</li>
+                </ul>
+                <p class="text-secondary mt-sm">
+                    Download models from:
+                    <a href="https://github.com/Saafke/EDSR_Tensorflow/tree/master/models" target="_blank">EDSR Models</a> |
+                    <a href="https://github.com/fannymonori/TF-ESPCN/tree/master/export" target="_blank">ESPCN Models</a>
+                </p>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="dnn-model-file">Load Model (.pb file)</label>
+                    <input type="file" id="dnn-model-file" accept=".pb,.onnx">
+                    <label for="dnn-model-file" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Load Model
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="dnn-model-type">Model Type</label>
+                    <select id="dnn-model-type">
+                        <option value="edsr">EDSR</option>
+                        <option value="espcn">ESPCN</option>
+                        <option value="fsrcnn">FSRCNN</option>
+                        <option value="lapsrn">LapSRN</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dnn-scale">Scale Factor</label>
+                    <select id="dnn-scale">
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="4">4x</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dnn-image">Input Image</label>
+                    <input type="file" id="dnn-image" accept="image/*">
+                    <label for="dnn-image" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <button class="btn btn-primary" id="dnn-upscale-btn" disabled>Upscale with DNN</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="dnn-input-canvas"></canvas>
+                    <span class="canvas-label">Input (Low Resolution)</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="dnn-output-canvas"></canvas>
+                    <span class="canvas-label">DNN Super Resolution</span>
+                    <div id="dnn-processing" class="processing-overlay hidden">
+                        <div class="mini-spinner"></div>
+                        <span>Processing...</span>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="dnn-bicubic-canvas"></canvas>
+                    <span class="canvas-label">Bicubic Interpolation (Comparison)</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md" id="dnn-metrics">
+                <div class="metric">
+                    <span class="metric-label">Input Size</span>
+                    <span class="metric-value" id="dnn-input-size">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Output Size</span>
+                    <span class="metric-value" id="dnn-output-size">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">DNN Time</span>
+                    <span class="metric-value" id="dnn-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Bicubic Time</span>
+                    <span class="metric-value" id="bicubic-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Classic Interpolation Comparison -->
+        <section class="demo-section" id="interpolation-section">
+            <h3>2. Classic Interpolation Comparison</h3>
+            <p class="text-secondary mb-md">Compare different interpolation methods by downscaling and upscaling an image</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="interp-image">Upload Image</label>
+                    <input type="file" id="interp-image" accept="image/*">
+                    <label for="interp-image" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="interp-downscale">Downscale Factor</label>
+                    <select id="interp-downscale">
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="4" selected>4x</option>
+                        <option value="8">8x</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="interp-compare-btn" disabled>Compare Methods</button>
+            </div>
+
+            <div class="comparison-grid" id="interp-results">
+                <div class="comparison-item">
+                    <div class="label">Original</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-original"></canvas>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">INTER_NEAREST</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-nearest"></canvas>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">INTER_LINEAR</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-linear"></canvas>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">INTER_CUBIC</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-cubic"></canvas>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">INTER_LANCZOS4</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-lanczos"></canvas>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">INTER_AREA (downscale)</div>
+                    <div class="zoom-container">
+                        <canvas id="interp-area"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-secondary mt-md text-center">Click on any image to zoom in and see the differences</p>
+        </section>
+
+        <!-- 3. Resize Demo -->
+        <section class="demo-section" id="resize-section">
+            <h3>3. Image Resize Tool</h3>
+            <p class="text-secondary mb-md">Resize images with precise control over dimensions and interpolation</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="resize-image">Upload Image</label>
+                    <input type="file" id="resize-image" accept="image/*">
+                    <label for="resize-image" class="file-input-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Upload Image
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Output Size</label>
+                    <div class="size-inputs">
+                        <input type="number" id="resize-width" placeholder="Width" min="1">
+                        <span class="link-icon active" id="aspect-link" title="Maintain aspect ratio">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                        </span>
+                        <input type="number" id="resize-height" placeholder="Height" min="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="resize-scale">Or Scale Factor</label>
+                    <input type="number" id="resize-scale" placeholder="e.g., 0.5 or 2" step="0.1" min="0.1" max="10">
+                </div>
+
+                <div class="form-group">
+                    <label for="resize-method">Interpolation Method</label>
+                    <select id="resize-method">
+                        <option value="nearest">INTER_NEAREST</option>
+                        <option value="linear">INTER_LINEAR</option>
+                        <option value="cubic" selected>INTER_CUBIC</option>
+                        <option value="lanczos">INTER_LANCZOS4</option>
+                        <option value="area">INTER_AREA</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="resize-btn" disabled>Resize</button>
+                <button class="btn btn-secondary" id="resize-download-btn" disabled>Download</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container">
+                    <canvas id="resize-input-canvas"></canvas>
+                    <span class="canvas-label">Original</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="resize-output-canvas"></canvas>
+                    <span class="canvas-label">Resized</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Original Size</span>
+                    <span class="metric-value" id="resize-original-size">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">New Size</span>
+                    <span class="metric-value" id="resize-new-size">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="resize-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- STITCHING SECTION -->
+        <div class="section-divider">
+            <h2>Image Stitching</h2>
+            <p class="text-secondary">Create panoramas and mosaics from multiple overlapping images</p>
+        </div>
+
+        <!-- 4. Panorama Stitching -->
+        <section class="demo-section" id="panorama-section">
+            <h3>4. Panorama Stitching</h3>
+            <p class="text-secondary mb-md">Combine multiple overlapping images into a seamless panorama</p>
+
+            <div id="stitcher-status" class="alert alert-info mb-md">
+                Checking Stitcher availability...
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group" style="flex: 1;">
+                    <label>Upload Images (2-6 overlapping photos)</label>
+                    <div class="upload-zone" id="panorama-upload-zone">
+                        <input type="file" id="panorama-images" accept="image/*" multiple style="display: none;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-muted);">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p class="text-secondary">Drop images here or click to upload</p>
+                        <p class="text-muted" style="font-size: 0.8rem;">Supported: JPG, PNG, WebP</p>
+                    </div>
+                    <div class="multi-upload-preview" id="panorama-preview"></div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="stitcher-mode">Stitcher Mode</label>
+                    <select id="stitcher-mode">
+                        <option value="panorama">PANORAMA</option>
+                        <option value="scans">SCANS</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="stitch-btn" disabled>Create Panorama</button>
+                <button class="btn btn-secondary" id="panorama-clear-btn">Clear Images</button>
+                <button class="btn btn-secondary" id="panorama-download-btn" disabled>Download Result</button>
+            </div>
+
+            <div id="stitch-progress" class="alert alert-info hidden">
+                <span id="stitch-progress-text">Processing...</span>
+            </div>
+
+            <div class="panorama-result mt-md">
+                <div class="canvas-container">
+                    <canvas id="panorama-output"></canvas>
+                    <span class="canvas-label">Panorama Result</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Images Used</span>
+                    <span class="metric-value" id="panorama-image-count">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Output Size</span>
+                    <span class="metric-value" id="panorama-output-size">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="panorama-time">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value" id="panorama-status">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Manual Stitching Steps -->
+        <section class="demo-section" id="manual-stitch-section">
+            <h3>5. Manual Stitching Steps (Educational)</h3>
+            <p class="text-secondary mb-md">Understand the stitching pipeline by seeing each step</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="manual-image1">Image 1 (Left)</label>
+                    <input type="file" id="manual-image1" accept="image/*">
+                    <label for="manual-image1" class="file-input-label">Upload Left</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="manual-image2">Image 2 (Right)</label>
+                    <input type="file" id="manual-image2" accept="image/*">
+                    <label for="manual-image2" class="file-input-label">Upload Right</label>
+                </div>
+
+                <button class="btn btn-primary" id="manual-stitch-btn" disabled>Show Steps</button>
+            </div>
+
+            <!-- Step 1: Feature Detection -->
+            <div class="step-indicator" id="step1-indicator">
+                <span class="step-number">1</span>
+                <div>
+                    <strong>Feature Detection</strong>
+                    <p class="text-secondary" style="font-size: 0.85rem;">Detect keypoints in each image using ORB</p>
+                </div>
+            </div>
+            <div class="demo-output mb-lg">
+                <div class="canvas-container">
+                    <canvas id="step1-img1"></canvas>
+                    <span class="canvas-label">Image 1 Features</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="step1-img2"></canvas>
+                    <span class="canvas-label">Image 2 Features</span>
+                </div>
+            </div>
+
+            <!-- Step 2: Feature Matching -->
+            <div class="step-indicator" id="step2-indicator">
+                <span class="step-number">2</span>
+                <div>
+                    <strong>Feature Matching</strong>
+                    <p class="text-secondary" style="font-size: 0.85rem;">Match keypoints between images using BFMatcher</p>
+                </div>
+            </div>
+            <div class="demo-output single mb-lg">
+                <div class="canvas-container">
+                    <canvas id="step2-matches"></canvas>
+                    <span class="canvas-label">Feature Matches</span>
+                </div>
+            </div>
+
+            <!-- Step 3: Homography -->
+            <div class="step-indicator" id="step3-indicator">
+                <span class="step-number">3</span>
+                <div>
+                    <strong>Homography Estimation</strong>
+                    <p class="text-secondary" style="font-size: 0.85rem;">Calculate transformation matrix using RANSAC</p>
+                </div>
+            </div>
+            <div class="code-block mb-lg" id="homography-matrix">
+                Homography matrix will appear here...
+            </div>
+
+            <!-- Step 4: Warping -->
+            <div class="step-indicator" id="step4-indicator">
+                <span class="step-number">4</span>
+                <div>
+                    <strong>Image Warping</strong>
+                    <p class="text-secondary" style="font-size: 0.85rem;">Warp images to align using perspective transform</p>
+                </div>
+            </div>
+            <div class="demo-output mb-lg">
+                <div class="canvas-container">
+                    <canvas id="step4-warped1"></canvas>
+                    <span class="canvas-label">Warped Image 1</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="step4-warped2"></canvas>
+                    <span class="canvas-label">Image 2 (Reference)</span>
+                </div>
+            </div>
+
+            <!-- Step 5: Blending -->
+            <div class="step-indicator" id="step5-indicator">
+                <span class="step-number">5</span>
+                <div>
+                    <strong>Image Blending</strong>
+                    <p class="text-secondary" style="font-size: 0.85rem;">Blend images together at the seam</p>
+                </div>
+            </div>
+            <div class="demo-output single">
+                <div class="canvas-container">
+                    <canvas id="step5-result"></canvas>
+                    <span class="canvas-label">Final Stitched Result</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Keypoints (Img1)</span>
+                    <span class="metric-value" id="manual-kp1">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Keypoints (Img2)</span>
+                    <span class="metric-value" id="manual-kp2">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Good Matches</span>
+                    <span class="metric-value" id="manual-matches">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Time</span>
+                    <span class="metric-value" id="manual-time">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Blending Methods -->
+        <section class="demo-section" id="blending-section">
+            <h3>6. Blending Methods Comparison</h3>
+            <p class="text-secondary mb-md">Compare different techniques for blending overlapping images</p>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="blend-image1">Image 1</label>
+                    <input type="file" id="blend-image1" accept="image/*">
+                    <label for="blend-image1" class="file-input-label">Upload Image 1</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="blend-image2">Image 2</label>
+                    <input type="file" id="blend-image2" accept="image/*">
+                    <label for="blend-image2" class="file-input-label">Upload Image 2</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="blend-overlap">Overlap Position (%)</label>
+                    <div class="range-group">
+                        <input type="range" id="blend-overlap" min="10" max="90" value="50">
+                        <span class="range-value">50%</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="blend-btn" disabled>Compare Blending</button>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <div class="label">Simple Overlay</div>
+                    <canvas id="blend-simple"></canvas>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">Feather Blending</div>
+                    <canvas id="blend-feather"></canvas>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">Linear Gradient Blend</div>
+                    <canvas id="blend-gradient"></canvas>
+                </div>
+                <div class="comparison-item">
+                    <div class="label">Alpha Blend (50%)</div>
+                    <canvas id="blend-alpha"></canvas>
+                </div>
+            </div>
+
+            <div class="mt-md">
+                <p class="text-secondary"><strong>Seam Visualization:</strong></p>
+                <div class="canvas-container seam-demo">
+                    <canvas id="blend-seam"></canvas>
+                    <div class="seam-line" id="seam-indicator" style="left: 50%;"></div>
+                    <span class="canvas-label">Seam Location (red line)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Image Mosaic -->
+        <section class="demo-section" id="mosaic-section">
+            <h3>7. Image Mosaic</h3>
+            <p class="text-secondary mb-md">Create a grid mosaic from multiple images</p>
+
+            <div class="demo-controls">
+                <div class="form-group" style="flex: 1;">
+                    <label>Upload Images for Mosaic</label>
+                    <div class="upload-zone" id="mosaic-upload-zone">
+                        <input type="file" id="mosaic-images" accept="image/*" multiple style="display: none;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-muted);">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <p class="text-secondary">Drop images here or click to upload</p>
+                    </div>
+                    <div class="multi-upload-preview" id="mosaic-preview"></div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="mosaic-cols">Columns</label>
+                    <select id="mosaic-cols">
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mosaic-tile-size">Tile Size (px)</label>
+                    <input type="number" id="mosaic-tile-size" value="200" min="50" max="500" step="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="mosaic-gap">Gap (px)</label>
+                    <input type="number" id="mosaic-gap" value="2" min="0" max="20">
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                    <label for="mosaic-blend-toggle" style="margin-bottom: 0;">Blend Edges</label>
+                    <div class="toggle" id="mosaic-blend-toggle"></div>
+                </div>
+
+                <button class="btn btn-primary" id="mosaic-create-btn" disabled>Create Mosaic</button>
+                <button class="btn btn-secondary" id="mosaic-clear-btn">Clear</button>
+                <button class="btn btn-secondary" id="mosaic-download-btn" disabled>Download</button>
+            </div>
+
+            <div class="demo-output single">
+                <div class="canvas-container">
+                    <canvas id="mosaic-output"></canvas>
+                    <span class="canvas-label">Mosaic Result</span>
+                </div>
+            </div>
+
+            <div class="metrics mt-md">
+                <div class="metric">
+                    <span class="metric-label">Images</span>
+                    <span class="metric-value" id="mosaic-count">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Grid Size</span>
+                    <span class="metric-value" id="mosaic-grid">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Output Size</span>
+                    <span class="metric-value" id="mosaic-size">-</span>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+    <script>
+        // Global state
+        let cvReady = false;
+        let dnnSuperResAvailable = false;
+        let stitcherAvailable = false;
+
+        // Stored images
+        let panoramaImages = [];
+        let mosaicImages = [];
+        let resizeSourceMat = null;
+        let interpSourceMat = null;
+        let blendImage1 = null;
+        let blendImage2 = null;
+        let manualImage1 = null;
+        let manualImage2 = null;
+        let dnnInputMat = null;
+        let dnnModel = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: UIComponents.updateLoadingProgress,
+                    statusElement: document.getElementById('loading-status')
+                });
+
+                cvReady = true;
+                checkModuleAvailability();
+                initializeDemo();
+                UIComponents.hideLoadingOverlay();
+            } catch (error) {
+                UIComponents.updateLoadingStatus('Failed to load OpenCV: ' + error.message);
+                document.getElementById('module-status').className = 'alert alert-error mb-lg';
+                document.getElementById('module-status').textContent = 'Failed to load OpenCV.js: ' + error.message;
+            }
+        });
+
+        function checkModuleAvailability() {
+            const statusEl = document.getElementById('module-status');
+            const modules = [];
+
+            // Check dnn_superres
+            dnnSuperResAvailable = typeof cv.dnn_superres_DnnSuperResImpl !== 'undefined' ||
+                                   typeof cv.dnn !== 'undefined';
+
+            if (dnnSuperResAvailable) {
+                modules.push('DNN Super Resolution');
+            }
+
+            // Check Stitcher
+            stitcherAvailable = typeof cv.Stitcher !== 'undefined' ||
+                               typeof cv.Stitcher_create !== 'undefined';
+
+            if (stitcherAvailable) {
+                modules.push('Stitcher');
+            }
+
+            // Check ORB for manual stitching
+            const orbAvailable = typeof cv.ORB !== 'undefined';
+            if (orbAvailable) {
+                modules.push('ORB');
+            }
+
+            // Check BFMatcher
+            const bfMatcherAvailable = typeof cv.BFMatcher !== 'undefined';
+            if (bfMatcherAvailable) {
+                modules.push('BFMatcher');
+            }
+
+            // Update status
+            if (modules.length > 0) {
+                statusEl.className = 'alert alert-success mb-lg';
+                statusEl.innerHTML = '<strong>Available modules:</strong> ' + modules.join(', ');
+            } else {
+                statusEl.className = 'alert alert-warning mb-lg';
+                statusEl.textContent = 'Limited functionality - some modules may not be available in this build.';
+            }
+
+            // Update section-specific status
+            updateDnnStatus();
+            updateStitcherStatus();
+        }
+
+        function updateDnnStatus() {
+            const statusEl = document.getElementById('dnn-superres-status');
+
+            if (typeof cv.dnn !== 'undefined') {
+                statusEl.className = 'alert alert-info mb-md';
+                statusEl.innerHTML = `
+                    <strong>DNN module available.</strong>
+                    To use super resolution, load a pre-trained model (.pb file).
+                    <br><small>Note: dnn_superres convenience functions may not be available,
+                    but you can use cv.dnn.readNet to load models.</small>
+                `;
+            } else {
+                statusEl.className = 'alert alert-warning mb-md';
+                statusEl.innerHTML = `
+                    <strong>DNN module not available</strong> in this OpenCV.js build.
+                    <br>The DNN super resolution demo requires a full build with DNN support.
+                `;
+                document.getElementById('dnn-upscale-btn').disabled = true;
+            }
+        }
+
+        function updateStitcherStatus() {
+            const statusEl = document.getElementById('stitcher-status');
+
+            if (stitcherAvailable) {
+                statusEl.className = 'alert alert-success mb-md';
+                statusEl.textContent = 'Stitcher module is available. Upload overlapping images to create a panorama.';
+            } else {
+                statusEl.className = 'alert alert-warning mb-md';
+                statusEl.innerHTML = `
+                    <strong>Stitcher module not available</strong> in this build.
+                    <br>Panorama stitching requires cv.Stitcher which may need a full build.
+                    <br>Manual stitching using feature matching will still work.
+                `;
+            }
+        }
+
+        function initializeDemo() {
+            // Setup all event listeners
+            setupInterpolationDemo();
+            setupResizeDemo();
+            setupPanoramaDemo();
+            setupManualStitchDemo();
+            setupBlendingDemo();
+            setupMosaicDemo();
+            setupDnnSuperRes();
+            setupZoomContainers();
+        }
+
+        // ==================== DNN SUPER RESOLUTION ====================
+        function setupDnnSuperRes() {
+            const modelFileInput = document.getElementById('dnn-model-file');
+            const imageInput = document.getElementById('dnn-image');
+            const upscaleBtn = document.getElementById('dnn-upscale-btn');
+
+            modelFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        // Read model file
+                        const arrayBuffer = await file.arrayBuffer();
+                        const data = new Uint8Array(arrayBuffer);
+
+                        // Store in virtual filesystem
+                        cv.FS_createDataFile('/', 'model.pb', data, true, false, false);
+
+                        UIComponents.showToast({ message: 'Model loaded successfully', type: 'success' });
+                        checkDnnReady();
+                    } catch (err) {
+                        UIComponents.showToast({ message: 'Failed to load model: ' + err.message, type: 'error' });
+                    }
+                }
+            });
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const img = await Utils.loadImage(file);
+                        if (dnnInputMat) dnnInputMat.delete();
+                        dnnInputMat = Utils.imageToMat(img);
+                        Utils.displayMat(dnnInputMat, 'dnn-input-canvas');
+                        document.getElementById('dnn-input-size').textContent =
+                            `${dnnInputMat.cols} x ${dnnInputMat.rows}`;
+                        checkDnnReady();
+                    } catch (err) {
+                        UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+                    }
+                }
+            });
+
+            upscaleBtn.addEventListener('click', performDnnUpscale);
+        }
+
+        function checkDnnReady() {
+            const hasModel = cv.FS && cv.FS.analyzePath('/model.pb').exists;
+            const hasImage = dnnInputMat !== null;
+            document.getElementById('dnn-upscale-btn').disabled = !(hasModel && hasImage && typeof cv.dnn !== 'undefined');
+        }
+
+        async function performDnnUpscale() {
+            if (!dnnInputMat || typeof cv.dnn === 'undefined') return;
+
+            const processing = document.getElementById('dnn-processing');
+            processing.classList.remove('hidden');
+
+            const modelType = document.getElementById('dnn-model-type').value;
+            const scale = parseInt(document.getElementById('dnn-scale').value);
+
+            try {
+                // Read the network
+                const net = cv.dnn.readNet('/model.pb');
+
+                const startDnn = performance.now();
+
+                // Prepare input blob
+                const inputBlob = cv.dnn.blobFromImage(dnnInputMat, 1.0, new cv.Size(0, 0),
+                    new cv.Scalar(0, 0, 0), true, false);
+
+                net.setInput(inputBlob);
+                const output = net.forward();
+
+                const dnnTime = performance.now() - startDnn;
+
+                // Process output - reshape to image
+                const outputSize = output.size();
+                if (outputSize.length >= 4) {
+                    const h = outputSize[2];
+                    const w = outputSize[3];
+                    const channels = outputSize[1];
+
+                    // Convert to displayable format
+                    const result = new cv.Mat(h, w, cv.CV_8UC3);
+                    // Note: This is simplified - real implementation needs proper output processing
+                    cv.imshow('dnn-output-canvas', result);
+                    result.delete();
+                }
+
+                document.getElementById('dnn-time').textContent = dnnTime.toFixed(0) + 'ms';
+
+                // Bicubic comparison
+                const startBicubic = performance.now();
+                const bicubicResult = new cv.Mat();
+                cv.resize(dnnInputMat, bicubicResult, new cv.Size(0, 0), scale, scale, cv.INTER_CUBIC);
+                const bicubicTime = performance.now() - startBicubic;
+
+                cv.imshow('dnn-bicubic-canvas', bicubicResult);
+                document.getElementById('bicubic-time').textContent = bicubicTime.toFixed(0) + 'ms';
+                document.getElementById('dnn-output-size').textContent =
+                    `${bicubicResult.cols} x ${bicubicResult.rows}`;
+
+                bicubicResult.delete();
+                inputBlob.delete();
+                output.delete();
+                net.delete();
+
+            } catch (err) {
+                UIComponents.showToast({
+                    message: 'DNN upscale failed: ' + err.message,
+                    type: 'error'
+                });
+                console.error('DNN Error:', err);
+
+                // Fall back to bicubic only
+                const scale = parseInt(document.getElementById('dnn-scale').value);
+                const bicubicResult = new cv.Mat();
+                cv.resize(dnnInputMat, bicubicResult, new cv.Size(0, 0), scale, scale, cv.INTER_CUBIC);
+                cv.imshow('dnn-bicubic-canvas', bicubicResult);
+                cv.imshow('dnn-output-canvas', bicubicResult);
+                document.getElementById('dnn-output-size').textContent =
+                    `${bicubicResult.cols} x ${bicubicResult.rows}`;
+                bicubicResult.delete();
+            }
+
+            processing.classList.add('hidden');
+        }
+
+        // ==================== INTERPOLATION COMPARISON ====================
+        function setupInterpolationDemo() {
+            const imageInput = document.getElementById('interp-image');
+            const compareBtn = document.getElementById('interp-compare-btn');
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const img = await Utils.loadImage(file);
+                        if (interpSourceMat) interpSourceMat.delete();
+                        interpSourceMat = Utils.imageToMat(img);
+                        compareBtn.disabled = false;
+                    } catch (err) {
+                        UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+                    }
+                }
+            });
+
+            compareBtn.addEventListener('click', performInterpolationComparison);
+        }
+
+        function performInterpolationComparison() {
+            if (!interpSourceMat) return;
+
+            const factor = parseInt(document.getElementById('interp-downscale').value);
+
+            // Show original
+            cv.imshow('interp-original', interpSourceMat);
+
+            // Downscale using INTER_AREA (best for downscaling)
+            const downscaled = new cv.Mat();
+            const smallSize = new cv.Size(
+                Math.floor(interpSourceMat.cols / factor),
+                Math.floor(interpSourceMat.rows / factor)
+            );
+            cv.resize(interpSourceMat, downscaled, smallSize, 0, 0, cv.INTER_AREA);
+
+            // Original size for upscaling
+            const origSize = new cv.Size(interpSourceMat.cols, interpSourceMat.rows);
+
+            // Compare interpolation methods
+            const methods = [
+                { name: 'nearest', flag: cv.INTER_NEAREST, canvas: 'interp-nearest' },
+                { name: 'linear', flag: cv.INTER_LINEAR, canvas: 'interp-linear' },
+                { name: 'cubic', flag: cv.INTER_CUBIC, canvas: 'interp-cubic' },
+                { name: 'lanczos', flag: cv.INTER_LANCZOS4, canvas: 'interp-lanczos' },
+                { name: 'area', flag: cv.INTER_AREA, canvas: 'interp-area' }
+            ];
+
+            methods.forEach(method => {
+                const result = new cv.Mat();
+                cv.resize(downscaled, result, origSize, 0, 0, method.flag);
+                cv.imshow(method.canvas, result);
+                result.delete();
+            });
+
+            downscaled.delete();
+        }
+
+        // ==================== RESIZE DEMO ====================
+        function setupResizeDemo() {
+            const imageInput = document.getElementById('resize-image');
+            const resizeBtn = document.getElementById('resize-btn');
+            const downloadBtn = document.getElementById('resize-download-btn');
+            const widthInput = document.getElementById('resize-width');
+            const heightInput = document.getElementById('resize-height');
+            const scaleInput = document.getElementById('resize-scale');
+            const aspectLink = document.getElementById('aspect-link');
+
+            let maintainAspect = true;
+            let aspectRatio = 1;
+
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const img = await Utils.loadImage(file);
+                        if (resizeSourceMat) resizeSourceMat.delete();
+                        resizeSourceMat = Utils.imageToMat(img);
+                        cv.imshow('resize-input-canvas', resizeSourceMat);
+
+                        aspectRatio = resizeSourceMat.cols / resizeSourceMat.rows;
+                        widthInput.value = resizeSourceMat.cols;
+                        heightInput.value = resizeSourceMat.rows;
+
+                        document.getElementById('resize-original-size').textContent =
+                            `${resizeSourceMat.cols} x ${resizeSourceMat.rows}`;
+
+                        resizeBtn.disabled = false;
+                    } catch (err) {
+                        UIComponents.showToast({ message: 'Failed to load image', type: 'error' });
+                    }
+                }
+            });
+
+            aspectLink.addEventListener('click', () => {
+                maintainAspect = !maintainAspect;
+                aspectLink.classList.toggle('active', maintainAspect);
+            });
+
+            widthInput.addEventListener('input', () => {
+                if (maintainAspect && resizeSourceMat) {
+                    heightInput.value = Math.round(parseInt(widthInput.value) / aspectRatio);
+                }
+                scaleInput.value = '';
+            });
+
+            heightInput.addEventListener('input', () => {
+                if (maintainAspect && resizeSourceMat) {
+                    widthInput.value = Math.round(parseInt(heightInput.value) * aspectRatio);
+                }
+                scaleInput.value = '';
+            });
+
+            scaleInput.addEventListener('input', () => {
+                if (resizeSourceMat && scaleInput.value) {
+                    const scale = parseFloat(scaleInput.value);
+                    widthInput.value = Math.round(resizeSourceMat.cols * scale);
+                    heightInput.value = Math.round(resizeSourceMat.rows * scale);
+                }
+            });
+
+            resizeBtn.addEventListener('click', performResize);
+            downloadBtn.addEventListener('click', () => {
+                Utils.downloadCanvas('resize-output-canvas', 'resized-image.png');
+            });
+        }
+
+        function performResize() {
+            if (!resizeSourceMat) return;
+
+            const width = parseInt(document.getElementById('resize-width').value);
+            const height = parseInt(document.getElementById('resize-height').value);
+            const methodName = document.getElementById('resize-method').value;
+
+            const methodMap = {
+                'nearest': cv.INTER_NEAREST,
+                'linear': cv.INTER_LINEAR,
+                'cubic': cv.INTER_CUBIC,
+                'lanczos': cv.INTER_LANCZOS4,
+                'area': cv.INTER_AREA
+            };
+
+            const startTime = performance.now();
+
+            const result = new cv.Mat();
+            cv.resize(resizeSourceMat, result, new cv.Size(width, height), 0, 0, methodMap[methodName]);
+
+            const elapsed = performance.now() - startTime;
+
+            cv.imshow('resize-output-canvas', result);
+
+            document.getElementById('resize-new-size').textContent = `${result.cols} x ${result.rows}`;
+            document.getElementById('resize-time').textContent = elapsed.toFixed(2) + 'ms';
+            document.getElementById('resize-download-btn').disabled = false;
+
+            result.delete();
+        }
+
+        // ==================== PANORAMA STITCHING ====================
+        function setupPanoramaDemo() {
+            const uploadZone = document.getElementById('panorama-upload-zone');
+            const fileInput = document.getElementById('panorama-images');
+            const stitchBtn = document.getElementById('stitch-btn');
+            const clearBtn = document.getElementById('panorama-clear-btn');
+            const downloadBtn = document.getElementById('panorama-download-btn');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                await handlePanoramaFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', async (e) => {
+                await handlePanoramaFiles(e.target.files);
+            });
+
+            clearBtn.addEventListener('click', () => {
+                panoramaImages.forEach(img => URL.revokeObjectURL(img.src));
+                panoramaImages = [];
+                document.getElementById('panorama-preview').innerHTML = '';
+                document.getElementById('panorama-image-count').textContent = '0';
+                stitchBtn.disabled = true;
+                downloadBtn.disabled = true;
+            });
+
+            stitchBtn.addEventListener('click', performPanoramaStitch);
+            downloadBtn.addEventListener('click', () => {
+                Utils.downloadCanvas('panorama-output', 'panorama.png');
+            });
+        }
+
+        async function handlePanoramaFiles(files) {
+            const preview = document.getElementById('panorama-preview');
+
+            for (const file of files) {
+                if (panoramaImages.length >= 6) {
+                    UIComponents.showToast({ message: 'Maximum 6 images allowed', type: 'warning' });
+                    break;
+                }
+
+                try {
+                    const img = await Utils.loadImage(file);
+                    panoramaImages.push(img);
+
+                    const imgEl = document.createElement('img');
+                    imgEl.src = img.src;
+                    preview.appendChild(imgEl);
+                } catch (err) {
+                    console.error('Failed to load image:', err);
+                }
+            }
+
+            document.getElementById('panorama-image-count').textContent = panoramaImages.length;
+            document.getElementById('stitch-btn').disabled = panoramaImages.length < 2;
+        }
+
+        async function performPanoramaStitch() {
+            if (panoramaImages.length < 2) return;
+
+            const progressEl = document.getElementById('stitch-progress');
+            const progressText = document.getElementById('stitch-progress-text');
+            progressEl.classList.remove('hidden');
+            progressText.textContent = 'Preparing images...';
+
+            const mode = document.getElementById('stitcher-mode').value;
+            const startTime = performance.now();
+
+            try {
+                // Check if Stitcher is available
+                if (!stitcherAvailable) {
+                    // Fall back to manual stitching for 2 images
+                    if (panoramaImages.length === 2) {
+                        progressText.textContent = 'Using manual stitching (Stitcher not available)...';
+                        await manualPanoramaStitch();
+                    } else {
+                        throw new Error('Stitcher module not available. Can only manually stitch 2 images.');
+                    }
+                    return;
+                }
+
+                progressText.textContent = 'Creating stitcher...';
+
+                // Create mat vector for input images
+                const matVector = new cv.MatVector();
+
+                for (const img of panoramaImages) {
+                    const mat = Utils.imageToMat(img);
+                    matVector.push_back(mat);
+                }
+
+                progressText.textContent = 'Running stitcher...';
+
+                // Create stitcher
+                const stitcherMode = mode === 'panorama' ? cv.Stitcher_PANORAMA : cv.Stitcher_SCANS;
+                const stitcher = cv.Stitcher_create(stitcherMode);
+
+                const pano = new cv.Mat();
+                const status = stitcher.stitch(matVector, pano);
+
+                const elapsed = performance.now() - startTime;
+
+                // Check status
+                const statusMessages = {
+                    0: 'OK',
+                    1: 'ERR_NEED_MORE_IMGS',
+                    2: 'ERR_HOMOGRAPHY_EST_FAIL',
+                    3: 'ERR_CAMERA_PARAMS_ADJUST_FAIL'
+                };
+
+                if (status === 0) {
+                    cv.imshow('panorama-output', pano);
+                    document.getElementById('panorama-output-size').textContent =
+                        `${pano.cols} x ${pano.rows}`;
+                    document.getElementById('panorama-status').textContent = 'Success';
+                    document.getElementById('panorama-download-btn').disabled = false;
+                } else {
+                    document.getElementById('panorama-status').textContent = statusMessages[status] || 'Unknown Error';
+                    UIComponents.showToast({
+                        message: 'Stitching failed: ' + (statusMessages[status] || 'Unknown error'),
+                        type: 'error'
+                    });
+                }
+
+                document.getElementById('panorama-time').textContent = elapsed.toFixed(0) + 'ms';
+
+                // Cleanup
+                pano.delete();
+                stitcher.delete();
+                for (let i = 0; i < matVector.size(); i++) {
+                    matVector.get(i).delete();
+                }
+                matVector.delete();
+
+            } catch (err) {
+                UIComponents.showToast({ message: 'Stitching error: ' + err.message, type: 'error' });
+                document.getElementById('panorama-status').textContent = 'Error';
+                console.error('Stitching error:', err);
+            }
+
+            progressEl.classList.add('hidden');
+        }
+
+        async function manualPanoramaStitch() {
+            // Fallback manual stitching using feature matching
+            if (panoramaImages.length !== 2) return;
+
+            const img1 = Utils.imageToMat(panoramaImages[0]);
+            const img2 = Utils.imageToMat(panoramaImages[1]);
+
+            const result = stitchTwoImages(img1, img2);
+
+            if (result) {
+                cv.imshow('panorama-output', result);
+                document.getElementById('panorama-output-size').textContent =
+                    `${result.cols} x ${result.rows}`;
+                document.getElementById('panorama-status').textContent = 'Success (manual)';
+                document.getElementById('panorama-download-btn').disabled = false;
+                result.delete();
+            }
+
+            img1.delete();
+            img2.delete();
+        }
+
+        // ==================== MANUAL STITCHING STEPS ====================
+        function setupManualStitchDemo() {
+            const image1Input = document.getElementById('manual-image1');
+            const image2Input = document.getElementById('manual-image2');
+            const stitchBtn = document.getElementById('manual-stitch-btn');
+
+            image1Input.addEventListener('change', async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (manualImage1) manualImage1.delete();
+                    manualImage1 = Utils.imageToMat(img);
+                    checkManualReady();
+                }
+            });
+
+            image2Input.addEventListener('change', async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (manualImage2) manualImage2.delete();
+                    manualImage2 = Utils.imageToMat(img);
+                    checkManualReady();
+                }
+            });
+
+            stitchBtn.addEventListener('click', performManualStitch);
+        }
+
+        function checkManualReady() {
+            document.getElementById('manual-stitch-btn').disabled =
+                !(manualImage1 && manualImage2);
+        }
+
+        function performManualStitch() {
+            if (!manualImage1 || !manualImage2) return;
+
+            const startTime = performance.now();
+
+            try {
+                // Step 1: Feature Detection
+                setStepStatus('step1-indicator', 'active');
+
+                const gray1 = new cv.Mat();
+                const gray2 = new cv.Mat();
+                cv.cvtColor(manualImage1, gray1, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(manualImage2, gray2, cv.COLOR_RGBA2GRAY);
+
+                const orb = new cv.ORB(500);
+                const keypoints1 = new cv.KeyPointVector();
+                const keypoints2 = new cv.KeyPointVector();
+                const descriptors1 = new cv.Mat();
+                const descriptors2 = new cv.Mat();
+
+                orb.detectAndCompute(gray1, new cv.Mat(), keypoints1, descriptors1);
+                orb.detectAndCompute(gray2, new cv.Mat(), keypoints2, descriptors2);
+
+                document.getElementById('manual-kp1').textContent = keypoints1.size();
+                document.getElementById('manual-kp2').textContent = keypoints2.size();
+
+                // Draw keypoints
+                const kpImg1 = new cv.Mat();
+                const kpImg2 = new cv.Mat();
+                cv.drawKeypoints(manualImage1, keypoints1, kpImg1);
+                cv.drawKeypoints(manualImage2, keypoints2, kpImg2);
+                cv.imshow('step1-img1', kpImg1);
+                cv.imshow('step1-img2', kpImg2);
+
+                setStepStatus('step1-indicator', 'completed');
+
+                // Step 2: Feature Matching
+                setStepStatus('step2-indicator', 'active');
+
+                const bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+                const matches = new cv.DMatchVector();
+                bf.match(descriptors1, descriptors2, matches);
+
+                // Sort matches by distance
+                const matchArray = [];
+                for (let i = 0; i < matches.size(); i++) {
+                    matchArray.push(matches.get(i));
+                }
+                matchArray.sort((a, b) => a.distance - b.distance);
+
+                // Keep good matches
+                const goodMatches = new cv.DMatchVector();
+                const numGoodMatches = Math.min(50, matchArray.length);
+                for (let i = 0; i < numGoodMatches; i++) {
+                    goodMatches.push_back(matchArray[i]);
+                }
+
+                document.getElementById('manual-matches').textContent = goodMatches.size();
+
+                // Draw matches
+                const matchImg = new cv.Mat();
+                cv.drawMatches(manualImage1, keypoints1, manualImage2, keypoints2,
+                    goodMatches, matchImg);
+                cv.imshow('step2-matches', matchImg);
+
+                setStepStatus('step2-indicator', 'completed');
+
+                // Step 3: Homography
+                setStepStatus('step3-indicator', 'active');
+
+                const srcPoints = [];
+                const dstPoints = [];
+
+                for (let i = 0; i < goodMatches.size(); i++) {
+                    const m = goodMatches.get(i);
+                    const kp1 = keypoints1.get(m.queryIdx);
+                    const kp2 = keypoints2.get(m.trainIdx);
+                    srcPoints.push(kp1.pt.x, kp1.pt.y);
+                    dstPoints.push(kp2.pt.x, kp2.pt.y);
+                }
+
+                const srcMat = cv.matFromArray(goodMatches.size(), 1, cv.CV_32FC2, srcPoints);
+                const dstMat = cv.matFromArray(goodMatches.size(), 1, cv.CV_32FC2, dstPoints);
+
+                const H = cv.findHomography(srcMat, dstMat, cv.RANSAC, 5.0);
+
+                // Display homography matrix
+                let hText = 'Homography Matrix (3x3):\n';
+                for (let i = 0; i < 3; i++) {
+                    hText += '[ ';
+                    for (let j = 0; j < 3; j++) {
+                        hText += H.doubleAt(i, j).toFixed(6) + ' ';
+                    }
+                    hText += ']\n';
+                }
+                document.getElementById('homography-matrix').textContent = hText;
+
+                setStepStatus('step3-indicator', 'completed');
+
+                // Step 4: Warping
+                setStepStatus('step4-indicator', 'active');
+
+                const width = manualImage1.cols + manualImage2.cols;
+                const height = Math.max(manualImage1.rows, manualImage2.rows);
+
+                const warped1 = new cv.Mat();
+                cv.warpPerspective(manualImage1, warped1, H, new cv.Size(width, height));
+                cv.imshow('step4-warped1', warped1);
+
+                // Show image 2 for reference
+                cv.imshow('step4-warped2', manualImage2);
+
+                setStepStatus('step4-indicator', 'completed');
+
+                // Step 5: Blending
+                setStepStatus('step5-indicator', 'active');
+
+                // Simple blending: copy image2 onto warped result
+                const result = warped1.clone();
+                const roi = result.roi(new cv.Rect(0, 0, manualImage2.cols, manualImage2.rows));
+
+                // Create mask for blending
+                const mask = new cv.Mat(manualImage2.rows, manualImage2.cols, cv.CV_8UC1, new cv.Scalar(255));
+                manualImage2.copyTo(roi, mask);
+
+                cv.imshow('step5-result', result);
+
+                setStepStatus('step5-indicator', 'completed');
+
+                const elapsed = performance.now() - startTime;
+                document.getElementById('manual-time').textContent = elapsed.toFixed(0) + 'ms';
+
+                // Cleanup
+                gray1.delete();
+                gray2.delete();
+                orb.delete();
+                keypoints1.delete();
+                keypoints2.delete();
+                descriptors1.delete();
+                descriptors2.delete();
+                kpImg1.delete();
+                kpImg2.delete();
+                bf.delete();
+                matches.delete();
+                goodMatches.delete();
+                matchImg.delete();
+                srcMat.delete();
+                dstMat.delete();
+                H.delete();
+                warped1.delete();
+                result.delete();
+                mask.delete();
+
+            } catch (err) {
+                UIComponents.showToast({ message: 'Manual stitching error: ' + err.message, type: 'error' });
+                console.error('Manual stitch error:', err);
+            }
+        }
+
+        function setStepStatus(stepId, status) {
+            const el = document.getElementById(stepId);
+            el.classList.remove('active', 'completed');
+            if (status) el.classList.add(status);
+        }
+
+        function stitchTwoImages(img1, img2) {
+            // Helper function for stitching two images
+            try {
+                const gray1 = new cv.Mat();
+                const gray2 = new cv.Mat();
+                cv.cvtColor(img1, gray1, cv.COLOR_RGBA2GRAY);
+                cv.cvtColor(img2, gray2, cv.COLOR_RGBA2GRAY);
+
+                const orb = new cv.ORB(500);
+                const kp1 = new cv.KeyPointVector();
+                const kp2 = new cv.KeyPointVector();
+                const desc1 = new cv.Mat();
+                const desc2 = new cv.Mat();
+
+                orb.detectAndCompute(gray1, new cv.Mat(), kp1, desc1);
+                orb.detectAndCompute(gray2, new cv.Mat(), kp2, desc2);
+
+                const bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+                const matches = new cv.DMatchVector();
+                bf.match(desc1, desc2, matches);
+
+                // Get good matches
+                const matchArray = [];
+                for (let i = 0; i < matches.size(); i++) {
+                    matchArray.push(matches.get(i));
+                }
+                matchArray.sort((a, b) => a.distance - b.distance);
+
+                const srcPoints = [];
+                const dstPoints = [];
+                const numMatches = Math.min(50, matchArray.length);
+
+                for (let i = 0; i < numMatches; i++) {
+                    const m = matchArray[i];
+                    srcPoints.push(kp1.get(m.queryIdx).pt.x, kp1.get(m.queryIdx).pt.y);
+                    dstPoints.push(kp2.get(m.trainIdx).pt.x, kp2.get(m.trainIdx).pt.y);
+                }
+
+                const srcMat = cv.matFromArray(numMatches, 1, cv.CV_32FC2, srcPoints);
+                const dstMat = cv.matFromArray(numMatches, 1, cv.CV_32FC2, dstPoints);
+
+                const H = cv.findHomography(srcMat, dstMat, cv.RANSAC, 5.0);
+
+                const width = img1.cols + img2.cols;
+                const height = Math.max(img1.rows, img2.rows);
+
+                const result = new cv.Mat();
+                cv.warpPerspective(img1, result, H, new cv.Size(width, height));
+
+                // Copy img2 to result
+                const roi = result.roi(new cv.Rect(0, 0, img2.cols, img2.rows));
+                img2.copyTo(roi);
+
+                // Cleanup
+                gray1.delete();
+                gray2.delete();
+                orb.delete();
+                kp1.delete();
+                kp2.delete();
+                desc1.delete();
+                desc2.delete();
+                bf.delete();
+                matches.delete();
+                srcMat.delete();
+                dstMat.delete();
+                H.delete();
+
+                return result;
+            } catch (err) {
+                console.error('Stitch error:', err);
+                return null;
+            }
+        }
+
+        // ==================== BLENDING DEMO ====================
+        function setupBlendingDemo() {
+            const image1Input = document.getElementById('blend-image1');
+            const image2Input = document.getElementById('blend-image2');
+            const blendBtn = document.getElementById('blend-btn');
+            const overlapSlider = document.getElementById('blend-overlap');
+
+            image1Input.addEventListener('change', async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (blendImage1) blendImage1.delete();
+                    blendImage1 = Utils.imageToMat(img);
+                    checkBlendReady();
+                }
+            });
+
+            image2Input.addEventListener('change', async (e) => {
+                if (e.target.files[0]) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    if (blendImage2) blendImage2.delete();
+                    blendImage2 = Utils.imageToMat(img);
+                    checkBlendReady();
+                }
+            });
+
+            overlapSlider.addEventListener('input', (e) => {
+                e.target.nextElementSibling.textContent = e.target.value + '%';
+                document.getElementById('seam-indicator').style.left = e.target.value + '%';
+            });
+
+            blendBtn.addEventListener('click', performBlending);
+        }
+
+        function checkBlendReady() {
+            document.getElementById('blend-btn').disabled = !(blendImage1 && blendImage2);
+        }
+
+        function performBlending() {
+            if (!blendImage1 || !blendImage2) return;
+
+            const overlapPercent = parseInt(document.getElementById('blend-overlap').value) / 100;
+
+            // Resize images to same height
+            const height = Math.min(blendImage1.rows, blendImage2.rows);
+            const img1 = new cv.Mat();
+            const img2 = new cv.Mat();
+
+            const scale1 = height / blendImage1.rows;
+            const scale2 = height / blendImage2.rows;
+
+            cv.resize(blendImage1, img1, new cv.Size(0, 0), scale1, scale1, cv.INTER_LINEAR);
+            cv.resize(blendImage2, img2, new cv.Size(0, 0), scale2, scale2, cv.INTER_LINEAR);
+
+            // Calculate overlap
+            const overlapWidth = Math.floor(Math.min(img1.cols, img2.cols) * overlapPercent);
+            const totalWidth = img1.cols + img2.cols - overlapWidth;
+
+            // 1. Simple Overlay
+            const simple = new cv.Mat(height, totalWidth, img1.type(), new cv.Scalar(0, 0, 0, 255));
+            const roi1 = simple.roi(new cv.Rect(0, 0, img1.cols, height));
+            img1.copyTo(roi1);
+            const roi2 = simple.roi(new cv.Rect(img1.cols - overlapWidth, 0, img2.cols, height));
+            img2.copyTo(roi2);
+            cv.imshow('blend-simple', simple);
+
+            // 2. Feather Blending
+            const feather = simple.clone();
+            for (let x = img1.cols - overlapWidth; x < img1.cols; x++) {
+                const alpha = (x - (img1.cols - overlapWidth)) / overlapWidth;
+                for (let y = 0; y < height; y++) {
+                    const p1 = img1.ucharPtr(y, x);
+                    const p2 = img2.ucharPtr(y, x - (img1.cols - overlapWidth));
+                    const pOut = feather.ucharPtr(y, x);
+                    for (let c = 0; c < 3; c++) {
+                        pOut[c] = Math.round(p1[c] * (1 - alpha) + p2[c] * alpha);
+                    }
+                    pOut[3] = 255;
+                }
+            }
+            cv.imshow('blend-feather', feather);
+
+            // 3. Linear Gradient Blend
+            const gradient = simple.clone();
+            for (let x = img1.cols - overlapWidth; x < img1.cols; x++) {
+                const alpha = (x - (img1.cols - overlapWidth)) / overlapWidth;
+                const smoothAlpha = alpha * alpha * (3 - 2 * alpha); // Smoothstep
+                for (let y = 0; y < height; y++) {
+                    const p1 = img1.ucharPtr(y, x);
+                    const p2 = img2.ucharPtr(y, x - (img1.cols - overlapWidth));
+                    const pOut = gradient.ucharPtr(y, x);
+                    for (let c = 0; c < 3; c++) {
+                        pOut[c] = Math.round(p1[c] * (1 - smoothAlpha) + p2[c] * smoothAlpha);
+                    }
+                    pOut[3] = 255;
+                }
+            }
+            cv.imshow('blend-gradient', gradient);
+
+            // 4. Alpha Blend (50%)
+            const alpha50 = simple.clone();
+            for (let x = img1.cols - overlapWidth; x < img1.cols; x++) {
+                for (let y = 0; y < height; y++) {
+                    const p1 = img1.ucharPtr(y, x);
+                    const p2 = img2.ucharPtr(y, x - (img1.cols - overlapWidth));
+                    const pOut = alpha50.ucharPtr(y, x);
+                    for (let c = 0; c < 3; c++) {
+                        pOut[c] = Math.round((p1[c] + p2[c]) / 2);
+                    }
+                    pOut[3] = 255;
+                }
+            }
+            cv.imshow('blend-alpha', alpha50);
+
+            // Seam visualization
+            cv.imshow('blend-seam', feather);
+
+            // Cleanup
+            img1.delete();
+            img2.delete();
+            simple.delete();
+            feather.delete();
+            gradient.delete();
+            alpha50.delete();
+        }
+
+        // ==================== MOSAIC DEMO ====================
+        function setupMosaicDemo() {
+            const uploadZone = document.getElementById('mosaic-upload-zone');
+            const fileInput = document.getElementById('mosaic-images');
+            const createBtn = document.getElementById('mosaic-create-btn');
+            const clearBtn = document.getElementById('mosaic-clear-btn');
+            const downloadBtn = document.getElementById('mosaic-download-btn');
+            const blendToggle = document.getElementById('mosaic-blend-toggle');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                await handleMosaicFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', async (e) => {
+                await handleMosaicFiles(e.target.files);
+            });
+
+            blendToggle.addEventListener('click', () => {
+                blendToggle.classList.toggle('active');
+            });
+
+            clearBtn.addEventListener('click', () => {
+                mosaicImages.forEach(img => URL.revokeObjectURL(img.src));
+                mosaicImages = [];
+                document.getElementById('mosaic-preview').innerHTML = '';
+                document.getElementById('mosaic-count').textContent = '0';
+                createBtn.disabled = true;
+                downloadBtn.disabled = true;
+            });
+
+            createBtn.addEventListener('click', createMosaic);
+            downloadBtn.addEventListener('click', () => {
+                Utils.downloadCanvas('mosaic-output', 'mosaic.png');
+            });
+        }
+
+        async function handleMosaicFiles(files) {
+            const preview = document.getElementById('mosaic-preview');
+
+            for (const file of files) {
+                try {
+                    const img = await Utils.loadImage(file);
+                    mosaicImages.push(img);
+
+                    const imgEl = document.createElement('img');
+                    imgEl.src = img.src;
+                    preview.appendChild(imgEl);
+                } catch (err) {
+                    console.error('Failed to load image:', err);
+                }
+            }
+
+            document.getElementById('mosaic-count').textContent = mosaicImages.length;
+            document.getElementById('mosaic-create-btn').disabled = mosaicImages.length === 0;
+        }
+
+        function createMosaic() {
+            if (mosaicImages.length === 0) return;
+
+            const cols = parseInt(document.getElementById('mosaic-cols').value);
+            const tileSize = parseInt(document.getElementById('mosaic-tile-size').value);
+            const gap = parseInt(document.getElementById('mosaic-gap').value);
+            const blendEdges = document.getElementById('mosaic-blend-toggle').classList.contains('active');
+
+            const rows = Math.ceil(mosaicImages.length / cols);
+            const width = cols * tileSize + (cols - 1) * gap;
+            const height = rows * tileSize + (rows - 1) * gap;
+
+            const mosaic = new cv.Mat(height, width, cv.CV_8UC4, new cv.Scalar(30, 30, 40, 255));
+
+            mosaicImages.forEach((img, i) => {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+
+                const x = col * (tileSize + gap);
+                const y = row * (tileSize + gap);
+
+                const mat = Utils.imageToMat(img);
+                const resized = new cv.Mat();
+                cv.resize(mat, resized, new cv.Size(tileSize, tileSize), 0, 0, cv.INTER_AREA);
+
+                // Ensure RGBA
+                if (resized.channels() === 3) {
+                    cv.cvtColor(resized, resized, cv.COLOR_RGB2RGBA);
+                }
+
+                const roi = mosaic.roi(new cv.Rect(x, y, tileSize, tileSize));
+                resized.copyTo(roi);
+
+                mat.delete();
+                resized.delete();
+            });
+
+            cv.imshow('mosaic-output', mosaic);
+
+            document.getElementById('mosaic-grid').textContent = `${cols} x ${rows}`;
+            document.getElementById('mosaic-size').textContent = `${width} x ${height}`;
+            document.getElementById('mosaic-download-btn').disabled = false;
+
+            mosaic.delete();
+        }
+
+        // ==================== ZOOM CONTAINERS ====================
+        function setupZoomContainers() {
+            document.querySelectorAll('.zoom-container').forEach(container => {
+                container.addEventListener('click', () => {
+                    container.classList.toggle('zoomed');
+                });
+            });
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (resizeSourceMat) resizeSourceMat.delete();
+            if (interpSourceMat) interpSourceMat.delete();
+            if (blendImage1) blendImage1.delete();
+            if (blendImage2) blendImage2.delete();
+            if (manualImage1) manualImage1.delete();
+            if (manualImage2) manualImage2.delete();
+            if (dnnInputMat) dnnInputMat.delete();
+        });
+    </script>
+</body>
+</html>

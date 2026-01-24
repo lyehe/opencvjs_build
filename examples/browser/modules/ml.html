@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning - OpenCV.js</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        .ml-canvas {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: crosshair;
+            background: var(--bg-input);
+        }
+        .ml-canvas-container {
+            position: relative;
+            display: inline-block;
+        }
+        .class-selector {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-md);
+        }
+        .class-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+        }
+        .class-btn.active {
+            border-color: white;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .class-btn.class-0 { background: #ef4444; color: white; }
+        .class-btn.class-1 { background: #3b82f6; color: white; }
+        .class-btn.class-2 { background: #10b981; color: white; }
+        .class-btn.class-3 { background: #f59e0b; color: white; }
+        .class-btn.class-4 { background: #8b5cf6; color: white; }
+        .point-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: var(--spacing-sm);
+        }
+        .confusion-matrix {
+            display: grid;
+            gap: 2px;
+            font-size: 0.8rem;
+            margin-top: var(--spacing-md);
+        }
+        .confusion-cell {
+            padding: var(--spacing-sm);
+            text-align: center;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+        .confusion-cell.header {
+            font-weight: 600;
+            color: var(--accent-secondary);
+        }
+        .confusion-cell.diagonal {
+            background: rgba(16, 185, 129, 0.3);
+        }
+        .support-vector {
+            stroke: #f59e0b;
+            stroke-width: 3;
+        }
+        .preset-btn {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.8rem;
+        }
+        .legend {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            margin-top: var(--spacing-md);
+            font-size: 0.85rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        .quantized-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+        @media (max-width: 768px) {
+            .quantized-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .feature-bar {
+            height: 20px;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-xs);
+            transition: width var(--transition-normal);
+        }
+        .feature-item {
+            margin-bottom: var(--spacing-sm);
+        }
+        .feature-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Machine Learning</span>
+        </nav>
+
+        <header class="page-header">
+            <h1>Machine Learning</h1>
+            <p>Interactive demonstrations of OpenCV.js ML algorithms including clustering, classification, and segmentation</p>
+        </header>
+
+        <main>
+            <!-- K-Means Clustering -->
+            <section class="demo-section" id="kmeans-section">
+                <h3>K-Means Clustering</h3>
+                <p>Click on the canvas to add points, then run K-means to see clustering in action.</p>
+
+                <div class="tabs">
+                    <button class="tab active" data-tab="kmeans-points">Point Clustering</button>
+                    <button class="tab" data-tab="kmeans-image">Image Quantization</button>
+                </div>
+
+                <div class="tab-content active" id="tab-kmeans-points">
+                    <div class="demo-controls">
+                        <div class="form-group">
+                            <label>K (Clusters)</label>
+                            <div class="range-group">
+                                <input type="range" id="kmeans-k" min="2" max="10" value="3">
+                                <span class="range-value" id="kmeans-k-val">3</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Iterations</label>
+                            <div class="range-group">
+                                <input type="range" id="kmeans-iter" min="1" max="100" value="20">
+                                <span class="range-value" id="kmeans-iter-val">20</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Criteria</label>
+                            <select id="kmeans-criteria">
+                                <option value="both">Count + EPS</option>
+                                <option value="count">Count Only</option>
+                                <option value="eps">EPS Only</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="kmeans-run">Run K-Means</button>
+                        <button class="btn btn-secondary" id="kmeans-clear">Clear Points</button>
+                        <button class="btn btn-secondary" id="kmeans-random">Random Points</button>
+                    </div>
+                    <div class="ml-canvas-container">
+                        <canvas id="kmeans-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                    </div>
+                    <div class="point-count" id="kmeans-point-count">Points: 0</div>
+                    <div class="metrics" id="kmeans-metrics" style="display:none;">
+                        <div class="metric">
+                            <span class="metric-label">Compactness</span>
+                            <span class="metric-value" id="kmeans-compactness">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Time</span>
+                            <span class="metric-value" id="kmeans-time">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-kmeans-image">
+                    <div class="demo-controls">
+                        <div class="form-group">
+                            <label for="quantize-input" class="file-input-label">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                Upload Image
+                            </label>
+                            <input type="file" id="quantize-input" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label>K (Colors)</label>
+                            <div class="range-group">
+                                <input type="range" id="quantize-k" min="2" max="32" value="8">
+                                <span class="range-value" id="quantize-k-val">8</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="quantize-run">Quantize</button>
+                    </div>
+                    <div class="quantized-container">
+                        <div class="canvas-container">
+                            <canvas id="quantize-input-canvas"></canvas>
+                            <span class="canvas-label">Original</span>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="quantize-output-canvas"></canvas>
+                            <span class="canvas-label">Quantized</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KNN -->
+            <section class="demo-section" id="knn-section">
+                <h3>K-Nearest Neighbors (KNN)</h3>
+                <p>Add training points for different classes, then click to classify new points.</p>
+
+                <div class="class-selector" id="knn-class-selector">
+                    <button class="class-btn class-0 active" data-class="0">Class 0</button>
+                    <button class="class-btn class-1" data-class="1">Class 1</button>
+                    <button class="class-btn class-2" data-class="2">Class 2</button>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>K (Neighbors)</label>
+                        <div class="range-group">
+                            <input type="range" id="knn-k" min="1" max="15" value="3">
+                            <span class="range-value" id="knn-k-val">3</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="knn-train">Train KNN</button>
+                    <button class="btn btn-secondary" id="knn-boundary">Show Boundaries</button>
+                    <button class="btn btn-secondary" id="knn-clear">Clear All</button>
+                    <button class="btn btn-secondary" id="knn-sample">Sample Data</button>
+                </div>
+
+                <div class="ml-canvas-container">
+                    <canvas id="knn-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                </div>
+                <div class="point-count" id="knn-point-count">Training points: 0 | Mode: Add training data</div>
+                <div class="metrics" id="knn-metrics" style="display:none;">
+                    <div class="metric">
+                        <span class="metric-label">Training Samples</span>
+                        <span class="metric-value" id="knn-samples">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last Prediction</span>
+                        <span class="metric-value" id="knn-prediction">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SVM -->
+            <section class="demo-section" id="svm-section">
+                <h3>Support Vector Machine (SVM)</h3>
+                <p>Train an SVM classifier and visualize decision boundaries and support vectors.</p>
+
+                <div class="class-selector" id="svm-class-selector">
+                    <button class="class-btn class-0 active" data-class="0">Class 0</button>
+                    <button class="class-btn class-1" data-class="1">Class 1</button>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Kernel</label>
+                        <select id="svm-kernel">
+                            <option value="LINEAR">Linear</option>
+                            <option value="RBF" selected>RBF</option>
+                            <option value="POLY">Polynomial</option>
+                            <option value="SIGMOID">Sigmoid</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>C (Regularization)</label>
+                        <div class="range-group">
+                            <input type="range" id="svm-c" min="-2" max="4" step="0.5" value="0">
+                            <span class="range-value" id="svm-c-val">1</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Gamma</label>
+                        <div class="range-group">
+                            <input type="range" id="svm-gamma" min="-4" max="2" step="0.5" value="-1">
+                            <span class="range-value" id="svm-gamma-val">0.1</span>
+                        </div>
+                    </div>
+                    <div class="form-group" id="svm-degree-group">
+                        <label>Degree</label>
+                        <div class="range-group">
+                            <input type="range" id="svm-degree" min="2" max="5" value="3">
+                            <span class="range-value" id="svm-degree-val">3</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="demo-controls">
+                    <button class="btn btn-primary" id="svm-train">Train SVM</button>
+                    <button class="btn btn-secondary" id="svm-boundary">Show Boundaries</button>
+                    <button class="btn btn-secondary" id="svm-clear">Clear All</button>
+                    <span style="color: var(--text-muted);">Presets:</span>
+                    <button class="btn btn-secondary preset-btn" id="svm-preset-linear">Linear</button>
+                    <button class="btn btn-secondary preset-btn" id="svm-preset-circular">Circular</button>
+                    <button class="btn btn-secondary preset-btn" id="svm-preset-xor">XOR</button>
+                </div>
+
+                <div class="ml-canvas-container">
+                    <canvas id="svm-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                </div>
+                <div class="point-count" id="svm-point-count">Training points: 0</div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ef4444;"></div>
+                        <span>Class 0</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3b82f6;"></div>
+                        <span>Class 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f59e0b; border: 2px solid white;"></div>
+                        <span>Support Vectors</span>
+                    </div>
+                </div>
+                <div class="metrics" id="svm-metrics" style="display:none;">
+                    <div class="metric">
+                        <span class="metric-label">Support Vectors</span>
+                        <span class="metric-value" id="svm-sv-count">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Training Time</span>
+                        <span class="metric-value" id="svm-time">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Decision Trees / Random Forest -->
+            <section class="demo-section" id="rtrees-section">
+                <h3>Random Forest (RTrees)</h3>
+                <p>Train a Random Forest classifier and see feature importance.</p>
+
+                <div class="class-selector" id="rtrees-class-selector">
+                    <button class="class-btn class-0 active" data-class="0">Class 0</button>
+                    <button class="class-btn class-1" data-class="1">Class 1</button>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Max Depth</label>
+                        <div class="range-group">
+                            <input type="range" id="rtrees-depth" min="1" max="20" value="10">
+                            <span class="range-value" id="rtrees-depth-val">10</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Min Samples</label>
+                        <div class="range-group">
+                            <input type="range" id="rtrees-samples" min="1" max="20" value="2">
+                            <span class="range-value" id="rtrees-samples-val">2</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="rtrees-train">Train</button>
+                    <button class="btn btn-secondary" id="rtrees-boundary">Show Boundaries</button>
+                    <button class="btn btn-secondary" id="rtrees-clear">Clear All</button>
+                    <button class="btn btn-secondary" id="rtrees-sample">Sample Data</button>
+                </div>
+
+                <div class="ml-canvas-container">
+                    <canvas id="rtrees-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                </div>
+                <div class="point-count" id="rtrees-point-count">Training points: 0</div>
+
+                <div id="rtrees-importance" style="margin-top: var(--spacing-lg); display: none;">
+                    <h4>Feature Importance</h4>
+                    <div class="feature-item">
+                        <div class="feature-label"><span>X coordinate</span><span id="rtrees-imp-x">-</span></div>
+                        <div class="feature-bar" id="rtrees-bar-x" style="width: 0%;"></div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-label"><span>Y coordinate</span><span id="rtrees-imp-y">-</span></div>
+                        <div class="feature-bar" id="rtrees-bar-y" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Normal Bayes Classifier -->
+            <section class="demo-section" id="bayes-section">
+                <h3>Normal Bayes Classifier</h3>
+                <p>Gaussian naive Bayes classifier - assumes features follow normal distribution.</p>
+
+                <div class="class-selector" id="bayes-class-selector">
+                    <button class="class-btn class-0 active" data-class="0">Class 0</button>
+                    <button class="class-btn class-1" data-class="1">Class 1</button>
+                    <button class="class-btn class-2" data-class="2">Class 2</button>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" id="bayes-train">Train Bayes</button>
+                    <button class="btn btn-secondary" id="bayes-boundary">Show Boundaries</button>
+                    <button class="btn btn-secondary" id="bayes-clear">Clear All</button>
+                    <button class="btn btn-secondary" id="bayes-sample">Gaussian Clusters</button>
+                </div>
+
+                <div class="ml-canvas-container">
+                    <canvas id="bayes-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                </div>
+                <div class="point-count" id="bayes-point-count">Training points: 0</div>
+                <div class="metrics" id="bayes-metrics" style="display:none;">
+                    <div class="metric">
+                        <span class="metric-label">Training Samples</span>
+                        <span class="metric-value" id="bayes-samples">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last Prediction</span>
+                        <span class="metric-value" id="bayes-prediction">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logistic Regression -->
+            <section class="demo-section" id="logreg-section">
+                <h3>Logistic Regression</h3>
+                <p>Binary classification with linear decision boundary.</p>
+
+                <div class="class-selector" id="logreg-class-selector">
+                    <button class="class-btn class-0 active" data-class="0">Class 0</button>
+                    <button class="class-btn class-1" data-class="1">Class 1</button>
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label>Learning Rate</label>
+                        <div class="range-group">
+                            <input type="range" id="logreg-lr" min="-4" max="0" step="0.5" value="-2">
+                            <span class="range-value" id="logreg-lr-val">0.01</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Iterations</label>
+                        <div class="range-group">
+                            <input type="range" id="logreg-iter" min="100" max="10000" step="100" value="1000">
+                            <span class="range-value" id="logreg-iter-val">1000</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="logreg-train">Train</button>
+                    <button class="btn btn-secondary" id="logreg-boundary">Show Boundary</button>
+                    <button class="btn btn-secondary" id="logreg-clear">Clear All</button>
+                    <button class="btn btn-secondary" id="logreg-sample">Sample Data</button>
+                </div>
+
+                <div class="ml-canvas-container">
+                    <canvas id="logreg-canvas" class="ml-canvas" width="600" height="400"></canvas>
+                </div>
+                <div class="point-count" id="logreg-point-count">Training points: 0</div>
+            </section>
+
+            <!-- Color-Based Segmentation -->
+            <section class="demo-section" id="segment-section">
+                <h3>Color-Based Segmentation with K-Means</h3>
+                <p>Segment images by color using K-means clustering.</p>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="segment-input" class="file-input-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="segment-input" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>Segments (K)</label>
+                        <div class="range-group">
+                            <input type="range" id="segment-k" min="2" max="16" value="5">
+                            <span class="range-value" id="segment-k-val">5</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="segment-run">Segment</button>
+                    <button class="btn btn-secondary" id="segment-merge">Merge Similar</button>
+                </div>
+
+                <div class="quantized-container">
+                    <div class="canvas-container">
+                        <canvas id="segment-input-canvas"></canvas>
+                        <span class="canvas-label">Original</span>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="segment-output-canvas"></canvas>
+                        <span class="canvas-label">Segmented</span>
+                    </div>
+                </div>
+                <div id="segment-colors" class="legend" style="margin-top: var(--spacing-md);"></div>
+            </section>
+
+            <!-- Availability Check -->
+            <section class="demo-section" id="availability-section">
+                <h3>ML Module Availability</h3>
+                <div id="ml-availability" class="code-block">Checking...</div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+    <script>
+        // Global state
+        const state = {
+            kmeans: { points: [] },
+            knn: { points: [], labels: [], trained: false, currentClass: 0, model: null },
+            svm: { points: [], labels: [], trained: false, currentClass: 0, model: null },
+            rtrees: { points: [], labels: [], trained: false, currentClass: 0, model: null },
+            bayes: { points: [], labels: [], trained: false, currentClass: 0, model: null },
+            logreg: { points: [], labels: [], trained: false, currentClass: 0, model: null }
+        };
+
+        const classColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+        const classColorsRGB = [[239, 68, 68], [59, 130, 246], [16, 185, 129], [245, 158, 11], [139, 92, 246]];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.body.appendChild(UIComponents.createLoadingOverlay());
+
+            try {
+                await OpenCVLoader.load({
+                    buildType: 'full',
+                    onProgress: UIComponents.updateLoadingProgress,
+                    statusElement: document.getElementById('loading-status')
+                });
+                UIComponents.hideLoadingOverlay();
+                initializeDemos();
+                checkAvailability();
+            } catch (error) {
+                UIComponents.updateLoadingStatus('Error: ' + error.message);
+            }
+        });
+
+        function checkAvailability() {
+            const features = [
+                { name: 'KMeans (kmeans)', check: () => typeof cv.kmeans === 'function' },
+                { name: 'KNearest', check: () => typeof cv.ml_KNearest !== 'undefined' },
+                { name: 'SVM', check: () => typeof cv.ml_SVM !== 'undefined' },
+                { name: 'RTrees', check: () => typeof cv.ml_RTrees !== 'undefined' },
+                { name: 'NormalBayesClassifier', check: () => typeof cv.ml_NormalBayesClassifier !== 'undefined' },
+                { name: 'LogisticRegression', check: () => typeof cv.ml_LogisticRegression !== 'undefined' },
+                { name: 'DTrees', check: () => typeof cv.ml_DTrees !== 'undefined' },
+                { name: 'Boost', check: () => typeof cv.ml_Boost !== 'undefined' },
+                { name: 'ANN_MLP', check: () => typeof cv.ml_ANN_MLP !== 'undefined' },
+                { name: 'EM', check: () => typeof cv.ml_EM !== 'undefined' }
+            ];
+
+            const el = document.getElementById('ml-availability');
+            el.innerHTML = features.map(f => {
+                const available = f.check();
+                const icon = available ? '<span style="color: var(--success);">OK</span>' : '<span style="color: var(--error);">N/A</span>';
+                return `${f.name}: ${icon}`;
+            }).join('\n');
+        }
+
+        function initializeDemos() {
+            initTabs();
+            initKMeans();
+            initKNN();
+            initSVM();
+            initRTrees();
+            initBayes();
+            initLogReg();
+            initSegmentation();
+        }
+
+        // Tab switching
+        function initTabs() {
+            document.querySelectorAll('.tabs').forEach(tabsContainer => {
+                const tabs = tabsContainer.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        const section = tabsContainer.closest('.demo-section');
+                        section.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        section.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        tab.classList.add('active');
+                        const tabId = tab.dataset.tab;
+                        document.getElementById('tab-' + tabId).classList.add('active');
+                    });
+                });
+            });
+        }
+
+        // ==================== K-MEANS ====================
+        function initKMeans() {
+            const canvas = document.getElementById('kmeans-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Slider updates
+            document.getElementById('kmeans-k').addEventListener('input', e => {
+                document.getElementById('kmeans-k-val').textContent = e.target.value;
+            });
+            document.getElementById('kmeans-iter').addEventListener('input', e => {
+                document.getElementById('kmeans-iter-val').textContent = e.target.value;
+            });
+
+            // Canvas click
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                state.kmeans.points.push([x, y]);
+                drawKMeansPoints();
+            });
+
+            document.getElementById('kmeans-clear').addEventListener('click', () => {
+                state.kmeans.points = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('kmeans-point-count').textContent = 'Points: 0';
+                document.getElementById('kmeans-metrics').style.display = 'none';
+            });
+
+            document.getElementById('kmeans-random').addEventListener('click', () => {
+                state.kmeans.points = [];
+                for (let i = 0; i < 100; i++) {
+                    state.kmeans.points.push([
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height
+                    ]);
+                }
+                drawKMeansPoints();
+            });
+
+            document.getElementById('kmeans-run').addEventListener('click', runKMeans);
+
+            // Image quantization
+            document.getElementById('quantize-input').addEventListener('change', async e => {
+                if (e.target.files.length > 0) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    const canvas = document.getElementById('quantize-input-canvas');
+                    canvas.width = Math.min(400, img.width);
+                    canvas.height = (img.height / img.width) * canvas.width;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+            });
+
+            document.getElementById('quantize-k').addEventListener('input', e => {
+                document.getElementById('quantize-k-val').textContent = e.target.value;
+            });
+
+            document.getElementById('quantize-run').addEventListener('click', runQuantization);
+
+            function drawKMeansPoints(labels = null, centers = null) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const k = parseInt(document.getElementById('kmeans-k').value);
+
+                state.kmeans.points.forEach((p, i) => {
+                    const colorIdx = labels ? labels[i] % classColors.length : 0;
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = labels ? classColors[colorIdx] : '#9898a8';
+                    ctx.fill();
+                });
+
+                if (centers) {
+                    centers.forEach((c, i) => {
+                        ctx.beginPath();
+                        ctx.arc(c[0], c[1], 12, 0, Math.PI * 2);
+                        ctx.fillStyle = classColors[i % classColors.length];
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.fillStyle = 'white';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(i.toString(), c[0], c[1]);
+                    });
+                }
+
+                document.getElementById('kmeans-point-count').textContent = `Points: ${state.kmeans.points.length}`;
+            }
+
+            function runKMeans() {
+                if (state.kmeans.points.length < 2) {
+                    alert('Please add at least 2 points');
+                    return;
+                }
+
+                const k = parseInt(document.getElementById('kmeans-k').value);
+                const maxIter = parseInt(document.getElementById('kmeans-iter').value);
+                const criteriaType = document.getElementById('kmeans-criteria').value;
+
+                if (state.kmeans.points.length < k) {
+                    alert(`Need at least ${k} points for ${k} clusters`);
+                    return;
+                }
+
+                const start = performance.now();
+
+                // Create input matrix
+                const data = new cv.Mat(state.kmeans.points.length, 2, cv.CV_32F);
+                state.kmeans.points.forEach((p, i) => {
+                    data.floatPtr(i)[0] = p[0];
+                    data.floatPtr(i)[1] = p[1];
+                });
+
+                const labels = new cv.Mat();
+                const centers = new cv.Mat();
+
+                let criteria;
+                switch (criteriaType) {
+                    case 'count':
+                        criteria = new cv.TermCriteria(cv.TermCriteria_COUNT, maxIter, 0.1);
+                        break;
+                    case 'eps':
+                        criteria = new cv.TermCriteria(cv.TermCriteria_EPS, maxIter, 0.1);
+                        break;
+                    default:
+                        criteria = new cv.TermCriteria(cv.TermCriteria_COUNT + cv.TermCriteria_EPS, maxIter, 0.1);
+                }
+
+                const compactness = cv.kmeans(data, k, labels, criteria, 3, cv.KMEANS_PP_CENTERS, centers);
+
+                const elapsed = (performance.now() - start).toFixed(2);
+
+                // Extract results
+                const labelArray = [];
+                for (let i = 0; i < labels.rows; i++) {
+                    labelArray.push(labels.intAt(i, 0));
+                }
+
+                const centerArray = [];
+                for (let i = 0; i < centers.rows; i++) {
+                    centerArray.push([centers.floatAt(i, 0), centers.floatAt(i, 1)]);
+                }
+
+                drawKMeansPoints(labelArray, centerArray);
+
+                document.getElementById('kmeans-compactness').textContent = compactness.toFixed(2);
+                document.getElementById('kmeans-time').textContent = elapsed + 'ms';
+                document.getElementById('kmeans-metrics').style.display = 'flex';
+
+                data.delete();
+                labels.delete();
+                centers.delete();
+            }
+
+            function runQuantization() {
+                const inputCanvas = document.getElementById('quantize-input-canvas');
+                const outputCanvas = document.getElementById('quantize-output-canvas');
+
+                if (inputCanvas.width === 0) {
+                    alert('Please upload an image first');
+                    return;
+                }
+
+                const k = parseInt(document.getElementById('quantize-k').value);
+                const src = cv.imread(inputCanvas);
+
+                // Convert to float and reshape
+                const srcFloat = new cv.Mat();
+                src.convertTo(srcFloat, cv.CV_32F);
+                const data = srcFloat.reshape(1, src.rows * src.cols);
+
+                const labels = new cv.Mat();
+                const centers = new cv.Mat();
+                const criteria = new cv.TermCriteria(cv.TermCriteria_COUNT + cv.TermCriteria_EPS, 10, 1.0);
+
+                cv.kmeans(data, k, labels, criteria, 3, cv.KMEANS_PP_CENTERS, centers);
+
+                // Replace pixel values with center values
+                for (let i = 0; i < data.rows; i++) {
+                    const clusterIdx = labels.intAt(i, 0);
+                    for (let j = 0; j < data.cols; j++) {
+                        data.floatPtr(i)[j] = centers.floatAt(clusterIdx, j);
+                    }
+                }
+
+                // Reshape back
+                const result = data.reshape(src.channels(), src.rows);
+                const resultU8 = new cv.Mat();
+                result.convertTo(resultU8, cv.CV_8U);
+
+                outputCanvas.width = inputCanvas.width;
+                outputCanvas.height = inputCanvas.height;
+                cv.imshow(outputCanvas, resultU8);
+
+                src.delete();
+                srcFloat.delete();
+                data.delete();
+                labels.delete();
+                centers.delete();
+                result.delete();
+                resultU8.delete();
+            }
+        }
+
+        // ==================== KNN ====================
+        function initKNN() {
+            const canvas = document.getElementById('knn-canvas');
+            const ctx = canvas.getContext('2d');
+            setupClassSelector('knn');
+
+            document.getElementById('knn-k').addEventListener('input', e => {
+                document.getElementById('knn-k-val').textContent = e.target.value;
+            });
+
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (state.knn.trained) {
+                    // Classify point
+                    classifyKNN(x, y);
+                } else {
+                    // Add training point
+                    state.knn.points.push([x, y]);
+                    state.knn.labels.push(state.knn.currentClass);
+                    drawKNNPoints();
+                }
+            });
+
+            document.getElementById('knn-clear').addEventListener('click', () => {
+                state.knn.points = [];
+                state.knn.labels = [];
+                state.knn.trained = false;
+                if (state.knn.model) {
+                    state.knn.model.delete();
+                    state.knn.model = null;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                updateKNNStatus();
+            });
+
+            document.getElementById('knn-sample').addEventListener('click', () => {
+                state.knn.points = [];
+                state.knn.labels = [];
+                // Generate sample clusters
+                for (let c = 0; c < 3; c++) {
+                    const cx = 150 + c * 150;
+                    const cy = 150 + (c % 2) * 100;
+                    for (let i = 0; i < 20; i++) {
+                        state.knn.points.push([
+                            cx + (Math.random() - 0.5) * 80,
+                            cy + (Math.random() - 0.5) * 80
+                        ]);
+                        state.knn.labels.push(c);
+                    }
+                }
+                drawKNNPoints();
+            });
+
+            document.getElementById('knn-train').addEventListener('click', trainKNN);
+            document.getElementById('knn-boundary').addEventListener('click', () => drawDecisionBoundary('knn'));
+
+            function drawKNNPoints() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                state.knn.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = classColors[state.knn.labels[i]];
+                    ctx.fill();
+                });
+                updateKNNStatus();
+            }
+
+            function updateKNNStatus() {
+                const mode = state.knn.trained ? 'Click to classify' : 'Add training data';
+                document.getElementById('knn-point-count').textContent =
+                    `Training points: ${state.knn.points.length} | Mode: ${mode}`;
+            }
+
+            function trainKNN() {
+                if (state.knn.points.length < 2) {
+                    alert('Add more training points');
+                    return;
+                }
+
+                const k = parseInt(document.getElementById('knn-k').value);
+
+                if (state.knn.model) state.knn.model.delete();
+                state.knn.model = new cv.ml_KNearest();
+
+                const trainData = new cv.Mat(state.knn.points.length, 2, cv.CV_32F);
+                const trainLabels = new cv.Mat(state.knn.labels.length, 1, cv.CV_32S);
+
+                state.knn.points.forEach((p, i) => {
+                    trainData.floatPtr(i)[0] = p[0];
+                    trainData.floatPtr(i)[1] = p[1];
+                });
+                state.knn.labels.forEach((l, i) => {
+                    trainLabels.intPtr(i)[0] = l;
+                });
+
+                state.knn.model.setDefaultK(k);
+                state.knn.model.train(trainData, cv.ml_ROW_SAMPLE, trainLabels);
+                state.knn.trained = true;
+
+                document.getElementById('knn-samples').textContent = state.knn.points.length;
+                document.getElementById('knn-metrics').style.display = 'flex';
+                updateKNNStatus();
+
+                trainData.delete();
+                trainLabels.delete();
+            }
+
+            function classifyKNN(x, y) {
+                if (!state.knn.model) return;
+
+                const sample = new cv.Mat(1, 2, cv.CV_32F);
+                sample.floatPtr(0)[0] = x;
+                sample.floatPtr(0)[1] = y;
+
+                const result = new cv.Mat();
+                const neighbors = new cv.Mat();
+                const dist = new cv.Mat();
+
+                state.knn.model.findNearest(sample, parseInt(document.getElementById('knn-k').value), result, neighbors, dist);
+
+                const prediction = result.floatAt(0, 0);
+                document.getElementById('knn-prediction').textContent = `Class ${Math.round(prediction)}`;
+
+                // Draw prediction
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = classColors[Math.round(prediction)];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                sample.delete();
+                result.delete();
+                neighbors.delete();
+                dist.delete();
+            }
+        }
+
+        // ==================== SVM ====================
+        function initSVM() {
+            const canvas = document.getElementById('svm-canvas');
+            const ctx = canvas.getContext('2d');
+            setupClassSelector('svm');
+
+            // Slider updates
+            document.getElementById('svm-c').addEventListener('input', e => {
+                document.getElementById('svm-c-val').textContent = Math.pow(10, parseFloat(e.target.value)).toFixed(2);
+            });
+            document.getElementById('svm-gamma').addEventListener('input', e => {
+                document.getElementById('svm-gamma-val').textContent = Math.pow(10, parseFloat(e.target.value)).toFixed(3);
+            });
+            document.getElementById('svm-degree').addEventListener('input', e => {
+                document.getElementById('svm-degree-val').textContent = e.target.value;
+            });
+            document.getElementById('svm-kernel').addEventListener('change', e => {
+                document.getElementById('svm-degree-group').style.display =
+                    e.target.value === 'POLY' ? 'block' : 'none';
+            });
+
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                state.svm.points.push([x, y]);
+                state.svm.labels.push(state.svm.currentClass);
+                drawSVMPoints();
+            });
+
+            document.getElementById('svm-clear').addEventListener('click', () => {
+                state.svm.points = [];
+                state.svm.labels = [];
+                state.svm.trained = false;
+                if (state.svm.model) {
+                    state.svm.model.delete();
+                    state.svm.model = null;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('svm-point-count').textContent = 'Training points: 0';
+                document.getElementById('svm-metrics').style.display = 'none';
+            });
+
+            document.getElementById('svm-train').addEventListener('click', trainSVM);
+            document.getElementById('svm-boundary').addEventListener('click', () => drawDecisionBoundary('svm'));
+
+            // Presets
+            document.getElementById('svm-preset-linear').addEventListener('click', () => {
+                state.svm.points = [];
+                state.svm.labels = [];
+                for (let i = 0; i < 30; i++) {
+                    state.svm.points.push([100 + Math.random() * 150, 100 + Math.random() * 200]);
+                    state.svm.labels.push(0);
+                    state.svm.points.push([350 + Math.random() * 150, 100 + Math.random() * 200]);
+                    state.svm.labels.push(1);
+                }
+                drawSVMPoints();
+            });
+
+            document.getElementById('svm-preset-circular').addEventListener('click', () => {
+                state.svm.points = [];
+                state.svm.labels = [];
+                const cx = 300, cy = 200;
+                for (let i = 0; i < 40; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = 30 + Math.random() * 40;
+                    state.svm.points.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+                    state.svm.labels.push(0);
+                    const r2 = 100 + Math.random() * 50;
+                    state.svm.points.push([cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2]);
+                    state.svm.labels.push(1);
+                }
+                drawSVMPoints();
+            });
+
+            document.getElementById('svm-preset-xor').addEventListener('click', () => {
+                state.svm.points = [];
+                state.svm.labels = [];
+                for (let i = 0; i < 25; i++) {
+                    state.svm.points.push([100 + Math.random() * 100, 100 + Math.random() * 100]);
+                    state.svm.labels.push(0);
+                    state.svm.points.push([400 + Math.random() * 100, 200 + Math.random() * 100]);
+                    state.svm.labels.push(0);
+                    state.svm.points.push([400 + Math.random() * 100, 100 + Math.random() * 100]);
+                    state.svm.labels.push(1);
+                    state.svm.points.push([100 + Math.random() * 100, 200 + Math.random() * 100]);
+                    state.svm.labels.push(1);
+                }
+                drawSVMPoints();
+            });
+
+            function drawSVMPoints(supportVectors = null) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                state.svm.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = classColors[state.svm.labels[i]];
+                    ctx.fill();
+                });
+
+                if (supportVectors) {
+                    supportVectors.forEach(sv => {
+                        ctx.beginPath();
+                        ctx.arc(sv[0], sv[1], 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#f59e0b';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    });
+                }
+
+                document.getElementById('svm-point-count').textContent = `Training points: ${state.svm.points.length}`;
+            }
+
+            function trainSVM() {
+                if (state.svm.points.length < 2) {
+                    alert('Add more training points');
+                    return;
+                }
+
+                const start = performance.now();
+
+                if (state.svm.model) state.svm.model.delete();
+                state.svm.model = new cv.ml_SVM();
+
+                const kernelType = document.getElementById('svm-kernel').value;
+                state.svm.model.setType(cv.ml_SVM_C_SVC);
+                state.svm.model.setKernel(cv.ml_SVM[kernelType]);
+                state.svm.model.setC(Math.pow(10, parseFloat(document.getElementById('svm-c').value)));
+                state.svm.model.setGamma(Math.pow(10, parseFloat(document.getElementById('svm-gamma').value)));
+                if (kernelType === 'POLY') {
+                    state.svm.model.setDegree(parseInt(document.getElementById('svm-degree').value));
+                }
+
+                const trainData = new cv.Mat(state.svm.points.length, 2, cv.CV_32F);
+                const trainLabels = new cv.Mat(state.svm.labels.length, 1, cv.CV_32S);
+
+                state.svm.points.forEach((p, i) => {
+                    trainData.floatPtr(i)[0] = p[0];
+                    trainData.floatPtr(i)[1] = p[1];
+                });
+                state.svm.labels.forEach((l, i) => {
+                    trainLabels.intPtr(i)[0] = l;
+                });
+
+                state.svm.model.train(trainData, cv.ml_ROW_SAMPLE, trainLabels);
+                state.svm.trained = true;
+
+                const elapsed = (performance.now() - start).toFixed(2);
+
+                // Get support vectors
+                const sv = state.svm.model.getUncompressedSupportVectors();
+                const svArray = [];
+                for (let i = 0; i < sv.rows; i++) {
+                    svArray.push([sv.floatAt(i, 0), sv.floatAt(i, 1)]);
+                }
+
+                document.getElementById('svm-sv-count').textContent = svArray.length;
+                document.getElementById('svm-time').textContent = elapsed + 'ms';
+                document.getElementById('svm-metrics').style.display = 'flex';
+
+                drawSVMPoints(svArray);
+
+                trainData.delete();
+                trainLabels.delete();
+                sv.delete();
+            }
+        }
+
+        // ==================== RTREES ====================
+        function initRTrees() {
+            const canvas = document.getElementById('rtrees-canvas');
+            const ctx = canvas.getContext('2d');
+            setupClassSelector('rtrees');
+
+            document.getElementById('rtrees-depth').addEventListener('input', e => {
+                document.getElementById('rtrees-depth-val').textContent = e.target.value;
+            });
+            document.getElementById('rtrees-samples').addEventListener('input', e => {
+                document.getElementById('rtrees-samples-val').textContent = e.target.value;
+            });
+
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                state.rtrees.points.push([x, y]);
+                state.rtrees.labels.push(state.rtrees.currentClass);
+                drawRTreesPoints();
+            });
+
+            document.getElementById('rtrees-clear').addEventListener('click', () => {
+                state.rtrees.points = [];
+                state.rtrees.labels = [];
+                state.rtrees.trained = false;
+                if (state.rtrees.model) {
+                    state.rtrees.model.delete();
+                    state.rtrees.model = null;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('rtrees-point-count').textContent = 'Training points: 0';
+                document.getElementById('rtrees-importance').style.display = 'none';
+            });
+
+            document.getElementById('rtrees-sample').addEventListener('click', () => {
+                state.rtrees.points = [];
+                state.rtrees.labels = [];
+                for (let i = 0; i < 40; i++) {
+                    state.rtrees.points.push([100 + Math.random() * 200, 100 + Math.random() * 200]);
+                    state.rtrees.labels.push(0);
+                    state.rtrees.points.push([300 + Math.random() * 200, 100 + Math.random() * 200]);
+                    state.rtrees.labels.push(1);
+                }
+                drawRTreesPoints();
+            });
+
+            document.getElementById('rtrees-train').addEventListener('click', trainRTrees);
+            document.getElementById('rtrees-boundary').addEventListener('click', () => drawDecisionBoundary('rtrees'));
+
+            function drawRTreesPoints() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                state.rtrees.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = classColors[state.rtrees.labels[i]];
+                    ctx.fill();
+                });
+                document.getElementById('rtrees-point-count').textContent = `Training points: ${state.rtrees.points.length}`;
+            }
+
+            function trainRTrees() {
+                if (state.rtrees.points.length < 2) {
+                    alert('Add more training points');
+                    return;
+                }
+
+                if (typeof cv.ml_RTrees === 'undefined') {
+                    alert('RTrees not available in this build');
+                    return;
+                }
+
+                if (state.rtrees.model) state.rtrees.model.delete();
+                state.rtrees.model = new cv.ml_RTrees();
+
+                state.rtrees.model.setMaxDepth(parseInt(document.getElementById('rtrees-depth').value));
+                state.rtrees.model.setMinSampleCount(parseInt(document.getElementById('rtrees-samples').value));
+
+                const trainData = new cv.Mat(state.rtrees.points.length, 2, cv.CV_32F);
+                const trainLabels = new cv.Mat(state.rtrees.labels.length, 1, cv.CV_32S);
+
+                state.rtrees.points.forEach((p, i) => {
+                    trainData.floatPtr(i)[0] = p[0];
+                    trainData.floatPtr(i)[1] = p[1];
+                });
+                state.rtrees.labels.forEach((l, i) => {
+                    trainLabels.intPtr(i)[0] = l;
+                });
+
+                state.rtrees.model.train(trainData, cv.ml_ROW_SAMPLE, trainLabels);
+                state.rtrees.trained = true;
+
+                // Feature importance
+                const importance = state.rtrees.model.getVarImportance();
+                if (importance && importance.rows > 0) {
+                    const impX = importance.floatAt(0, 0);
+                    const impY = importance.floatAt(0, 1);
+                    const total = impX + impY;
+
+                    document.getElementById('rtrees-imp-x').textContent = (impX / total * 100).toFixed(1) + '%';
+                    document.getElementById('rtrees-imp-y').textContent = (impY / total * 100).toFixed(1) + '%';
+                    document.getElementById('rtrees-bar-x').style.width = (impX / total * 100) + '%';
+                    document.getElementById('rtrees-bar-y').style.width = (impY / total * 100) + '%';
+                    document.getElementById('rtrees-importance').style.display = 'block';
+                    importance.delete();
+                }
+
+                drawRTreesPoints();
+                trainData.delete();
+                trainLabels.delete();
+            }
+        }
+
+        // ==================== BAYES ====================
+        function initBayes() {
+            const canvas = document.getElementById('bayes-canvas');
+            const ctx = canvas.getContext('2d');
+            setupClassSelector('bayes');
+
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (state.bayes.trained) {
+                    classifyBayes(x, y);
+                } else {
+                    state.bayes.points.push([x, y]);
+                    state.bayes.labels.push(state.bayes.currentClass);
+                    drawBayesPoints();
+                }
+            });
+
+            document.getElementById('bayes-clear').addEventListener('click', () => {
+                state.bayes.points = [];
+                state.bayes.labels = [];
+                state.bayes.trained = false;
+                if (state.bayes.model) {
+                    state.bayes.model.delete();
+                    state.bayes.model = null;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('bayes-point-count').textContent = 'Training points: 0';
+                document.getElementById('bayes-metrics').style.display = 'none';
+            });
+
+            document.getElementById('bayes-sample').addEventListener('click', () => {
+                state.bayes.points = [];
+                state.bayes.labels = [];
+                const centers = [[150, 150], [450, 150], [300, 300]];
+                centers.forEach((c, classIdx) => {
+                    for (let i = 0; i < 25; i++) {
+                        state.bayes.points.push([
+                            c[0] + (Math.random() - 0.5) * 100,
+                            c[1] + (Math.random() - 0.5) * 100
+                        ]);
+                        state.bayes.labels.push(classIdx);
+                    }
+                });
+                drawBayesPoints();
+            });
+
+            document.getElementById('bayes-train').addEventListener('click', trainBayes);
+            document.getElementById('bayes-boundary').addEventListener('click', () => drawDecisionBoundary('bayes'));
+
+            function drawBayesPoints() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                state.bayes.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = classColors[state.bayes.labels[i]];
+                    ctx.fill();
+                });
+                const mode = state.bayes.trained ? 'Click to classify' : 'Add training data';
+                document.getElementById('bayes-point-count').textContent =
+                    `Training points: ${state.bayes.points.length} | Mode: ${mode}`;
+            }
+
+            function trainBayes() {
+                if (state.bayes.points.length < 2) {
+                    alert('Add more training points');
+                    return;
+                }
+
+                if (typeof cv.ml_NormalBayesClassifier === 'undefined') {
+                    alert('NormalBayesClassifier not available');
+                    return;
+                }
+
+                if (state.bayes.model) state.bayes.model.delete();
+                state.bayes.model = new cv.ml_NormalBayesClassifier();
+
+                const trainData = new cv.Mat(state.bayes.points.length, 2, cv.CV_32F);
+                const trainLabels = new cv.Mat(state.bayes.labels.length, 1, cv.CV_32S);
+
+                state.bayes.points.forEach((p, i) => {
+                    trainData.floatPtr(i)[0] = p[0];
+                    trainData.floatPtr(i)[1] = p[1];
+                });
+                state.bayes.labels.forEach((l, i) => {
+                    trainLabels.intPtr(i)[0] = l;
+                });
+
+                state.bayes.model.train(trainData, cv.ml_ROW_SAMPLE, trainLabels);
+                state.bayes.trained = true;
+
+                document.getElementById('bayes-samples').textContent = state.bayes.points.length;
+                document.getElementById('bayes-metrics').style.display = 'flex';
+                drawBayesPoints();
+
+                trainData.delete();
+                trainLabels.delete();
+            }
+
+            function classifyBayes(x, y) {
+                if (!state.bayes.model) return;
+
+                const sample = new cv.Mat(1, 2, cv.CV_32F);
+                sample.floatPtr(0)[0] = x;
+                sample.floatPtr(0)[1] = y;
+
+                const result = new cv.Mat();
+                state.bayes.model.predict(sample, result);
+
+                const prediction = result.floatAt(0, 0);
+                document.getElementById('bayes-prediction').textContent = `Class ${Math.round(prediction)}`;
+
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = classColors[Math.round(prediction)];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                sample.delete();
+                result.delete();
+            }
+        }
+
+        // ==================== LOGISTIC REGRESSION ====================
+        function initLogReg() {
+            const canvas = document.getElementById('logreg-canvas');
+            const ctx = canvas.getContext('2d');
+            setupClassSelector('logreg');
+
+            document.getElementById('logreg-lr').addEventListener('input', e => {
+                document.getElementById('logreg-lr-val').textContent = Math.pow(10, parseFloat(e.target.value)).toFixed(4);
+            });
+            document.getElementById('logreg-iter').addEventListener('input', e => {
+                document.getElementById('logreg-iter-val').textContent = e.target.value;
+            });
+
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                state.logreg.points.push([x, y]);
+                state.logreg.labels.push(state.logreg.currentClass);
+                drawLogRegPoints();
+            });
+
+            document.getElementById('logreg-clear').addEventListener('click', () => {
+                state.logreg.points = [];
+                state.logreg.labels = [];
+                state.logreg.trained = false;
+                if (state.logreg.model) {
+                    state.logreg.model.delete();
+                    state.logreg.model = null;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('logreg-point-count').textContent = 'Training points: 0';
+            });
+
+            document.getElementById('logreg-sample').addEventListener('click', () => {
+                state.logreg.points = [];
+                state.logreg.labels = [];
+                for (let i = 0; i < 30; i++) {
+                    state.logreg.points.push([100 + Math.random() * 150, 100 + Math.random() * 200]);
+                    state.logreg.labels.push(0);
+                    state.logreg.points.push([350 + Math.random() * 150, 100 + Math.random() * 200]);
+                    state.logreg.labels.push(1);
+                }
+                drawLogRegPoints();
+            });
+
+            document.getElementById('logreg-train').addEventListener('click', trainLogReg);
+            document.getElementById('logreg-boundary').addEventListener('click', () => drawDecisionBoundary('logreg'));
+
+            function drawLogRegPoints() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                state.logreg.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                    ctx.fillStyle = classColors[state.logreg.labels[i]];
+                    ctx.fill();
+                });
+                document.getElementById('logreg-point-count').textContent = `Training points: ${state.logreg.points.length}`;
+            }
+
+            function trainLogReg() {
+                if (state.logreg.points.length < 2) {
+                    alert('Add more training points');
+                    return;
+                }
+
+                if (typeof cv.ml_LogisticRegression === 'undefined') {
+                    alert('LogisticRegression not available');
+                    return;
+                }
+
+                if (state.logreg.model) state.logreg.model.delete();
+                state.logreg.model = new cv.ml_LogisticRegression();
+
+                state.logreg.model.setLearningRate(Math.pow(10, parseFloat(document.getElementById('logreg-lr').value)));
+                state.logreg.model.setIterations(parseInt(document.getElementById('logreg-iter').value));
+                state.logreg.model.setTrainMethod(cv.ml_LogisticRegression_MINI_BATCH);
+                state.logreg.model.setMiniBatchSize(1);
+
+                const trainData = new cv.Mat(state.logreg.points.length, 2, cv.CV_32F);
+                const trainLabels = new cv.Mat(state.logreg.labels.length, 1, cv.CV_32F);
+
+                state.logreg.points.forEach((p, i) => {
+                    trainData.floatPtr(i)[0] = p[0] / 600;
+                    trainData.floatPtr(i)[1] = p[1] / 400;
+                });
+                state.logreg.labels.forEach((l, i) => {
+                    trainLabels.floatPtr(i)[0] = l;
+                });
+
+                state.logreg.model.train(trainData, cv.ml_ROW_SAMPLE, trainLabels);
+                state.logreg.trained = true;
+
+                drawLogRegPoints();
+                trainData.delete();
+                trainLabels.delete();
+            }
+        }
+
+        // ==================== SEGMENTATION ====================
+        function initSegmentation() {
+            document.getElementById('segment-input').addEventListener('change', async e => {
+                if (e.target.files.length > 0) {
+                    const img = await Utils.loadImage(e.target.files[0]);
+                    const canvas = document.getElementById('segment-input-canvas');
+                    canvas.width = Math.min(400, img.width);
+                    canvas.height = (img.height / img.width) * canvas.width;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+            });
+
+            document.getElementById('segment-k').addEventListener('input', e => {
+                document.getElementById('segment-k-val').textContent = e.target.value;
+            });
+
+            document.getElementById('segment-run').addEventListener('click', runSegmentation);
+            document.getElementById('segment-merge').addEventListener('click', mergeSegments);
+        }
+
+        function runSegmentation() {
+            const inputCanvas = document.getElementById('segment-input-canvas');
+            const outputCanvas = document.getElementById('segment-output-canvas');
+
+            if (inputCanvas.width === 0) {
+                alert('Please upload an image first');
+                return;
+            }
+
+            const k = parseInt(document.getElementById('segment-k').value);
+            const src = cv.imread(inputCanvas);
+
+            // Convert to Lab for better color clustering
+            const lab = new cv.Mat();
+            cv.cvtColor(src, lab, cv.COLOR_RGBA2RGB);
+            const labFloat = new cv.Mat();
+            lab.convertTo(labFloat, cv.CV_32F);
+
+            const data = labFloat.reshape(1, src.rows * src.cols);
+
+            const labels = new cv.Mat();
+            const centers = new cv.Mat();
+            const criteria = new cv.TermCriteria(cv.TermCriteria_COUNT + cv.TermCriteria_EPS, 10, 1.0);
+
+            cv.kmeans(data, k, labels, criteria, 3, cv.KMEANS_PP_CENTERS, centers);
+
+            // Create segmented image with distinct colors
+            const segmented = new cv.Mat(src.rows, src.cols, cv.CV_8UC3);
+            const segmentColors = [];
+            for (let i = 0; i < k; i++) {
+                segmentColors.push([
+                    Math.floor(centers.floatAt(i, 0)),
+                    Math.floor(centers.floatAt(i, 1)),
+                    Math.floor(centers.floatAt(i, 2))
+                ]);
+            }
+
+            for (let i = 0; i < labels.rows; i++) {
+                const clusterIdx = labels.intAt(i, 0);
+                const row = Math.floor(i / src.cols);
+                const col = i % src.cols;
+                segmented.ucharPtr(row, col)[0] = segmentColors[clusterIdx][0];
+                segmented.ucharPtr(row, col)[1] = segmentColors[clusterIdx][1];
+                segmented.ucharPtr(row, col)[2] = segmentColors[clusterIdx][2];
+            }
+
+            outputCanvas.width = inputCanvas.width;
+            outputCanvas.height = inputCanvas.height;
+            cv.imshow(outputCanvas, segmented);
+
+            // Show color legend
+            const colorsDiv = document.getElementById('segment-colors');
+            colorsDiv.innerHTML = segmentColors.map((c, i) =>
+                `<div class="legend-item">
+                    <div class="legend-color" style="background: rgb(${c[0]},${c[1]},${c[2]});"></div>
+                    <span>Segment ${i + 1}</span>
+                </div>`
+            ).join('');
+
+            src.delete();
+            lab.delete();
+            labFloat.delete();
+            data.delete();
+            labels.delete();
+            centers.delete();
+            segmented.delete();
+        }
+
+        function mergeSegments() {
+            // Re-run with fewer clusters
+            const kSlider = document.getElementById('segment-k');
+            const currentK = parseInt(kSlider.value);
+            if (currentK > 2) {
+                kSlider.value = currentK - 1;
+                document.getElementById('segment-k-val').textContent = currentK - 1;
+                runSegmentation();
+            }
+        }
+
+        // ==================== SHARED UTILITIES ====================
+        function setupClassSelector(prefix) {
+            const selector = document.getElementById(`${prefix}-class-selector`);
+            if (!selector) return;
+
+            selector.querySelectorAll('.class-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selector.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state[prefix].currentClass = parseInt(btn.dataset.class);
+                });
+            });
+        }
+
+        function drawDecisionBoundary(prefix) {
+            const canvas = document.getElementById(`${prefix}-canvas`);
+            const ctx = canvas.getContext('2d');
+            const model = state[prefix].model;
+
+            if (!model || !state[prefix].trained) {
+                alert('Please train the model first');
+                return;
+            }
+
+            const step = 5;
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const sample = new cv.Mat(1, 2, cv.CV_32F);
+                    if (prefix === 'logreg') {
+                        sample.floatPtr(0)[0] = x / 600;
+                        sample.floatPtr(0)[1] = y / 400;
+                    } else {
+                        sample.floatPtr(0)[0] = x;
+                        sample.floatPtr(0)[1] = y;
+                    }
+
+                    const result = new cv.Mat();
+                    model.predict(sample, result);
+                    const prediction = Math.round(result.floatAt(0, 0));
+                    const color = classColorsRGB[prediction % classColorsRGB.length];
+
+                    // Fill step x step block
+                    for (let dy = 0; dy < step && y + dy < canvas.height; dy++) {
+                        for (let dx = 0; dx < step && x + dx < canvas.width; dx++) {
+                            const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                            imageData.data[idx] = color[0];
+                            imageData.data[idx + 1] = color[1];
+                            imageData.data[idx + 2] = color[2];
+                            imageData.data[idx + 3] = 60;
+                        }
+                    }
+
+                    sample.delete();
+                    result.delete();
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Redraw points on top
+            state[prefix].points.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+                ctx.fillStyle = classColors[state[prefix].labels[i]];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // For SVM, also draw support vectors
+            if (prefix === 'svm' && model) {
+                try {
+                    const sv = model.getUncompressedSupportVectors();
+                    for (let i = 0; i < sv.rows; i++) {
+                        ctx.beginPath();
+                        ctx.arc(sv.floatAt(i, 0), sv.floatAt(i, 1), 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#f59e0b';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    }
+                    sv.delete();
+                } catch (e) {}
+            }
+        }
+    </script>
+</body>
+</html>

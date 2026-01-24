@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markers & Codes - OpenCV.js Demos</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        /* Additional styles specific to this page */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .input-group input[type="number"] {
+            width: 100px;
+        }
+
+        .marker-preview {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .marker-preview canvas {
+            max-width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+        }
+
+        .detected-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .detected-item {
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detected-item:last-child {
+            border-bottom: none;
+        }
+
+        .marker-id {
+            color: var(--accent-secondary);
+            font-weight: 600;
+        }
+
+        .corners-info {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .qr-content {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            word-break: break-all;
+            font-family: monospace;
+            margin-top: var(--spacing-md);
+        }
+
+        .qr-content-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .qr-content-value {
+            color: var(--success);
+        }
+
+        .board-preview {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            display: flex;
+            justify-content: center;
+        }
+
+        .board-preview canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .module-unavailable {
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .module-unavailable svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.5;
+        }
+
+        .source-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .source-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .source-tab:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .source-tab.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .webcam-container {
+            position: relative;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            aspect-ratio: 4/3;
+        }
+
+        .webcam-container video,
+        .webcam-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .webcam-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .dict-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: var(--spacing-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav-breadcrumb">
+            <a href="../index.html">Home</a>
+            <span>/</span>
+            <span class="current">Markers & Codes</span>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1>Markers & Codes</h1>
+            <p>Detect and generate ArUco markers, QR codes, and color checkers using OpenCV.js aruco, wechat_qrcode, and mcc modules.</p>
+        </header>
+
+        <!-- Section 1: ArUco Marker Detection -->
+        <section class="demo-section" id="aruco-detection">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <rect x="7" y="7" width="3" height="3"/>
+                    <rect x="14" y="7" width="3" height="3"/>
+                    <rect x="7" y="14" width="3" height="3"/>
+                    <rect x="14" y="14" width="3" height="3"/>
+                </svg>
+                ArUco Marker Detection
+            </h3>
+
+            <div class="source-tabs">
+                <button class="source-tab active" data-source="image" data-section="aruco-detect">Upload Image</button>
+                <button class="source-tab" data-source="webcam" data-section="aruco-detect">Webcam</button>
+            </div>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="aruco-dict-detect">Dictionary</label>
+                    <select id="aruco-dict-detect">
+                        <option value="DICT_4X4_50">DICT_4X4_50</option>
+                        <option value="DICT_4X4_100">DICT_4X4_100</option>
+                        <option value="DICT_4X4_250">DICT_4X4_250</option>
+                        <option value="DICT_4X4_1000">DICT_4X4_1000</option>
+                        <option value="DICT_5X5_50">DICT_5X5_50</option>
+                        <option value="DICT_5X5_100">DICT_5X5_100</option>
+                        <option value="DICT_5X5_250">DICT_5X5_250</option>
+                        <option value="DICT_5X5_1000">DICT_5X5_1000</option>
+                        <option value="DICT_6X6_50" selected>DICT_6X6_50</option>
+                        <option value="DICT_6X6_100">DICT_6X6_100</option>
+                        <option value="DICT_6X6_250">DICT_6X6_250</option>
+                        <option value="DICT_6X6_1000">DICT_6X6_1000</option>
+                        <option value="DICT_7X7_50">DICT_7X7_50</option>
+                        <option value="DICT_7X7_100">DICT_7X7_100</option>
+                        <option value="DICT_7X7_250">DICT_7X7_250</option>
+                        <option value="DICT_7X7_1000">DICT_7X7_1000</option>
+                        <option value="DICT_ARUCO_ORIGINAL">DICT_ARUCO_ORIGINAL</option>
+                    </select>
+                </div>
+
+                <!-- Image upload controls -->
+                <div id="aruco-detect-image-controls">
+                    <div class="form-group">
+                        <label for="aruco-detect-upload" class="file-input-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="aruco-detect-upload" accept="image/*">
+                    </div>
+                </div>
+
+                <!-- Webcam controls -->
+                <div id="aruco-detect-webcam-controls" class="hidden">
+                    <button id="aruco-detect-start-cam" class="btn btn-success">Start Camera</button>
+                    <button id="aruco-detect-stop-cam" class="btn btn-danger hidden">Stop Camera</button>
+                </div>
+
+                <button id="aruco-detect-btn" class="btn btn-primary" disabled>Detect Markers</button>
+            </div>
+
+            <div class="demo-output">
+                <div>
+                    <div class="canvas-container" id="aruco-detect-input-container">
+                        <canvas id="aruco-detect-input"></canvas>
+                        <span class="canvas-label">Input</span>
+                    </div>
+                    <div id="aruco-detect-webcam-container" class="webcam-container hidden">
+                        <video id="aruco-detect-video" autoplay playsinline muted></video>
+                        <canvas id="aruco-detect-webcam-canvas"></canvas>
+                        <div class="webcam-overlay" id="aruco-detect-webcam-overlay">
+                            <p>Click "Start Camera" to begin</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="aruco-detect-output"></canvas>
+                        <span class="canvas-label">Detection Result</span>
+                    </div>
+                    <div class="metrics mt-md">
+                        <div class="metric">
+                            <span class="metric-label">Markers Found</span>
+                            <span class="metric-value" id="aruco-detect-count">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Detection Time</span>
+                            <span class="metric-value" id="aruco-detect-time">-</span>
+                        </div>
+                    </div>
+                    <div class="detected-list mt-md" id="aruco-detect-list">
+                        <p style="color: var(--text-muted); text-align: center;">No markers detected</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: ArUco Marker Generation -->
+        <section class="demo-section" id="aruco-generation">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                ArUco Marker Generation
+            </h3>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="aruco-gen-dict">Dictionary</label>
+                    <select id="aruco-gen-dict">
+                        <option value="DICT_4X4_50">DICT_4X4_50 (0-49)</option>
+                        <option value="DICT_4X4_100">DICT_4X4_100 (0-99)</option>
+                        <option value="DICT_4X4_250">DICT_4X4_250 (0-249)</option>
+                        <option value="DICT_5X5_50">DICT_5X5_50 (0-49)</option>
+                        <option value="DICT_5X5_100">DICT_5X5_100 (0-99)</option>
+                        <option value="DICT_6X6_50" selected>DICT_6X6_50 (0-49)</option>
+                        <option value="DICT_6X6_100">DICT_6X6_100 (0-99)</option>
+                        <option value="DICT_7X7_50">DICT_7X7_50 (0-49)</option>
+                        <option value="DICT_ARUCO_ORIGINAL">DICT_ARUCO_ORIGINAL (0-1023)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="aruco-gen-id">Marker ID</label>
+                    <input type="number" id="aruco-gen-id" value="0" min="0" max="49">
+                </div>
+
+                <div class="form-group">
+                    <label for="aruco-gen-size">Size (px): <span id="aruco-gen-size-val">200</span></label>
+                    <div class="range-group">
+                        <input type="range" id="aruco-gen-size" min="100" max="500" value="200" step="10">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="aruco-gen-border">Border Bits: <span id="aruco-gen-border-val">1</span></label>
+                    <div class="range-group">
+                        <input type="range" id="aruco-gen-border" min="1" max="5" value="1">
+                    </div>
+                </div>
+
+                <button id="aruco-gen-btn" class="btn btn-primary" disabled>Generate Marker</button>
+                <button id="aruco-gen-download" class="btn btn-secondary" disabled>Download PNG</button>
+            </div>
+
+            <div class="demo-output single">
+                <div>
+                    <div class="marker-preview">
+                        <canvas id="aruco-gen-output" width="200" height="200"></canvas>
+                    </div>
+                    <div class="dict-info" id="aruco-gen-info">
+                        Dictionary: DICT_6X6_50, Valid IDs: 0-49
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: ArUco Board Detection -->
+        <section class="demo-section" id="aruco-board">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                ArUco Grid Board
+            </h3>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="board-dict">Dictionary</label>
+                    <select id="board-dict">
+                        <option value="DICT_4X4_50">DICT_4X4_50</option>
+                        <option value="DICT_5X5_50">DICT_5X5_50</option>
+                        <option value="DICT_6X6_50" selected>DICT_6X6_50</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="board-markers-x">Markers X</label>
+                    <input type="number" id="board-markers-x" value="4" min="1" max="10">
+                </div>
+
+                <div class="form-group">
+                    <label for="board-markers-y">Markers Y</label>
+                    <input type="number" id="board-markers-y" value="3" min="1" max="10">
+                </div>
+
+                <div class="form-group">
+                    <label for="board-marker-length">Marker Length</label>
+                    <input type="number" id="board-marker-length" value="50" min="20" max="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="board-marker-sep">Separation</label>
+                    <input type="number" id="board-marker-sep" value="10" min="5" max="50">
+                </div>
+
+                <button id="board-gen-btn" class="btn btn-primary" disabled>Generate Board</button>
+                <button id="board-download" class="btn btn-secondary" disabled>Download PNG</button>
+            </div>
+
+            <div class="demo-output single">
+                <div class="board-preview">
+                    <canvas id="board-output"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: ChArUco Board -->
+        <section class="demo-section" id="charuco-board">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18"/>
+                    <rect x="3" y="3" width="6" height="6" fill="currentColor"/>
+                    <rect x="15" y="3" width="6" height="6" fill="currentColor"/>
+                    <rect x="9" y="9" width="6" height="6" fill="currentColor"/>
+                    <rect x="3" y="15" width="6" height="6" fill="currentColor"/>
+                    <rect x="15" y="15" width="6" height="6" fill="currentColor"/>
+                </svg>
+                ChArUco Board (Checkerboard + ArUco)
+            </h3>
+
+            <div class="demo-controls">
+                <div class="form-group">
+                    <label for="charuco-dict">Dictionary</label>
+                    <select id="charuco-dict">
+                        <option value="DICT_4X4_50">DICT_4X4_50</option>
+                        <option value="DICT_5X5_50">DICT_5X5_50</option>
+                        <option value="DICT_6X6_50" selected>DICT_6X6_50</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="charuco-squares-x">Squares X</label>
+                    <input type="number" id="charuco-squares-x" value="5" min="2" max="12">
+                </div>
+
+                <div class="form-group">
+                    <label for="charuco-squares-y">Squares Y</label>
+                    <input type="number" id="charuco-squares-y" value="7" min="2" max="12">
+                </div>
+
+                <div class="form-group">
+                    <label for="charuco-square-length">Square Length</label>
+                    <input type="number" id="charuco-square-length" value="40" min="20" max="80">
+                </div>
+
+                <div class="form-group">
+                    <label for="charuco-marker-length">Marker Length</label>
+                    <input type="number" id="charuco-marker-length" value="30" min="10" max="60">
+                </div>
+
+                <button id="charuco-gen-btn" class="btn btn-primary" disabled>Generate ChArUco</button>
+                <button id="charuco-download" class="btn btn-secondary" disabled>Download PNG</button>
+            </div>
+
+            <div class="demo-output single">
+                <div class="board-preview">
+                    <canvas id="charuco-output"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: QR Code Detection -->
+        <section class="demo-section" id="qr-detection">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7" stroke-dasharray="2 2"/>
+                    <line x1="12" y1="12" x2="12" y2="21"/>
+                    <line x1="12" y1="12" x2="21" y2="12"/>
+                </svg>
+                QR Code Detection
+            </h3>
+
+            <div class="source-tabs">
+                <button class="source-tab active" data-source="image" data-section="qr-detect">Upload Image</button>
+                <button class="source-tab" data-source="webcam" data-section="qr-detect">Webcam</button>
+            </div>
+
+            <div class="demo-controls">
+                <!-- Image upload controls -->
+                <div id="qr-detect-image-controls">
+                    <div class="form-group">
+                        <label for="qr-detect-upload" class="file-input-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="qr-detect-upload" accept="image/*">
+                    </div>
+                </div>
+
+                <!-- Webcam controls -->
+                <div id="qr-detect-webcam-controls" class="hidden">
+                    <button id="qr-detect-start-cam" class="btn btn-success">Start Camera</button>
+                    <button id="qr-detect-stop-cam" class="btn btn-danger hidden">Stop Camera</button>
+                </div>
+
+                <button id="qr-detect-btn" class="btn btn-primary" disabled>Detect QR Code</button>
+            </div>
+
+            <div class="demo-output">
+                <div>
+                    <div class="canvas-container" id="qr-detect-input-container">
+                        <canvas id="qr-detect-input"></canvas>
+                        <span class="canvas-label">Input</span>
+                    </div>
+                    <div id="qr-detect-webcam-container" class="webcam-container hidden">
+                        <video id="qr-detect-video" autoplay playsinline muted></video>
+                        <canvas id="qr-detect-webcam-canvas"></canvas>
+                        <div class="webcam-overlay" id="qr-detect-webcam-overlay">
+                            <p>Click "Start Camera" to begin</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="qr-detect-output"></canvas>
+                        <span class="canvas-label">Detection Result</span>
+                    </div>
+                    <div class="metrics mt-md">
+                        <div class="metric">
+                            <span class="metric-label">QR Codes Found</span>
+                            <span class="metric-value" id="qr-detect-count">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Detection Time</span>
+                            <span class="metric-value" id="qr-detect-time">-</span>
+                        </div>
+                    </div>
+                    <div id="qr-detect-content" class="qr-content hidden">
+                        <div class="qr-content-label">Decoded Content:</div>
+                        <div class="qr-content-value" id="qr-detect-value"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: WeChat QR Code (if available) -->
+        <section class="demo-section" id="wechat-qr">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+                WeChat QR Code Detector
+            </h3>
+
+            <div id="wechat-qr-available">
+                <div class="alert alert-info mb-md">
+                    WeChat QR detector often provides more robust detection than the standard detector. Note: May require model files to be loaded.
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="wechat-qr-upload" class="file-input-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="wechat-qr-upload" accept="image/*">
+                    </div>
+
+                    <button id="wechat-qr-detect-btn" class="btn btn-primary" disabled>Detect QR Code</button>
+                </div>
+
+                <div class="demo-output">
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="wechat-qr-input"></canvas>
+                            <span class="canvas-label">Input</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="wechat-qr-output"></canvas>
+                            <span class="canvas-label">Detection Result</span>
+                        </div>
+                        <div id="wechat-qr-content" class="qr-content hidden mt-md">
+                            <div class="qr-content-label">Decoded Content:</div>
+                            <div class="qr-content-value" id="wechat-qr-value"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="wechat-qr-unavailable" class="module-unavailable hidden">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h4>WeChat QR Module Not Available</h4>
+                <p>The wechat_qrcode module is not included in this OpenCV.js build.</p>
+            </div>
+        </section>
+
+        <!-- Section 7: Color Checker Detection (mcc) -->
+        <section class="demo-section" id="color-checker">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <rect x="6" y="6" width="3" height="3" fill="#c41e3a"/>
+                    <rect x="10.5" y="6" width="3" height="3" fill="#00a550"/>
+                    <rect x="15" y="6" width="3" height="3" fill="#0087bd"/>
+                    <rect x="6" y="10.5" width="3" height="3" fill="#f5c71a"/>
+                    <rect x="10.5" y="10.5" width="3" height="3" fill="#9b2d30"/>
+                    <rect x="15" y="10.5" width="3" height="3" fill="#00a4e4"/>
+                    <rect x="6" y="15" width="3" height="3" fill="#000000"/>
+                    <rect x="10.5" y="15" width="3" height="3" fill="#666666"/>
+                    <rect x="15" y="15" width="3" height="3" fill="#ffffff"/>
+                </svg>
+                Color Checker Detection (MCC)
+            </h3>
+
+            <div id="mcc-available">
+                <div class="alert alert-info mb-md">
+                    Detect Macbeth ColorChecker charts for color calibration. This module detects standard 24-patch color charts.
+                </div>
+
+                <div class="demo-controls">
+                    <div class="form-group">
+                        <label for="mcc-chart-type">Chart Type</label>
+                        <select id="mcc-chart-type">
+                            <option value="MCC24">MCC24 (Standard 24-patch)</option>
+                            <option value="SG140">SG140 (140-patch)</option>
+                            <option value="VINYL18">Vinyl 18-patch</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mcc-upload" class="file-input-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Image
+                        </label>
+                        <input type="file" id="mcc-upload" accept="image/*">
+                    </div>
+
+                    <button id="mcc-detect-btn" class="btn btn-primary" disabled>Detect Color Checker</button>
+                </div>
+
+                <div class="demo-output">
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="mcc-input"></canvas>
+                            <span class="canvas-label">Input</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="canvas-container">
+                            <canvas id="mcc-output"></canvas>
+                            <span class="canvas-label">Detection Result</span>
+                        </div>
+                        <div class="metrics mt-md">
+                            <div class="metric">
+                                <span class="metric-label">Charts Found</span>
+                                <span class="metric-value" id="mcc-count">0</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Detection Time</span>
+                                <span class="metric-value" id="mcc-time">-</span>
+                            </div>
+                        </div>
+                        <div id="mcc-colors" class="detected-list mt-md hidden">
+                            <!-- Color values will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mcc-unavailable" class="module-unavailable hidden">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h4>MCC Module Not Available</h4>
+                <p>The mcc (Macbeth Color Checker) module is not included in this OpenCV.js build.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/opencv-loader.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/ui-components.js"></script>
+
+    <script>
+        // Global state
+        let cvReady = false;
+        const webcamStreams = {};
+        const animationFrames = {};
+
+        // ArUco detector instances
+        let arucoDetector = null;
+        let arucoDictionary = null;
+        let arucoDetectorParams = null;
+        let arucoRefineParams = null;
+
+        // Module availability flags
+        let hasWeChatQR = false;
+        let hasMCC = false;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await UIComponents.initPage({
+                    title: 'Markers & Codes',
+                    buildType: 'full'
+                });
+
+                cvReady = true;
+                checkModuleAvailability();
+                initializeControls();
+                initializeArucoDetector();
+
+                // Enable buttons
+                enableButtons();
+
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                UIComponents.showToast({
+                    message: 'Failed to load OpenCV.js: ' + error.message,
+                    type: 'error'
+                });
+            }
+        });
+
+        // Check which modules are available
+        function checkModuleAvailability() {
+            // Check for WeChat QR
+            try {
+                hasWeChatQR = typeof cv.wechat_qrcode_WeChatQRCode !== 'undefined';
+            } catch (e) {
+                hasWeChatQR = false;
+            }
+
+            // Check for MCC
+            try {
+                hasMCC = typeof cv.mcc_CCheckerDetector !== 'undefined' ||
+                         typeof cv.CCheckerDetector !== 'undefined';
+            } catch (e) {
+                hasMCC = false;
+            }
+
+            // Update UI based on availability
+            if (!hasWeChatQR) {
+                document.getElementById('wechat-qr-available').classList.add('hidden');
+                document.getElementById('wechat-qr-unavailable').classList.remove('hidden');
+            }
+
+            if (!hasMCC) {
+                document.getElementById('mcc-available').classList.add('hidden');
+                document.getElementById('mcc-unavailable').classList.remove('hidden');
+            }
+
+            console.log('Module availability - WeChat QR:', hasWeChatQR, 'MCC:', hasMCC);
+        }
+
+        // Initialize ArUco detector
+        function initializeArucoDetector(dictName = 'DICT_6X6_50') {
+            // Clean up existing
+            if (arucoDictionary) arucoDictionary.delete();
+            if (arucoDetectorParams) arucoDetectorParams.delete();
+            if (arucoRefineParams) arucoRefineParams.delete();
+            if (arucoDetector) arucoDetector.delete();
+
+            try {
+                arucoDictionary = cv.getPredefinedDictionary(cv[dictName]);
+                arucoDetectorParams = new cv.aruco_DetectorParameters();
+                arucoRefineParams = new cv.aruco_RefineParameters(10.0, 3.0, true);
+                arucoDetector = new cv.aruco_ArucoDetector(arucoDictionary, arucoDetectorParams, arucoRefineParams);
+            } catch (e) {
+                console.error('Failed to initialize ArUco detector:', e);
+            }
+        }
+
+        // Enable buttons after OpenCV loads
+        function enableButtons() {
+            document.getElementById('aruco-detect-btn').disabled = false;
+            document.getElementById('aruco-gen-btn').disabled = false;
+            document.getElementById('aruco-gen-download').disabled = false;
+            document.getElementById('board-gen-btn').disabled = false;
+            document.getElementById('board-download').disabled = false;
+            document.getElementById('charuco-gen-btn').disabled = false;
+            document.getElementById('charuco-download').disabled = false;
+            document.getElementById('qr-detect-btn').disabled = false;
+
+            if (hasWeChatQR) {
+                document.getElementById('wechat-qr-detect-btn').disabled = false;
+            }
+            if (hasMCC) {
+                document.getElementById('mcc-detect-btn').disabled = false;
+            }
+
+            // Generate initial marker
+            generateArucoMarker();
+            generateBoard();
+            generateCharucoBoard();
+        }
+
+        // Initialize all controls
+        function initializeControls() {
+            // Source tab switching
+            document.querySelectorAll('.source-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchSource(tab));
+            });
+
+            // ArUco Detection
+            document.getElementById('aruco-detect-upload').addEventListener('change', handleArucoDetectUpload);
+            document.getElementById('aruco-dict-detect').addEventListener('change', (e) => {
+                initializeArucoDetector(e.target.value);
+            });
+            document.getElementById('aruco-detect-btn').addEventListener('click', detectArucoMarkers);
+            document.getElementById('aruco-detect-start-cam').addEventListener('click', () => startWebcam('aruco-detect'));
+            document.getElementById('aruco-detect-stop-cam').addEventListener('click', () => stopWebcam('aruco-detect'));
+
+            // ArUco Generation
+            document.getElementById('aruco-gen-dict').addEventListener('change', updateArucoGenInfo);
+            document.getElementById('aruco-gen-id').addEventListener('input', generateArucoMarker);
+            document.getElementById('aruco-gen-size').addEventListener('input', (e) => {
+                document.getElementById('aruco-gen-size-val').textContent = e.target.value;
+                generateArucoMarker();
+            });
+            document.getElementById('aruco-gen-border').addEventListener('input', (e) => {
+                document.getElementById('aruco-gen-border-val').textContent = e.target.value;
+                generateArucoMarker();
+            });
+            document.getElementById('aruco-gen-btn').addEventListener('click', generateArucoMarker);
+            document.getElementById('aruco-gen-download').addEventListener('click', () => downloadCanvas('aruco-gen-output', 'aruco-marker.png'));
+
+            // Board Generation
+            document.getElementById('board-gen-btn').addEventListener('click', generateBoard);
+            document.getElementById('board-download').addEventListener('click', () => downloadCanvas('board-output', 'aruco-board.png'));
+
+            // ChArUco Generation
+            document.getElementById('charuco-gen-btn').addEventListener('click', generateCharucoBoard);
+            document.getElementById('charuco-download').addEventListener('click', () => downloadCanvas('charuco-output', 'charuco-board.png'));
+
+            // QR Code Detection
+            document.getElementById('qr-detect-upload').addEventListener('change', handleQRDetectUpload);
+            document.getElementById('qr-detect-btn').addEventListener('click', detectQRCode);
+            document.getElementById('qr-detect-start-cam').addEventListener('click', () => startWebcam('qr-detect'));
+            document.getElementById('qr-detect-stop-cam').addEventListener('click', () => stopWebcam('qr-detect'));
+
+            // WeChat QR
+            if (hasWeChatQR) {
+                document.getElementById('wechat-qr-upload').addEventListener('change', handleWeChatQRUpload);
+                document.getElementById('wechat-qr-detect-btn').addEventListener('click', detectWeChatQR);
+            }
+
+            // MCC
+            if (hasMCC) {
+                document.getElementById('mcc-upload').addEventListener('change', handleMCCUpload);
+                document.getElementById('mcc-detect-btn').addEventListener('click', detectColorChecker);
+            }
+
+            updateArucoGenInfo();
+        }
+
+        // Switch between image and webcam source
+        function switchSource(tab) {
+            const section = tab.dataset.section;
+            const source = tab.dataset.source;
+
+            // Update tab active state
+            tab.parentElement.querySelectorAll('.source-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Show/hide appropriate controls
+            const imageControls = document.getElementById(`${section}-image-controls`);
+            const webcamControls = document.getElementById(`${section}-webcam-controls`);
+            const inputContainer = document.getElementById(`${section}-input-container`);
+            const webcamContainer = document.getElementById(`${section}-webcam-container`);
+
+            if (source === 'image') {
+                imageControls?.classList.remove('hidden');
+                webcamControls?.classList.add('hidden');
+                inputContainer?.classList.remove('hidden');
+                webcamContainer?.classList.add('hidden');
+                stopWebcam(section);
+            } else {
+                imageControls?.classList.add('hidden');
+                webcamControls?.classList.remove('hidden');
+                inputContainer?.classList.add('hidden');
+                webcamContainer?.classList.remove('hidden');
+            }
+        }
+
+        // Webcam handling
+        async function startWebcam(section) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'environment' }
+                });
+
+                webcamStreams[section] = stream;
+
+                const video = document.getElementById(`${section}-video`);
+                const canvas = document.getElementById(`${section}-webcam-canvas`);
+                const overlay = document.getElementById(`${section}-webcam-overlay`);
+                const startBtn = document.getElementById(`${section}-start-cam`);
+                const stopBtn = document.getElementById(`${section}-stop-cam`);
+
+                video.srcObject = stream;
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    overlay.classList.add('hidden');
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+
+                    // Start processing frames
+                    processWebcamFrame(section);
+                };
+
+            } catch (err) {
+                console.error('Webcam error:', err);
+                UIComponents.showToast({
+                    message: 'Failed to access camera: ' + err.message,
+                    type: 'error'
+                });
+            }
+        }
+
+        function stopWebcam(section) {
+            if (webcamStreams[section]) {
+                webcamStreams[section].getTracks().forEach(track => track.stop());
+                delete webcamStreams[section];
+            }
+
+            if (animationFrames[section]) {
+                cancelAnimationFrame(animationFrames[section]);
+                delete animationFrames[section];
+            }
+
+            const video = document.getElementById(`${section}-video`);
+            const overlay = document.getElementById(`${section}-webcam-overlay`);
+            const startBtn = document.getElementById(`${section}-start-cam`);
+            const stopBtn = document.getElementById(`${section}-stop-cam`);
+
+            if (video) video.srcObject = null;
+            if (overlay) overlay.classList.remove('hidden');
+            if (startBtn) startBtn.classList.remove('hidden');
+            if (stopBtn) stopBtn.classList.add('hidden');
+        }
+
+        function processWebcamFrame(section) {
+            if (!webcamStreams[section]) return;
+
+            const video = document.getElementById(`${section}-video`);
+            const canvas = document.getElementById(`${section}-webcam-canvas`);
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(video, 0, 0);
+
+            try {
+                const src = cv.imread(canvas);
+
+                if (section === 'aruco-detect') {
+                    processArucoFrame(src, canvas);
+                } else if (section === 'qr-detect') {
+                    processQRFrame(src, canvas);
+                }
+
+                src.delete();
+            } catch (e) {
+                console.error('Frame processing error:', e);
+            }
+
+            animationFrames[section] = requestAnimationFrame(() => processWebcamFrame(section));
+        }
+
+        // ArUco Detection
+        function handleArucoDetectUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Utils.loadImage(file).then(img => {
+                const canvas = document.getElementById('aruco-detect-input');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            });
+        }
+
+        function detectArucoMarkers() {
+            if (!cvReady) return;
+
+            const inputCanvas = document.getElementById('aruco-detect-input');
+            const outputCanvas = document.getElementById('aruco-detect-output');
+
+            try {
+                const start = performance.now();
+
+                const src = cv.imread(inputCanvas);
+                const corners = new cv.MatVector();
+                const ids = new cv.Mat();
+                const rejected = new cv.MatVector();
+
+                arucoDetector.detectMarkers(src, corners, ids, rejected);
+
+                // Draw detected markers
+                if (ids.rows > 0) {
+                    cv.drawDetectedMarkers(src, corners, ids);
+                }
+
+                const end = performance.now();
+
+                // Display result
+                outputCanvas.width = src.cols;
+                outputCanvas.height = src.rows;
+                cv.imshow(outputCanvas, src);
+
+                // Update metrics
+                document.getElementById('aruco-detect-count').textContent = ids.rows;
+                document.getElementById('aruco-detect-time').textContent = (end - start).toFixed(1) + 'ms';
+
+                // Update detected list
+                updateArucoDetectedList(ids, corners);
+
+                // Cleanup
+                src.delete();
+                corners.delete();
+                ids.delete();
+                rejected.delete();
+
+            } catch (e) {
+                console.error('ArUco detection error:', e);
+                UIComponents.showToast({
+                    message: 'Detection failed: ' + e.message,
+                    type: 'error'
+                });
+            }
+        }
+
+        function processArucoFrame(src, outputCanvas) {
+            const start = performance.now();
+
+            const corners = new cv.MatVector();
+            const ids = new cv.Mat();
+            const rejected = new cv.MatVector();
+
+            try {
+                arucoDetector.detectMarkers(src, corners, ids, rejected);
+
+                if (ids.rows > 0) {
+                    cv.drawDetectedMarkers(src, corners, ids);
+                }
+
+                cv.imshow(outputCanvas, src);
+
+                const end = performance.now();
+
+                // Update metrics
+                document.getElementById('aruco-detect-count').textContent = ids.rows;
+                document.getElementById('aruco-detect-time').textContent = (end - start).toFixed(1) + 'ms';
+
+                // Update detected list
+                updateArucoDetectedList(ids, corners);
+
+            } catch (e) {
+                // Silently handle errors during live processing
+            }
+
+            corners.delete();
+            ids.delete();
+            rejected.delete();
+        }
+
+        function updateArucoDetectedList(ids, corners) {
+            const listEl = document.getElementById('aruco-detect-list');
+
+            if (ids.rows === 0) {
+                listEl.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No markers detected</p>';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < ids.rows; i++) {
+                const markerId = ids.intAt(i, 0);
+                const markerCorners = corners.get(i);
+
+                // Get corner coordinates
+                const cornerCoords = [];
+                for (let j = 0; j < 4; j++) {
+                    const x = markerCorners.floatAt(0, j * 2).toFixed(0);
+                    const y = markerCorners.floatAt(0, j * 2 + 1).toFixed(0);
+                    cornerCoords.push(`(${x},${y})`);
+                }
+
+                html += `
+                    <div class="detected-item">
+                        <span class="marker-id">ID: ${markerId}</span>
+                        <span class="corners-info">${cornerCoords.join(' ')}</span>
+                    </div>
+                `;
+            }
+
+            listEl.innerHTML = html;
+        }
+
+        // ArUco Generation
+        function updateArucoGenInfo() {
+            const dictName = document.getElementById('aruco-gen-dict').value;
+            const idInput = document.getElementById('aruco-gen-id');
+
+            // Extract max ID from dictionary name
+            const match = dictName.match(/_(\d+)$/);
+            let maxId = 49;
+            if (match) {
+                maxId = parseInt(match[1]) - 1;
+            } else if (dictName === 'DICT_ARUCO_ORIGINAL') {
+                maxId = 1023;
+            }
+
+            idInput.max = maxId;
+            if (parseInt(idInput.value) > maxId) {
+                idInput.value = 0;
+            }
+
+            document.getElementById('aruco-gen-info').textContent =
+                `Dictionary: ${dictName}, Valid IDs: 0-${maxId}`;
+
+            generateArucoMarker();
+        }
+
+        function generateArucoMarker() {
+            if (!cvReady) return;
+
+            const dictName = document.getElementById('aruco-gen-dict').value;
+            const markerId = parseInt(document.getElementById('aruco-gen-id').value);
+            const size = parseInt(document.getElementById('aruco-gen-size').value);
+            const borderBits = parseInt(document.getElementById('aruco-gen-border').value);
+
+            try {
+                const dictionary = cv.getPredefinedDictionary(cv[dictName]);
+                const marker = new cv.Mat();
+
+                cv.generateImageMarker(dictionary, markerId, size, marker, borderBits);
+
+                const canvas = document.getElementById('aruco-gen-output');
+                canvas.width = size;
+                canvas.height = size;
+                cv.imshow(canvas, marker);
+
+                marker.delete();
+                dictionary.delete();
+
+            } catch (e) {
+                console.error('Marker generation error:', e);
+            }
+        }
+
+        // Board Generation
+        function generateBoard() {
+            if (!cvReady) return;
+
+            const dictName = document.getElementById('board-dict').value;
+            const markersX = parseInt(document.getElementById('board-markers-x').value);
+            const markersY = parseInt(document.getElementById('board-markers-y').value);
+            const markerLength = parseInt(document.getElementById('board-marker-length').value);
+            const markerSep = parseInt(document.getElementById('board-marker-sep').value);
+
+            try {
+                const dictionary = cv.getPredefinedDictionary(cv[dictName]);
+
+                // Calculate board image size
+                const boardWidth = markersX * markerLength + (markersX - 1) * markerSep + 2 * markerSep;
+                const boardHeight = markersY * markerLength + (markersY - 1) * markerSep + 2 * markerSep;
+
+                // Create board
+                const board = new cv.aruco_GridBoard(
+                    new cv.Size(markersX, markersY),
+                    markerLength / 100, // Convert to meters (arbitrary scale)
+                    markerSep / 100,
+                    dictionary
+                );
+
+                // Generate board image
+                const boardImage = new cv.Mat();
+                board.generateImage(new cv.Size(boardWidth, boardHeight), boardImage, markerSep, 1);
+
+                const canvas = document.getElementById('board-output');
+                canvas.width = boardWidth;
+                canvas.height = boardHeight;
+                cv.imshow(canvas, boardImage);
+
+                boardImage.delete();
+                board.delete();
+                dictionary.delete();
+
+            } catch (e) {
+                console.error('Board generation error:', e);
+                // Fallback: Generate individual markers in a grid
+                generateBoardFallback();
+            }
+        }
+
+        function generateBoardFallback() {
+            const dictName = document.getElementById('board-dict').value;
+            const markersX = parseInt(document.getElementById('board-markers-x').value);
+            const markersY = parseInt(document.getElementById('board-markers-y').value);
+            const markerLength = parseInt(document.getElementById('board-marker-length').value);
+            const markerSep = parseInt(document.getElementById('board-marker-sep').value);
+
+            const boardWidth = markersX * markerLength + (markersX + 1) * markerSep;
+            const boardHeight = markersY * markerLength + (markersY + 1) * markerSep;
+
+            const canvas = document.getElementById('board-output');
+            canvas.width = boardWidth;
+            canvas.height = boardHeight;
+            const ctx = canvas.getContext('2d');
+
+            // Fill with white
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, boardWidth, boardHeight);
+
+            const dictionary = cv.getPredefinedDictionary(cv[dictName]);
+
+            let id = 0;
+            for (let y = 0; y < markersY; y++) {
+                for (let x = 0; x < markersX; x++) {
+                    const marker = new cv.Mat();
+                    cv.generateImageMarker(dictionary, id, markerLength, marker, 1);
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = markerLength;
+                    tempCanvas.height = markerLength;
+                    cv.imshow(tempCanvas, marker);
+
+                    const posX = markerSep + x * (markerLength + markerSep);
+                    const posY = markerSep + y * (markerLength + markerSep);
+                    ctx.drawImage(tempCanvas, posX, posY);
+
+                    marker.delete();
+                    id++;
+                }
+            }
+
+            dictionary.delete();
+        }
+
+        // ChArUco Board Generation
+        function generateCharucoBoard() {
+            if (!cvReady) return;
+
+            const dictName = document.getElementById('charuco-dict').value;
+            const squaresX = parseInt(document.getElementById('charuco-squares-x').value);
+            const squaresY = parseInt(document.getElementById('charuco-squares-y').value);
+            const squareLength = parseInt(document.getElementById('charuco-square-length').value);
+            const markerLength = parseInt(document.getElementById('charuco-marker-length').value);
+
+            try {
+                const dictionary = cv.getPredefinedDictionary(cv[dictName]);
+
+                // Create ChArUco board
+                const charucoBoard = new cv.aruco_CharucoBoard(
+                    new cv.Size(squaresX, squaresY),
+                    squareLength / 100, // Convert to meters
+                    markerLength / 100,
+                    dictionary
+                );
+
+                // Calculate image size
+                const boardWidth = squaresX * squareLength;
+                const boardHeight = squaresY * squareLength;
+
+                // Generate board image
+                const boardImage = new cv.Mat();
+                charucoBoard.generateImage(new cv.Size(boardWidth, boardHeight), boardImage, 10, 1);
+
+                const canvas = document.getElementById('charuco-output');
+                canvas.width = boardWidth;
+                canvas.height = boardHeight;
+                cv.imshow(canvas, boardImage);
+
+                boardImage.delete();
+                charucoBoard.delete();
+                dictionary.delete();
+
+            } catch (e) {
+                console.error('ChArUco generation error:', e);
+                // Fallback: Draw a simple checkerboard pattern with markers
+                generateCharucoFallback();
+            }
+        }
+
+        function generateCharucoFallback() {
+            const dictName = document.getElementById('charuco-dict').value;
+            const squaresX = parseInt(document.getElementById('charuco-squares-x').value);
+            const squaresY = parseInt(document.getElementById('charuco-squares-y').value);
+            const squareLength = parseInt(document.getElementById('charuco-square-length').value);
+            const markerLength = parseInt(document.getElementById('charuco-marker-length').value);
+
+            const boardWidth = squaresX * squareLength;
+            const boardHeight = squaresY * squareLength;
+
+            const canvas = document.getElementById('charuco-output');
+            canvas.width = boardWidth;
+            canvas.height = boardHeight;
+            const ctx = canvas.getContext('2d');
+
+            const dictionary = cv.getPredefinedDictionary(cv[dictName]);
+            let markerId = 0;
+
+            // Draw checkerboard pattern
+            for (let y = 0; y < squaresY; y++) {
+                for (let x = 0; x < squaresX; x++) {
+                    const isBlack = (x + y) % 2 === 0;
+
+                    if (isBlack) {
+                        ctx.fillStyle = 'black';
+                        ctx.fillRect(x * squareLength, y * squareLength, squareLength, squareLength);
+                    } else {
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(x * squareLength, y * squareLength, squareLength, squareLength);
+
+                        // Add marker to white squares
+                        if (markerId < 50) { // Don't exceed dictionary size
+                            const marker = new cv.Mat();
+                            cv.generateImageMarker(dictionary, markerId, markerLength, marker, 1);
+
+                            const tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = markerLength;
+                            tempCanvas.height = markerLength;
+                            cv.imshow(tempCanvas, marker);
+
+                            const offsetX = x * squareLength + (squareLength - markerLength) / 2;
+                            const offsetY = y * squareLength + (squareLength - markerLength) / 2;
+                            ctx.drawImage(tempCanvas, offsetX, offsetY);
+
+                            marker.delete();
+                            markerId++;
+                        }
+                    }
+                }
+            }
+
+            dictionary.delete();
+        }
+
+        // QR Code Detection
+        function handleQRDetectUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Utils.loadImage(file).then(img => {
+                const canvas = document.getElementById('qr-detect-input');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            });
+        }
+
+        function detectQRCode() {
+            if (!cvReady) return;
+
+            const inputCanvas = document.getElementById('qr-detect-input');
+            const outputCanvas = document.getElementById('qr-detect-output');
+
+            try {
+                const start = performance.now();
+
+                const src = cv.imread(inputCanvas);
+                const result = processQRDetection(src);
+
+                const end = performance.now();
+
+                outputCanvas.width = src.cols;
+                outputCanvas.height = src.rows;
+                cv.imshow(outputCanvas, src);
+
+                // Update metrics
+                document.getElementById('qr-detect-count').textContent = result.count;
+                document.getElementById('qr-detect-time').textContent = (end - start).toFixed(1) + 'ms';
+
+                // Show decoded content
+                const contentEl = document.getElementById('qr-detect-content');
+                const valueEl = document.getElementById('qr-detect-value');
+
+                if (result.content) {
+                    contentEl.classList.remove('hidden');
+                    valueEl.textContent = result.content;
+                } else {
+                    contentEl.classList.add('hidden');
+                }
+
+                src.delete();
+
+            } catch (e) {
+                console.error('QR detection error:', e);
+                UIComponents.showToast({
+                    message: 'QR detection failed: ' + e.message,
+                    type: 'error'
+                });
+            }
+        }
+
+        function processQRDetection(src) {
+            const qrDetector = new cv.QRCodeDetector();
+            const points = new cv.Mat();
+
+            let content = '';
+            let count = 0;
+
+            try {
+                // Try to detect and decode
+                content = qrDetector.detectAndDecode(src, points);
+
+                if (points.rows > 0) {
+                    count = 1;
+
+                    // Draw the QR code boundary
+                    const color = new cv.Scalar(0, 255, 0, 255);
+
+                    for (let i = 0; i < 4; i++) {
+                        const p1 = new cv.Point(
+                            points.floatAt(0, i * 2),
+                            points.floatAt(0, i * 2 + 1)
+                        );
+                        const p2 = new cv.Point(
+                            points.floatAt(0, ((i + 1) % 4) * 2),
+                            points.floatAt(0, ((i + 1) % 4) * 2 + 1)
+                        );
+                        cv.line(src, p1, p2, color, 3);
+                    }
+
+                    // Draw corner circles
+                    for (let i = 0; i < 4; i++) {
+                        const p = new cv.Point(
+                            points.floatAt(0, i * 2),
+                            points.floatAt(0, i * 2 + 1)
+                        );
+                        cv.circle(src, p, 8, new cv.Scalar(255, 0, 0, 255), -1);
+                    }
+                }
+            } catch (e) {
+                console.error('QR processing error:', e);
+            }
+
+            points.delete();
+            qrDetector.delete();
+
+            return { content, count };
+        }
+
+        function processQRFrame(src, outputCanvas) {
+            const start = performance.now();
+            const result = processQRDetection(src);
+            const end = performance.now();
+
+            cv.imshow(outputCanvas, src);
+
+            document.getElementById('qr-detect-count').textContent = result.count;
+            document.getElementById('qr-detect-time').textContent = (end - start).toFixed(1) + 'ms';
+
+            const contentEl = document.getElementById('qr-detect-content');
+            const valueEl = document.getElementById('qr-detect-value');
+
+            if (result.content) {
+                contentEl.classList.remove('hidden');
+                valueEl.textContent = result.content;
+            } else {
+                contentEl.classList.add('hidden');
+            }
+        }
+
+        // WeChat QR Detection
+        function handleWeChatQRUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Utils.loadImage(file).then(img => {
+                const canvas = document.getElementById('wechat-qr-input');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            });
+        }
+
+        function detectWeChatQR() {
+            if (!cvReady || !hasWeChatQR) return;
+
+            const inputCanvas = document.getElementById('wechat-qr-input');
+            const outputCanvas = document.getElementById('wechat-qr-output');
+
+            try {
+                const src = cv.imread(inputCanvas);
+
+                // Create WeChat QR detector
+                const detector = new cv.wechat_qrcode_WeChatQRCode();
+                const points = new cv.MatVector();
+
+                // Detect and decode
+                const results = detector.detectAndDecode(src, points);
+
+                // Draw results
+                for (let i = 0; i < points.size(); i++) {
+                    const pointsMat = points.get(i);
+                    const color = new cv.Scalar(0, 255, 0, 255);
+
+                    for (let j = 0; j < 4; j++) {
+                        const p1 = new cv.Point(
+                            pointsMat.floatAt(j, 0),
+                            pointsMat.floatAt(j, 1)
+                        );
+                        const p2 = new cv.Point(
+                            pointsMat.floatAt((j + 1) % 4, 0),
+                            pointsMat.floatAt((j + 1) % 4, 1)
+                        );
+                        cv.line(src, p1, p2, color, 3);
+                    }
+                }
+
+                outputCanvas.width = src.cols;
+                outputCanvas.height = src.rows;
+                cv.imshow(outputCanvas, src);
+
+                // Show decoded content
+                const contentEl = document.getElementById('wechat-qr-content');
+                const valueEl = document.getElementById('wechat-qr-value');
+
+                if (results.size() > 0) {
+                    contentEl.classList.remove('hidden');
+                    let allContent = [];
+                    for (let i = 0; i < results.size(); i++) {
+                        allContent.push(results.get(i));
+                    }
+                    valueEl.textContent = allContent.join('\n');
+                } else {
+                    contentEl.classList.add('hidden');
+                }
+
+                // Cleanup
+                src.delete();
+                points.delete();
+                detector.delete();
+
+            } catch (e) {
+                console.error('WeChat QR detection error:', e);
+                UIComponents.showToast({
+                    message: 'WeChat QR detection failed: ' + e.message,
+                    type: 'error'
+                });
+            }
+        }
+
+        // Color Checker Detection
+        function handleMCCUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Utils.loadImage(file).then(img => {
+                const canvas = document.getElementById('mcc-input');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            });
+        }
+
+        function detectColorChecker() {
+            if (!cvReady || !hasMCC) return;
+
+            const inputCanvas = document.getElementById('mcc-input');
+            const outputCanvas = document.getElementById('mcc-output');
+
+            try {
+                const start = performance.now();
+                const src = cv.imread(inputCanvas);
+
+                const chartType = document.getElementById('mcc-chart-type').value;
+                let chartTypeValue;
+
+                switch (chartType) {
+                    case 'MCC24':
+                        chartTypeValue = cv.mcc_MCC24 || 0;
+                        break;
+                    case 'SG140':
+                        chartTypeValue = cv.mcc_SG140 || 1;
+                        break;
+                    case 'VINYL18':
+                        chartTypeValue = cv.mcc_VINYL18 || 2;
+                        break;
+                    default:
+                        chartTypeValue = 0;
+                }
+
+                // Create detector
+                const detector = cv.CCheckerDetector.create();
+                const result = detector.process(src, chartTypeValue);
+
+                const end = performance.now();
+
+                // Draw result
+                if (result) {
+                    const checkers = detector.getListColorChecker();
+
+                    for (let i = 0; i < checkers.size(); i++) {
+                        const checker = checkers.get(i);
+                        const cdraw = new cv.CCheckerDraw(checker);
+                        cdraw.draw(src);
+                        cdraw.delete();
+                    }
+
+                    document.getElementById('mcc-count').textContent = checkers.size();
+
+                    // Show color values
+                    const colorsEl = document.getElementById('mcc-colors');
+                    if (checkers.size() > 0) {
+                        colorsEl.classList.remove('hidden');
+                        colorsEl.innerHTML = '<p>Color checker detected successfully!</p>';
+                    }
+                } else {
+                    document.getElementById('mcc-count').textContent = '0';
+                    document.getElementById('mcc-colors').classList.add('hidden');
+                }
+
+                document.getElementById('mcc-time').textContent = (end - start).toFixed(1) + 'ms';
+
+                outputCanvas.width = src.cols;
+                outputCanvas.height = src.rows;
+                cv.imshow(outputCanvas, src);
+
+                src.delete();
+                detector.delete();
+
+            } catch (e) {
+                console.error('MCC detection error:', e);
+                UIComponents.showToast({
+                    message: 'Color checker detection failed: ' + e.message,
+                    type: 'error'
+                });
+            }
+        }
+
+        // Utility: Download canvas as image
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            // Stop all webcams
+            Object.keys(webcamStreams).forEach(key => stopWebcam(key));
+
+            // Clean up ArUco resources
+            if (arucoDictionary) arucoDictionary.delete();
+            if (arucoDetectorParams) arucoDetectorParams.delete();
+            if (arucoRefineParams) arucoRefineParams.delete();
+            if (arucoDetector) arucoDetector.delete();
+        });
+    </script>
+</body>
+</html>
