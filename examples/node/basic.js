@@ -12,7 +12,7 @@
 
 (async () => {
     console.log('Loading OpenCV.js...');
-    const cv = await require('../../dist/opencv.js');
+    const cv = await require('../../dist/full/opencv.js');
     console.log('OpenCV.js loaded successfully!\n');
 
     // ============================================
