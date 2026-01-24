@@ -39,10 +39,8 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Download OpenCV sources
-        run: |
-          git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv.git
-          git clone --branch ${{ env.OPENCV_VERSION }} --depth 1 https://github.com/opencv/opencv_contrib.git
+      - name: Download OpenCV sources and apply patches
+        run: bash scripts/download-opencv.sh
 
       - name: Build OpenCV.js (${{ matrix.build_type }})
         run: |
