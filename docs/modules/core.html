@@ -22,6 +22,79 @@
             <p>Explore fundamental OpenCV operations including color conversion, filtering, edge detection, thresholding, morphological operations, and histogram analysis.</p>
         </header>
 
+        <!-- Live Processing Section -->
+        <section class="demo-section" id="live-section">
+            <h3>Real-Time Processing</h3>
+            <p class="text-secondary mb-md">Process webcam feed in real-time with various filters and effects.</p>
+
+            <div class="demo-controls" id="live-controls">
+                <div class="flex gap-md items-center flex-wrap">
+                    <button id="live-start" class="btn btn-success">Start Camera</button>
+                    <button id="live-stop" class="btn btn-danger hidden">Stop Camera</button>
+
+                    <select id="live-filter" class="form-control" style="min-width: 150px;">
+                        <optgroup label="Color">
+                            <option value="none">Original</option>
+                            <option value="grayscale">Grayscale</option>
+                            <option value="hsv">HSV</option>
+                            <option value="invert">Invert</option>
+                        </optgroup>
+                        <optgroup label="Blur">
+                            <option value="gaussian">Gaussian Blur</option>
+                            <option value="median">Median Blur</option>
+                            <option value="bilateral">Bilateral Filter</option>
+                        </optgroup>
+                        <optgroup label="Edge Detection">
+                            <option value="canny" selected>Canny Edges</option>
+                            <option value="sobel">Sobel</option>
+                            <option value="laplacian">Laplacian</option>
+                        </optgroup>
+                        <optgroup label="Threshold">
+                            <option value="binary">Binary Threshold</option>
+                            <option value="adaptive">Adaptive Threshold</option>
+                        </optgroup>
+                        <optgroup label="Morphology">
+                            <option value="dilate">Dilate</option>
+                            <option value="erode">Erode</option>
+                            <option value="gradient">Morphological Gradient</option>
+                        </optgroup>
+                        <optgroup label="Artistic">
+                            <option value="sketch">Pencil Sketch</option>
+                            <option value="cartoon">Cartoon</option>
+                        </optgroup>
+                    </select>
+
+                    <div class="form-group" style="margin: 0;">
+                        <label for="live-intensity" style="font-size: 0.85rem;">Intensity</label>
+                        <input type="range" id="live-intensity" min="1" max="31" value="5" step="2" style="width: 100px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-output">
+                <div class="canvas-container" style="position: relative;">
+                    <video id="live-video" autoplay playsinline muted style="display: none;"></video>
+                    <canvas id="live-canvas" width="640" height="480"></canvas>
+                    <span class="canvas-label" id="live-fps">FPS: --</span>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">FPS</span>
+                    <span class="metric-value" id="live-fps-value">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="live-proc-time">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Filter</span>
+                    <span class="metric-value" id="live-filter-name">--</span>
+                </div>
+            </div>
+        </section>
+
         <!-- Section 1: Color Conversion -->
         <section class="demo-section" id="color-section">
             <h3>Color Conversion</h3>
@@ -253,6 +326,7 @@
                     buildType: 'full'
                 });
 
+                setupLiveSection();
                 setupColorSection();
                 setupBlurSection();
                 setupEdgeSection();
@@ -326,6 +400,252 @@
                 message: 'Image downloaded',
                 type: 'success'
             });
+        }
+
+        // =====================
+        // Live Processing Section
+        // =====================
+        const liveState = {
+            stream: null,
+            video: null,
+            canvas: null,
+            ctx: null,
+            animationId: null,
+            running: false,
+            lastTime: 0,
+            frameCount: 0,
+            fps: 0
+        };
+
+        function setupLiveSection() {
+            liveState.video = document.getElementById('live-video');
+            liveState.canvas = document.getElementById('live-canvas');
+            liveState.ctx = liveState.canvas.getContext('2d');
+
+            document.getElementById('live-start').addEventListener('click', startLiveProcessing);
+            document.getElementById('live-stop').addEventListener('click', stopLiveProcessing);
+
+            document.getElementById('live-filter').addEventListener('change', (e) => {
+                document.getElementById('live-filter-name').textContent = e.target.options[e.target.selectedIndex].text;
+            });
+        }
+
+        async function startLiveProcessing() {
+            try {
+                liveState.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+                    audio: false
+                });
+
+                liveState.video.srcObject = liveState.stream;
+                await liveState.video.play();
+
+                liveState.canvas.width = liveState.video.videoWidth;
+                liveState.canvas.height = liveState.video.videoHeight;
+
+                liveState.running = true;
+                liveState.lastTime = performance.now();
+                liveState.frameCount = 0;
+
+                document.getElementById('live-start').classList.add('hidden');
+                document.getElementById('live-stop').classList.remove('hidden');
+                document.getElementById('live-filter-name').textContent =
+                    document.getElementById('live-filter').options[document.getElementById('live-filter').selectedIndex].text;
+
+                processLiveFrame();
+            } catch (error) {
+                UIComponents.showToast({ message: 'Webcam access denied: ' + error.message, type: 'error' });
+            }
+        }
+
+        function stopLiveProcessing() {
+            liveState.running = false;
+            if (liveState.animationId) {
+                cancelAnimationFrame(liveState.animationId);
+                liveState.animationId = null;
+            }
+            if (liveState.stream) {
+                liveState.stream.getTracks().forEach(track => track.stop());
+                liveState.stream = null;
+            }
+            liveState.video.srcObject = null;
+
+            document.getElementById('live-stop').classList.add('hidden');
+            document.getElementById('live-start').classList.remove('hidden');
+            document.getElementById('live-fps-value').textContent = '--';
+            document.getElementById('live-proc-time').textContent = '--';
+
+            // Clear canvas
+            liveState.ctx.fillStyle = '#1a1a24';
+            liveState.ctx.fillRect(0, 0, liveState.canvas.width, liveState.canvas.height);
+        }
+
+        function processLiveFrame() {
+            if (!liveState.running) return;
+
+            const procStart = performance.now();
+
+            // Update FPS
+            liveState.frameCount++;
+            if (procStart - liveState.lastTime >= 1000) {
+                liveState.fps = liveState.frameCount;
+                liveState.frameCount = 0;
+                liveState.lastTime = procStart;
+                document.getElementById('live-fps-value').textContent = liveState.fps;
+            }
+
+            // Capture frame
+            liveState.ctx.drawImage(liveState.video, 0, 0);
+
+            const filter = document.getElementById('live-filter').value;
+            const intensity = parseInt(document.getElementById('live-intensity').value);
+
+            if (filter !== 'none') {
+                let src = cv.imread(liveState.canvas);
+                let dst = new cv.Mat();
+
+                try {
+                    applyLiveFilter(src, dst, filter, intensity);
+                    cv.imshow(liveState.canvas, dst);
+                } catch (e) {
+                    console.error('Filter error:', e);
+                }
+
+                src.delete();
+                dst.delete();
+            }
+
+            const procTime = (performance.now() - procStart).toFixed(1);
+            document.getElementById('live-proc-time').textContent = procTime + 'ms';
+
+            liveState.animationId = requestAnimationFrame(processLiveFrame);
+        }
+
+        function applyLiveFilter(src, dst, filter, intensity) {
+            let gray = new cv.Mat();
+            const ksize = intensity | 1; // Ensure odd number
+
+            switch (filter) {
+                // Color filters
+                case 'grayscale':
+                    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    break;
+                case 'hsv':
+                    cv.cvtColor(src, dst, cv.COLOR_RGBA2RGB);
+                    cv.cvtColor(dst, dst, cv.COLOR_RGB2HSV);
+                    break;
+                case 'invert':
+                    cv.bitwise_not(src, dst);
+                    break;
+
+                // Blur filters
+                case 'gaussian':
+                    cv.GaussianBlur(src, dst, new cv.Size(ksize, ksize), 0);
+                    break;
+                case 'median':
+                    cv.medianBlur(src, dst, ksize);
+                    break;
+                case 'bilateral':
+                    const rgb = new cv.Mat();
+                    cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+                    const bilat = new cv.Mat();
+                    cv.bilateralFilter(rgb, bilat, ksize, ksize * 2, ksize / 2);
+                    cv.cvtColor(bilat, dst, cv.COLOR_RGB2RGBA);
+                    rgb.delete();
+                    bilat.delete();
+                    break;
+
+                // Edge detection
+                case 'canny':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.Canny(gray, dst, 50, 150);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    break;
+                case 'sobel':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    const sobelX = new cv.Mat();
+                    const sobelY = new cv.Mat();
+                    cv.Sobel(gray, sobelX, cv.CV_16S, 1, 0);
+                    cv.Sobel(gray, sobelY, cv.CV_16S, 0, 1);
+                    cv.convertScaleAbs(sobelX, sobelX);
+                    cv.convertScaleAbs(sobelY, sobelY);
+                    cv.addWeighted(sobelX, 0.5, sobelY, 0.5, 0, dst);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    sobelX.delete();
+                    sobelY.delete();
+                    break;
+                case 'laplacian':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    const lap = new cv.Mat();
+                    cv.Laplacian(gray, lap, cv.CV_16S, ksize);
+                    cv.convertScaleAbs(lap, dst);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    lap.delete();
+                    break;
+
+                // Threshold
+                case 'binary':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.threshold(gray, dst, 127, 255, cv.THRESH_BINARY);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    break;
+                case 'adaptive':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.adaptiveThreshold(gray, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    break;
+
+                // Morphology
+                case 'dilate':
+                    const dilateKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(ksize, ksize));
+                    cv.dilate(src, dst, dilateKernel);
+                    dilateKernel.delete();
+                    break;
+                case 'erode':
+                    const erodeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(ksize, ksize));
+                    cv.erode(src, dst, erodeKernel);
+                    erodeKernel.delete();
+                    break;
+                case 'gradient':
+                    const gradKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(ksize, ksize));
+                    cv.morphologyEx(src, dst, cv.MORPH_GRADIENT, gradKernel);
+                    gradKernel.delete();
+                    break;
+
+                // Artistic
+                case 'sketch':
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.GaussianBlur(gray, gray, new cv.Size(21, 21), 0);
+                    const invGray = new cv.Mat();
+                    cv.bitwise_not(gray, invGray);
+                    cv.divide(gray, invGray, dst, 256);
+                    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+                    invGray.delete();
+                    break;
+                case 'cartoon':
+                    // Bilateral filter + edge overlay
+                    const cartoonRgb = new cv.Mat();
+                    cv.cvtColor(src, cartoonRgb, cv.COLOR_RGBA2RGB);
+                    const bilateral = new cv.Mat();
+                    cv.bilateralFilter(cartoonRgb, bilateral, 9, 75, 75);
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.medianBlur(gray, gray, 7);
+                    const edges = new cv.Mat();
+                    cv.adaptiveThreshold(gray, edges, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 9, 2);
+                    cv.cvtColor(edges, edges, cv.COLOR_GRAY2RGB);
+                    cv.bitwise_and(bilateral, edges, dst);
+                    cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA);
+                    cartoonRgb.delete();
+                    bilateral.delete();
+                    edges.delete();
+                    break;
+
+                default:
+                    src.copyTo(dst);
+            }
+
+            gray.delete();
         }
 
         // =====================
