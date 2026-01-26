@@ -53,10 +53,11 @@ const OpenCVLoader = {
             updateStatus('Loading OpenCV.js...');
             updateProgress(10);
 
-            // Determine script path based on build type (absolute from root)
+            // Use CDN for GitHub Pages, local path for development
+            const cdnBase = 'https://cdn.jsdelivr.net/npm/opencv-contrib-wasm@latest';
             const scriptPath = buildType === 'essential'
-                ? '/dist/essential/opencv.js'
-                : '/dist/full/opencv.js';
+                ? `${cdnBase}/dist/essential/opencv.js`
+                : `${cdnBase}/dist/full/opencv.js`;
 
             // Check if script already exists
             const existingScript = document.querySelector(`script[src*="opencv.js"]`);
