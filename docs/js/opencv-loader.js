@@ -53,11 +53,11 @@ const OpenCVLoader = {
             updateStatus('Loading OpenCV.js...');
             updateProgress(10);
 
-            // Load from GitHub releases (project's own build)
-            const releaseBase = 'https://github.com/lyehe/opencvjs_build/releases/download/latest';
+            // Load from jsDelivr CDN (mirrors npm package with proper CORS headers)
+            const cdnBase = 'https://cdn.jsdelivr.net/npm/opencv-contrib-wasm@latest';
             const scriptPath = buildType === 'essential'
-                ? `${releaseBase}/opencv-essential.js`
-                : `${releaseBase}/opencv-full.js`;
+                ? `${cdnBase}/dist/essential/opencv.js`
+                : `${cdnBase}/dist/full/opencv.js`;
 
             // Check if script already exists
             const existingScript = document.querySelector(`script[src*="opencv.js"]`);
