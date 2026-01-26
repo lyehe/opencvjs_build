@@ -53,11 +53,20 @@ const OpenCVLoader = {
             updateStatus('Loading OpenCV.js...');
             updateProgress(10);
 
-            // Load from jsDelivr CDN (mirrors npm package with proper CORS headers)
-            const cdnBase = 'https://cdn.jsdelivr.net/npm/opencv-contrib-wasm@latest';
+            // Calculate base path from this script's location
+            const scripts = document.getElementsByTagName('script');
+            let basePath = '';
+            for (const s of scripts) {
+                if (s.src && s.src.includes('opencv-loader.js')) {
+                    basePath = s.src.substring(0, s.src.lastIndexOf('/js/'));
+                    break;
+                }
+            }
+
+            // Load from same origin (docs/dist folder)
             const scriptPath = buildType === 'essential'
-                ? `${cdnBase}/dist/essential/opencv.js`
-                : `${cdnBase}/dist/full/opencv.js`;
+                ? `${basePath}/dist/essential/opencv.js`
+                : `${basePath}/dist/full/opencv.js`;
 
             // Check if script already exists
             const existingScript = document.querySelector(`script[src*="opencv.js"]`);
